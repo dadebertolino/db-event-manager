@@ -1,0 +1,192 @@
+/**
+ * DB Event Manager — Admin CSS
+ * Usa il design system db-admin-ui.css per componenti condivisi.
+ * Qui solo gli override specifici di DBEM.
+ */
+
+/* === Metabox === */
+.dbem-metabox-table th { width: 180px; vertical-align: top; padding-top: 14px; }
+.dbem-metabox-table td { padding: 8px 0; }
+
+/* === Stats Sidebar === */
+.dbem-stats-box { padding: 4px 0; }
+.dbem-stats-box p { margin: 6px 0; }
+.dbem-stats-box .db-ui-progress { margin: 6px 0 12px; }
+
+/* === Custom Fields Builder — usa db-ui-drag-item === */
+.dbem-field-item { composes: db-ui-drag-item; }
+.dbem-field-item .dbem-field-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dbem-field-item .dbem-field-header .dbem-drag-handle { composes: db-ui-drag-handle; }
+.dbem-field-item .dbem-field-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.dbem-field-item .dbem-field-row label { font-size: 12px; color: var(--db-text-muted); min-width: 60px; }
+.dbem-field-item .dbem-field-row input[type="text"],
+.dbem-field-item .dbem-field-row select { flex: 1; min-width: 120px; }
+.dbem-field-item .dbem-field-remove { composes: db-ui-drag-remove; }
+.dbem-field-options { margin-top: 6px; padding-left: 68px; }
+.dbem-field-options textarea { width: 100%; font-size: 12px; }
+
+#dbem-add-field, #dbem-add-survey-field { margin-top: 8px; }
+
+/* === Check-in Page === */
+.dbem-checkin-wrap { max-width: 900px; }
+.dbem-checkin-select { margin-bottom: 20px; }
+.dbem-checkin-select select {
+    font-size: 16px;
+    padding: 8px 12px;
+    min-width: 300px;
+    border-radius: var(--db-radius-sm);
+    border: 1px solid var(--db-border);
+}
+.dbem-checkin-select select:focus {
+    border-color: var(--db-primary);
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.15);
+    outline: none;
+}
+
+.dbem-checkin-counter {
+    text-align: center;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--db-primary);
+    margin: 20px 0;
+    line-height: 1.2;
+}
+.dbem-counter-sep { color: var(--db-text-light); margin: 0 4px; }
+.dbem-counter-label { display: block; font-size: 16px; font-weight: 400; color: var(--db-text-muted); }
+
+.dbem-checkin-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 20px 0; }
+.dbem-search-box { display: flex; gap: 8px; flex: 1; }
+.dbem-search-box input {
+    font-size: 16px;
+    padding: 8px 12px;
+    flex: 1;
+    border-radius: var(--db-radius-sm);
+    border: 1px solid var(--db-border);
+}
+.dbem-search-box input:focus {
+    border-color: var(--db-primary);
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.15);
+    outline: none;
+}
+
+/* Feedback check-in */
+.dbem-feedback { composes: db-ui-feedback; }
+.dbem-feedback-icon { composes: db-ui-feedback-icon; }
+.dbem-feedback-name { composes: db-ui-feedback-title; }
+.dbem-feedback-message { composes: db-ui-feedback-text; }
+.dbem-feedback-success { composes: db-ui-feedback-success; }
+.dbem-feedback-warning { composes: db-ui-feedback-warning; }
+.dbem-feedback-error { composes: db-ui-feedback-error; }
+
+@keyframes dbem-fadein { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+#dbem-qr-scanner { margin: 20px 0; text-align: center; }
+#dbem-qr-scanner video { border-radius: var(--db-radius); }
+#dbem-stop-scan { margin-top: 12px; }
+
+/* Search results */
+#dbem-results-list .dbem-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--db-bg);
+    border: 1px solid var(--db-border);
+    border-radius: var(--db-radius);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all var(--db-transition);
+}
+#dbem-results-list .dbem-result-item:hover {
+    background: var(--db-primary-light);
+    border-color: var(--db-primary);
+    box-shadow: var(--db-shadow);
+}
+#dbem-results-list .dbem-result-item .dbem-result-status { font-size: 20px; }
+#dbem-results-list .dbem-result-item .dbem-result-info { flex: 1; }
+#dbem-results-list .dbem-result-item .dbem-result-name { font-weight: 600; }
+#dbem-results-list .dbem-result-item .dbem-result-email { font-size: 13px; color: var(--db-text-muted); }
+
+/* === Participants Table === */
+.dbem-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.dbem-bulk-actions { display: flex; gap: 6px; align-items: center; }
+.dbem-participants-table .check-column { width: 30px; }
+.dbem-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.dbem-status-confirmed { background: var(--db-primary-light); color: var(--db-primary); }
+.dbem-status-checked-in { background: var(--db-success-light); color: var(--db-success); }
+.dbem-status-cancelled { background: var(--db-danger-light); color: var(--db-danger); }
+.dbem-status-pending { background: var(--db-warning-light); color: var(--db-warning-dark); }
+.dbem-status-rejected { background: #f0f0f1; color: var(--db-text-muted); }
+.dbem-actions { white-space: nowrap; }
+.dbem-actions .button-small {
+    min-width: 32px;
+    padding: 4px 8px;
+    border-radius: var(--db-radius-sm);
+}
+
+.dbem-event-selector { margin-bottom: 16px; }
+.dbem-event-selector select { min-width: 250px; }
+
+/* === Survey Summary === */
+.dbem-survey-summary { margin-bottom: 24px; }
+.dbem-summary-field { margin-bottom: 16px; }
+.dbem-summary-field h4 { margin-bottom: 6px; }
+
+/* === Tooltip — usa db-ui-tip === */
+.dbem-tip { position: relative; }
+.dbem-tip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--db-text);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: var(--db-radius-sm);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--db-transition);
+    z-index: 100;
+    line-height: 1.4;
+    box-shadow: var(--db-shadow-md);
+}
+.dbem-tip::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: var(--db-text);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--db-transition);
+    z-index: 100;
+}
+.dbem-tip:hover::after,
+.dbem-tip:focus-visible::after,
+.dbem-tip:hover::before,
+.dbem-tip:focus-visible::before { opacity: 1; }
+
+/* === Responsive === */
+@media screen and (max-width: 782px) {
+    .dbem-checkin-counter { font-size: 36px; }
+    .dbem-checkin-actions { flex-direction: column; }
+    .dbem-search-box { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0s !important; }
+}

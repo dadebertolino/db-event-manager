@@ -43,6 +43,8 @@
 
 
 
+
+
 //---- qrconst.php -----------------------------
 
 
@@ -77,26 +79,26 @@
  
 	// Encoding modes
 	 
-	define('QR_MODE_NUL', -1);
-	define('QR_MODE_NUM', 0);
-	define('QR_MODE_AN', 1);
-	define('QR_MODE_8', 2);
-	define('QR_MODE_KANJI', 3);
-	define('QR_MODE_STRUCTURE', 4);
+	if (!defined('QR_MODE_NUL')) define('QR_MODE_NUL', -1);
+	if (!defined('QR_MODE_NUM')) define('QR_MODE_NUM', 0);
+	if (!defined('QR_MODE_AN')) define('QR_MODE_AN', 1);
+	if (!defined('QR_MODE_8')) define('QR_MODE_8', 2);
+	if (!defined('QR_MODE_KANJI')) define('QR_MODE_KANJI', 3);
+	if (!defined('QR_MODE_STRUCTURE')) define('QR_MODE_STRUCTURE', 4);
 
 	// Levels of error correction.
 
-	define('QR_ECLEVEL_L', 0);
-	define('QR_ECLEVEL_M', 1);
-	define('QR_ECLEVEL_Q', 2);
-	define('QR_ECLEVEL_H', 3);
+	if (!defined('QR_ECLEVEL_L')) define('QR_ECLEVEL_L', 0);
+	if (!defined('QR_ECLEVEL_M')) define('QR_ECLEVEL_M', 1);
+	if (!defined('QR_ECLEVEL_Q')) define('QR_ECLEVEL_Q', 2);
+	if (!defined('QR_ECLEVEL_H')) define('QR_ECLEVEL_H', 3);
 	
 	// Supported output formats
 	
 	define('QR_FORMAT_TEXT', 0);
 	define('QR_FORMAT_PNG',  1);
 	
-	class qrstr {
+	class DBEM_QRstr {
 		public static function set(&$srctab, $x, $y, $repl, $replLen = false) {
 			$srctab[$y] = substr_replace($srctab[$y], ($replLen !== false)?substr($repl,0,$replLen):$repl, $x, ($replLen !== false)?$replLen:strlen($repl));
 		}
@@ -115,15 +117,15 @@
  * Config file, tuned-up for merged verion
  */
      
-    define('QR_CACHEABLE', false);       // use cache - more disk reads but less CPU power, masks and format templates are stored there
-    define('QR_CACHE_DIR', false);       // used when QR_CACHEABLE === true
-    define('QR_LOG_DIR', false);         // default error logs dir   
+    define('DBEM_QR_CACHEABLE', false);       // use cache - more disk reads but less CPU power, masks and format templates are stored there
+    define('DBEM_QR_CACHE_DIR', false);       // used when DBEM_QR_CACHEABLE === true
+    define('DBEM_QR_LOG_DIR', false);         // default error logs dir   
     
-    define('QR_FIND_BEST_MASK', true);                                                          // if true, estimates best mask (spec. default, but extremally slow; set to false to significant performance boost but (propably) worst quality code
-    define('QR_FIND_FROM_RANDOM', 2);                                                       // if false, checks all masks available, otherwise value tells count of masks need to be checked, mask id are got randomly
-    define('QR_DEFAULT_MASK', 2);                                                               // when QR_FIND_BEST_MASK === false
+    define('DBEM_QR_FIND_BEST_MASK', true);                                                          // if true, estimates best mask (spec. default, but extremally slow; set to false to significant performance boost but (propably) worst quality code
+    define('DBEM_QR_FIND_FROM_RANDOM', 2);                                                       // if false, checks all masks available, otherwise value tells count of masks need to be checked, mask id are got randomly
+    define('DBEM_QR_DEFAULT_MASK', 2);                                                               // when DBEM_QR_FIND_BEST_MASK === false
                                                   
-    define('QR_PNG_MAXIMUM_SIZE',  1024);                                                       // maximum allowed png image width (in pixels), tune to make sure GD and PHP can handle such big images
+    define('DBEM_QR_PNG_MAXIMUM_SIZE',  1024);                                                       // maximum allowed png image width (in pixels), tune to make sure GD and PHP can handle such big images
                                                   
 
 
@@ -156,7 +158,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-    class QRtools {
+    class DBEM_QRtools {
     
         //----------------------------------------------------------------------
         public static function binarize($frame)
@@ -186,7 +188,7 @@
                 $eccLevel = $mode[1];
             }
                 
-            $qrTab = QRcode::text($code, false, $eccLevel);
+            $qrTab = DBEM_QRcode_Lib::text($code, false, $eccLevel);
             $size = count($qrTab);
                 
             $barcode_array['num_rows'] = $size;
@@ -212,14 +214,14 @@
         //----------------------------------------------------------------------
         public static function buildCache()
         {
-			QRtools::markTime('before_build_cache');
+			DBEM_QRtools::markTime('before_build_cache');
 			
-			$mask = new QRmask();
-            for ($a=1; $a <= QRSPEC_VERSION_MAX; $a++) {
-                $frame = QRspec::newFrame($a);
-                if (QR_IMAGE) {
-                    $fileName = QR_CACHE_DIR.'frame_'.$a.'.png';
-                    QRimage::png(self::binarize($frame), $fileName, 1, 0);
+			$mask = new DBEM_QRmask();
+            for ($a=1; $a <= DBEM_QRSPEC_VERSION_MAX; $a++) {
+                $frame = DBEM_QRspec::newFrame($a);
+                if (DBEM_QR_IMAGE) {
+                    $fileName = DBEM_QR_CACHE_DIR.'frame_'.$a.'.png';
+                    DBEM_QRimage::png(self::binarize($frame), $fileName, 1, 0);
                 }
 				
 				$width = count($frame);
@@ -228,18 +230,18 @@
 					$mask->makeMaskNo($maskNo, $width, $frame, $bitMask, true);
             }
 			
-			QRtools::markTime('after_build_cache');
+			DBEM_QRtools::markTime('after_build_cache');
         }
 
         //----------------------------------------------------------------------
         public static function log($outfile, $err)
         {
-            if (QR_LOG_DIR !== false) {
+            if (DBEM_QR_LOG_DIR !== false) {
                 if ($err != '') {
                     if ($outfile !== false) {
-                        file_put_contents(QR_LOG_DIR.basename($outfile).'-errors.txt', date('Y-m-d H:i:s').': '.$err, FILE_APPEND);
+                        file_put_contents(DBEM_QR_LOG_DIR.basename($outfile).'-errors.txt', date('Y-m-d H:i:s').': '.$err, FILE_APPEND);
                     } else {
-                        file_put_contents(QR_LOG_DIR.'errors.txt', date('Y-m-d H:i:s').': '.$err, FILE_APPEND);
+                        file_put_contents(DBEM_QR_LOG_DIR.'errors.txt', date('Y-m-d H:i:s').': '.$err, FILE_APPEND);
                     }
                 }    
             }
@@ -315,7 +317,7 @@
     
     //##########################################################################
     
-    QRtools::markTime('start');
+    DBEM_QRtools::markTime('start');
     
 
 
@@ -357,15 +359,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
  
-    define('QRSPEC_VERSION_MAX', 40);
-    define('QRSPEC_WIDTH_MAX',   177);
+    define('DBEM_QRSPEC_VERSION_MAX', 40);
+    define('DBEM_QRSPEC_WIDTH_MAX',   177);
 
-    define('QRCAP_WIDTH',        0);
-    define('QRCAP_WORDS',        1);
-    define('QRCAP_REMINDER',     2);
-    define('QRCAP_EC',           3);
+    define('DBEM_QRCAP_WIDTH',        0);
+    define('DBEM_QRCAP_WORDS',        1);
+    define('DBEM_QRCAP_REMINDER',     2);
+    define('DBEM_QRCAP_EC',           3);
 
-    class QRspec {
+    class DBEM_QRspec {
     
         public static $capacity = array(
             array(  0,    0, 0, array(   0,    0,    0,    0)),
@@ -414,33 +416,33 @@
         //----------------------------------------------------------------------
         public static function getDataLength($version, $level)
         {
-            return self::$capacity[$version][QRCAP_WORDS] - self::$capacity[$version][QRCAP_EC][$level];
+            return self::$capacity[$version][DBEM_QRCAP_WORDS] - self::$capacity[$version][DBEM_QRCAP_EC][$level];
         }
         
         //----------------------------------------------------------------------
         public static function getECCLength($version, $level)
         {
-            return self::$capacity[$version][QRCAP_EC][$level];
+            return self::$capacity[$version][DBEM_QRCAP_EC][$level];
         }
         
         //----------------------------------------------------------------------
         public static function getWidth($version)
         {
-            return self::$capacity[$version][QRCAP_WIDTH];
+            return self::$capacity[$version][DBEM_QRCAP_WIDTH];
         }
         
         //----------------------------------------------------------------------
         public static function getRemainder($version)
         {
-            return self::$capacity[$version][QRCAP_REMINDER];
+            return self::$capacity[$version][DBEM_QRCAP_REMINDER];
         }
         
         //----------------------------------------------------------------------
         public static function getMinimumVersion($size, $level)
         {
 
-            for($i=1; $i<= QRSPEC_VERSION_MAX; $i++) {
-                $words  = self::$capacity[$i][QRCAP_WORDS] - self::$capacity[$i][QRCAP_EC][$level];
+            for($i=1; $i<= DBEM_QRSPEC_VERSION_MAX; $i++) {
+                $words  = self::$capacity[$i][DBEM_QRCAP_WORDS] - self::$capacity[$i][DBEM_QRCAP_EC][$level];
                 if($words >= $size) 
                     return $i;
             }
@@ -617,7 +619,7 @@
             $xStart = $ox-2;
             
             for($y=0; $y<5; $y++) {
-                QRstr::set($frame, $xStart, $yStart+$y, $finder[$y]);
+                DBEM_QRstr::set($frame, $xStart, $yStart+$y, $finder[$y]);
             }
         }
 
@@ -664,7 +666,7 @@
 		// Version information pattern (BCH coded).
         // See Table 1 in Appendix D (pp.68) of JIS X0510:2004.
         
-		// size: [QRSPEC_VERSION_MAX - 6]
+		// size: [DBEM_QRSPEC_VERSION_MAX - 6]
 		
         public static $versionPattern = array(
             0x07c94, 0x085bc, 0x09a99, 0x0a4d3, 0x0bbf6, 0x0c762, 0x0d847, 0x0e60d,
@@ -677,7 +679,7 @@
         //----------------------------------------------------------------------
         public static function getVersionPattern($version)
         {
-            if($version < 7 || $version > QRSPEC_VERSION_MAX)
+            if($version < 7 || $version > DBEM_QRSPEC_VERSION_MAX)
                 return 0;
 
             return self::$versionPattern[$version -7];
@@ -728,14 +730,14 @@
             );                            
             
             for($y=0; $y<7; $y++) {
-                QRstr::set($frame, $ox, $oy+$y, $finder[$y]);
+                DBEM_QRstr::set($frame, $ox, $oy+$y, $finder[$y]);
             }
         }
 
         //----------------------------------------------------------------------
         public static function createFrame($version)
         {
-            $width = self::$capacity[$version][QRCAP_WIDTH];
+            $width = self::$capacity[$version][DBEM_QRCAP_WIDTH];
             $frameLine = str_repeat ("\0", $width);
             $frame = array_fill(0, $width, $frameLine);
 
@@ -756,14 +758,14 @@
             
             $setPattern = str_repeat("\xc0", 8);
             
-            QRstr::set($frame, 0, 7, $setPattern);
-            QRstr::set($frame, $width-8, 7, $setPattern);
-            QRstr::set($frame, 0, $width - 8, $setPattern);
+            DBEM_QRstr::set($frame, 0, 7, $setPattern);
+            DBEM_QRstr::set($frame, $width-8, 7, $setPattern);
+            DBEM_QRstr::set($frame, 0, $width - 8, $setPattern);
         
             // Format info
             $setPattern = str_repeat("\x84", 9);
-            QRstr::set($frame, 0, 8, $setPattern);
-            QRstr::set($frame, $width - 8, 8, $setPattern, 8);
+            DBEM_QRstr::set($frame, 0, 8, $setPattern);
+            DBEM_QRstr::set($frame, $width - 8, 8, $setPattern, 8);
             
             $yOffset = $width - 8;
 
@@ -879,14 +881,14 @@
         //----------------------------------------------------------------------
         public static function newFrame($version)
         {
-            if($version < 1 || $version > QRSPEC_VERSION_MAX) 
+            if($version < 1 || $version > DBEM_QRSPEC_VERSION_MAX) 
                 return null;
 
             if(!isset(self::$frames[$version])) {
                 
-                $fileName = QR_CACHE_DIR.'frame_'.$version.'.dat';
+                $fileName = DBEM_QR_CACHE_DIR.'frame_'.$version.'.dat';
                 
-                if (QR_CACHEABLE) {
+                if (DBEM_QR_CACHEABLE) {
                     if (file_exists($fileName)) {
                         self::$frames[$version] = self::unserial(file_get_contents($fileName));
                     } else {
@@ -947,9 +949,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-    define('QR_IMAGE', true);
+    define('DBEM_QR_IMAGE', true);
 
-    class QRimage {
+    class DBEM_QRimage {
 
         //----------------------------------------------------------------------
         public static function png($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color, $fore_color)
@@ -1065,10 +1067,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
  
-    define('STRUCTURE_HEADER_BITS',  20);
-    define('MAX_STRUCTURED_SYMBOLS', 16);
+    define('DBEM_STRUCTURE_HEADER_BITS',  20);
+    define('DBEM_MAX_STRUCTURED_SYMBOLS', 16);
 
-    class QRinputItem {
+    class DBEM_QRinputItem {
     
         public $mode;
         public $size;
@@ -1083,7 +1085,7 @@
                 $setData = array_merge($setData, array_fill(0,$size-count($setData),0));
             }
         
-            if(!QRinput::check($mode, $size, $setData)) {
+            if(!DBEM_QRinput::check($mode, $size, $setData)) {
                 throw new Exception('Error m:'.$mode.',s:'.$size.',d:'.join(',',$setData));
             }
             
@@ -1099,11 +1101,11 @@
             try {
             
                 $words = (int)($this->size / 3);
-                $bs = new QRbitstream();
+                $bs = new DBEM_QRbitstream();
                 
                 $val = 0x1;
                 $bs->appendNum(4, $val);
-                $bs->appendNum(QRspec::lengthIndicator(QR_MODE_NUM, $version), $this->size);
+                $bs->appendNum(DBEM_QRspec::lengthIndicator(QR_MODE_NUM, $version), $this->size);
 
                 for($i=0; $i<$words; $i++) {
                     $val  = (ord($this->data[$i*3  ]) - ord('0')) * 100;
@@ -1134,20 +1136,20 @@
         {
             try {
                 $words = (int)($this->size / 2);
-                $bs = new QRbitstream();
+                $bs = new DBEM_QRbitstream();
                 
                 $bs->appendNum(4, 0x02);
-                $bs->appendNum(QRspec::lengthIndicator(QR_MODE_AN, $version), $this->size);
+                $bs->appendNum(DBEM_QRspec::lengthIndicator(QR_MODE_AN, $version), $this->size);
 
                 for($i=0; $i<$words; $i++) {
-                    $val  = (int)QRinput::lookAnTable(ord($this->data[$i*2  ])) * 45;
-                    $val += (int)QRinput::lookAnTable(ord($this->data[$i*2+1]));
+                    $val  = (int)DBEM_QRinput::lookAnTable(ord($this->data[$i*2  ])) * 45;
+                    $val += (int)DBEM_QRinput::lookAnTable(ord($this->data[$i*2+1]));
 
                     $bs->appendNum(11, $val);
                 }
 
                 if($this->size & 1) {
-                    $val = QRinput::lookAnTable(ord($this->data[$words * 2]));
+                    $val = DBEM_QRinput::lookAnTable(ord($this->data[$words * 2]));
                     $bs->appendNum(6, $val);
                 }
         
@@ -1163,10 +1165,10 @@
         public function encodeMode8($version)
         {
             try {
-                $bs = new QRbitstream();
+                $bs = new DBEM_QRbitstream();
 
                 $bs->appendNum(4, 0x4);
-                $bs->appendNum(QRspec::lengthIndicator(QR_MODE_8, $version), $this->size);
+                $bs->appendNum(DBEM_QRspec::lengthIndicator(QR_MODE_8, $version), $this->size);
 
                 for($i=0; $i<$this->size; $i++) {
                     $bs->appendNum(8, ord($this->data[$i]));
@@ -1185,10 +1187,10 @@
         {
             try {
 
-                $bs = new QRbitrtream();
+                $bs = new DBEM_QRbitrtream();
                 
                 $bs->appendNum(4, 0x8);
-                $bs->appendNum(QRspec::lengthIndicator(QR_MODE_KANJI, $version), (int)($this->size / 2));
+                $bs->appendNum(DBEM_QRspec::lengthIndicator(QR_MODE_KANJI, $version), (int)($this->size / 2));
 
                 for($i=0; $i<$this->size; $i+=2) {
                     $val = (ord($this->data[$i]) << 8) | ord($this->data[$i+1]);
@@ -1216,7 +1218,7 @@
         public function encodeModeStructure()
         {
             try {
-                $bs =  new QRbitstream();
+                $bs =  new DBEM_QRbitstream();
                 
                 $bs->appendNum(4, 0x03);
                 $bs->appendNum(4, ord($this->data[1]) - 1);
@@ -1240,16 +1242,16 @@
                 $version = 1;
 
             switch($this->mode) {
-                case QR_MODE_NUM:        $bits = QRinput::estimateBitsModeNum($this->size);    break;
-                case QR_MODE_AN:        $bits = QRinput::estimateBitsModeAn($this->size);    break;
-                case QR_MODE_8:            $bits = QRinput::estimateBitsMode8($this->size);    break;
-                case QR_MODE_KANJI:        $bits = QRinput::estimateBitsModeKanji($this->size);break;
-                case QR_MODE_STRUCTURE:    return STRUCTURE_HEADER_BITS;            
+                case QR_MODE_NUM:        $bits = DBEM_QRinput::estimateBitsModeNum($this->size);    break;
+                case QR_MODE_AN:        $bits = DBEM_QRinput::estimateBitsModeAn($this->size);    break;
+                case QR_MODE_8:            $bits = DBEM_QRinput::estimateBitsMode8($this->size);    break;
+                case QR_MODE_KANJI:        $bits = DBEM_QRinput::estimateBitsModeKanji($this->size);break;
+                case QR_MODE_STRUCTURE:    return DBEM_STRUCTURE_HEADER_BITS;            
                 default:
                     return 0;
             }
 
-            $l = QRspec::lengthIndicator($this->mode, $version);
+            $l = DBEM_QRspec::lengthIndicator($this->mode, $version);
             $m = 1 << $l;
             $num = (int)(($this->size + $m - 1) / $m);
 
@@ -1264,17 +1266,17 @@
             try {
             
                 unset($this->bstream);
-                $words = QRspec::maximumWords($this->mode, $version);
+                $words = DBEM_QRspec::maximumWords($this->mode, $version);
                 
                 if($this->size > $words) {
                 
-                    $st1 = new QRinputItem($this->mode, $words, $this->data);
-                    $st2 = new QRinputItem($this->mode, $this->size - $words, array_slice($this->data, $words));
+                    $st1 = new DBEM_QRinputItem($this->mode, $words, $this->data);
+                    $st2 = new DBEM_QRinputItem($this->mode, $this->size - $words, array_slice($this->data, $words));
 
                     $st1->encodeBitStream($version);
                     $st2->encodeBitStream($version);
                     
-                    $this->bstream = new QRbitstream();
+                    $this->bstream = new DBEM_QRbitstream();
                     $this->bstream->append($st1->bstream);
                     $this->bstream->append($st2->bstream);
                     
@@ -1310,7 +1312,7 @@
     
     //##########################################################################
 
-    class QRinput {
+    class DBEM_QRinput {
 
         public $items;
         
@@ -1320,7 +1322,7 @@
         //----------------------------------------------------------------------
         public function __construct($version = 0, $level = QR_ECLEVEL_L)
         {
-            if ($version < 0 || $version > QRSPEC_VERSION_MAX || $level > QR_ECLEVEL_H) {
+            if ($version < 0 || $version > DBEM_QRSPEC_VERSION_MAX || $level > QR_ECLEVEL_H) {
                 throw new Exception('Invalid version no');
             }
             
@@ -1337,7 +1339,7 @@
         //----------------------------------------------------------------------
         public function setVersion($version)
         {
-            if($version < 0 || $version > QRSPEC_VERSION_MAX) {
+            if($version < 0 || $version > DBEM_QRSPEC_VERSION_MAX) {
                 throw new Exception('Invalid version no');
                 return -1;
             }
@@ -1367,7 +1369,7 @@
         }
         
         //----------------------------------------------------------------------
-        public function appendEntry(QRinputItem $entry)
+        public function appendEntry(DBEM_QRinputItem $entry)
         {
             $this->items[] = $entry;
         }
@@ -1376,7 +1378,7 @@
         public function append($mode, $size, $data)
         {
             try {
-                $entry = new QRinputItem($mode, $size, $data);
+                $entry = new DBEM_QRinputItem($mode, $size, $data);
                 $this->items[] = $entry;
                 return 0;
             } catch (Exception $e) {
@@ -1388,18 +1390,18 @@
         
         public function insertStructuredAppendHeader($size, $index, $parity)
         {
-            if( $size > MAX_STRUCTURED_SYMBOLS ) {
+            if( $size > DBEM_MAX_STRUCTURED_SYMBOLS ) {
                 throw new Exception('insertStructuredAppendHeader wrong size');
             }
             
-            if( $index <= 0 || $index > MAX_STRUCTURED_SYMBOLS ) {
+            if( $index <= 0 || $index > DBEM_MAX_STRUCTURED_SYMBOLS ) {
                 throw new Exception('insertStructuredAppendHeader wrong index');
             }
 
             $buf = array($size, $index, $parity);
             
             try {
-                $entry = new QRinputItem(QR_MODE_STRUCTURE, 3, buf);
+                $entry = new DBEM_QRinputItem(QR_MODE_STRUCTURE, 3, buf);
                 array_unshift($this->items, $entry);
                 return 0;
             } catch (Exception $e) {
@@ -1572,7 +1574,7 @@
             do {
                 $prev = $version;
                 $bits = $this->estimateBitStreamSize($prev);
-                $version = QRspec::getMinimumVersion((int)(($bits + 7) / 8), $this->level);
+                $version = DBEM_QRspec::getMinimumVersion((int)(($bits + 7) / 8), $this->level);
                 if ($version < 0) {
                     return -1;
                 }
@@ -1584,7 +1586,7 @@
         //----------------------------------------------------------------------
         public static function lengthOfCode($mode, $version, $bits)
         {
-            $payload = $bits - 4 - QRspec::lengthIndicator($mode, $version);
+            $payload = $bits - 4 - DBEM_QRspec::lengthIndicator($mode, $version);
             switch($mode) {
                 case QR_MODE_NUM:
                     $chunks = (int)($payload / 10);
@@ -1617,7 +1619,7 @@
                     break;
             }
             
-            $maxsize = QRspec::maximumWords($mode, $version);
+            $maxsize = DBEM_QRspec::maximumWords($mode, $version);
             if($size < 0) $size = 0;
             if($size > $maxsize) $size = $maxsize;
 
@@ -1655,7 +1657,7 @@
                 if($bits < 0) 
                     return -1;
                     
-                $ver = QRspec::getMinimumVersion((int)(($bits + 7) / 8), $this->level);
+                $ver = DBEM_QRspec::getMinimumVersion((int)(($bits + 7) / 8), $this->level);
                 if($ver < 0) {
                     throw new Exception('WRONG VERSION');
                 } else if($ver > $this->getVersion()) {
@@ -1672,7 +1674,7 @@
         public function appendPaddingBit(&$bstream)
         {
             $bits = $bstream->size();
-            $maxwords = QRspec::getDataLength($this->version, $this->level);
+            $maxwords = DBEM_QRspec::getDataLength($this->version, $this->level);
             $maxbits = $maxwords * 8;
 
             if ($maxbits == $bits) {
@@ -1686,7 +1688,7 @@
             $bits += 4;
             $words = (int)(($bits + 7) / 8);
 
-            $padding = new QRbitstream();
+            $padding = new DBEM_QRbitstream();
             $ret = $padding->appendNum($words * 8 - $bits + 4, 0);
             
             if($ret < 0) 
@@ -1720,7 +1722,7 @@
                 return null;
             }
 
-            $bstream = new QRbitstream();
+            $bstream = new DBEM_QRbitstream();
             
             foreach($this->items as $item) {
                 $ret = $bstream->append($item->bstream);
@@ -1798,7 +1800,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
      
-    class QRbitstream {
+    class DBEM_QRbitstream {
     
         public $data = array();
         
@@ -1818,7 +1820,7 @@
         //----------------------------------------------------------------------
         public static function newFromNum($bits, $num)
         {
-            $bstream = new QRbitstream();
+            $bstream = new DBEM_QRbitstream();
             $bstream->allocate($bits);
             
             $mask = 1 << ($bits - 1);
@@ -1837,7 +1839,7 @@
         //----------------------------------------------------------------------
         public static function newFromBytes($size, $data)
         {
-            $bstream = new QRbitstream();
+            $bstream = new DBEM_QRbitstream();
             $bstream->allocate($size * 8);
             $p=0;
 
@@ -1858,7 +1860,7 @@
         }
         
         //----------------------------------------------------------------------
-        public function append(QRbitstream $arg)
+        public function append(DBEM_QRbitstream $arg)
         {
             if (is_null($arg)) {
                 return -1;
@@ -1884,7 +1886,7 @@
             if ($bits == 0) 
                 return 0;
 
-            $b = QRbitstream::newFromNum($bits, $num);
+            $b = DBEM_QRbitstream::newFromNum($bits, $num);
             
             if(is_null($b))
                 return -1;
@@ -1901,7 +1903,7 @@
             if ($size == 0) 
                 return 0;
 
-            $b = QRbitstream::newFromBytes($size, $data);
+            $b = DBEM_QRbitstream::newFromBytes($size, $data);
             
             if(is_null($b))
                 return -1;
@@ -1991,7 +1993,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
-    class QRsplit {
+    class DBEM_QRsplit {
 
         public $dataStr = '';
         public $input;
@@ -2020,7 +2022,7 @@
             if ($pos >= strlen($str))
                 return false;
 
-            return (QRinput::lookAnTable(ord($str[$pos])) >= 0);
+            return (DBEM_QRinput::lookAnTable(ord($str[$pos])) >= 0);
         }
 
         //----------------------------------------------------------------------
@@ -2053,7 +2055,7 @@
         //----------------------------------------------------------------------
         public function eatNum()
         {
-            $ln = QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
+            $ln = DBEM_QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
 
             $p = 0;
             while(self::isdigitat($this->dataStr, $p)) {
@@ -2064,17 +2066,17 @@
             $mode = $this->identifyMode($p);
 
             if($mode == QR_MODE_8) {
-                $dif = QRinput::estimateBitsModeNum($run) + 4 + $ln
-                     + QRinput::estimateBitsMode8(1)         // + 4 + l8
-                     - QRinput::estimateBitsMode8($run + 1); // - 4 - l8
+                $dif = DBEM_QRinput::estimateBitsModeNum($run) + 4 + $ln
+                     + DBEM_QRinput::estimateBitsMode8(1)         // + 4 + l8
+                     - DBEM_QRinput::estimateBitsMode8($run + 1); // - 4 - l8
                 if($dif > 0) {
                     return $this->eat8();
                 }
             }
             if($mode == QR_MODE_AN) {
-                $dif = QRinput::estimateBitsModeNum($run) + 4 + $ln
-                     + QRinput::estimateBitsModeAn(1)        // + 4 + la
-                     - QRinput::estimateBitsModeAn($run + 1);// - 4 - la
+                $dif = DBEM_QRinput::estimateBitsModeNum($run) + 4 + $ln
+                     + DBEM_QRinput::estimateBitsModeAn(1)        // + 4 + la
+                     - DBEM_QRinput::estimateBitsModeAn($run + 1);// - 4 - la
                 if($dif > 0) {
                     return $this->eatAn();
                 }
@@ -2090,8 +2092,8 @@
         //----------------------------------------------------------------------
         public function eatAn()
         {
-            $la = QRspec::lengthIndicator(QR_MODE_AN,  $this->input->getVersion());
-            $ln = QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
+            $la = DBEM_QRspec::lengthIndicator(QR_MODE_AN,  $this->input->getVersion());
+            $ln = DBEM_QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
 
             $p = 0;
 
@@ -2102,9 +2104,9 @@
                         $q++;
                     }
 
-                    $dif = QRinput::estimateBitsModeAn($p) // + 4 + la
-                         + QRinput::estimateBitsModeNum($q - $p) + 4 + $ln
-                         - QRinput::estimateBitsModeAn($q); // - 4 - la
+                    $dif = DBEM_QRinput::estimateBitsModeAn($p) // + 4 + la
+                         + DBEM_QRinput::estimateBitsModeNum($q - $p) + 4 + $ln
+                         - DBEM_QRinput::estimateBitsModeAn($q); // - 4 - la
 
                     if($dif < 0) {
                         break;
@@ -2119,9 +2121,9 @@
             $run = $p;
 
             if(!self::isalnumat($this->dataStr, $p)) {
-                $dif = QRinput::estimateBitsModeAn($run) + 4 + $la
-                     + QRinput::estimateBitsMode8(1) // + 4 + l8
-                      - QRinput::estimateBitsMode8($run + 1); // - 4 - l8
+                $dif = DBEM_QRinput::estimateBitsModeAn($run) + 4 + $la
+                     + DBEM_QRinput::estimateBitsMode8(1) // + 4 + l8
+                      - DBEM_QRinput::estimateBitsMode8($run + 1); // - 4 - l8
                 if($dif > 0) {
                     return $this->eat8();
                 }
@@ -2153,8 +2155,8 @@
         //----------------------------------------------------------------------
         public function eat8()
         {
-            $la = QRspec::lengthIndicator(QR_MODE_AN, $this->input->getVersion());
-            $ln = QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
+            $la = DBEM_QRspec::lengthIndicator(QR_MODE_AN, $this->input->getVersion());
+            $ln = DBEM_QRspec::lengthIndicator(QR_MODE_NUM, $this->input->getVersion());
 
             $p = 1;
             $dataStrLen = strlen($this->dataStr);
@@ -2170,9 +2172,9 @@
                     while(self::isdigitat($this->dataStr, $q)) {
                         $q++;
                     }
-                    $dif = QRinput::estimateBitsMode8($p) // + 4 + l8
-                         + QRinput::estimateBitsModeNum($q - $p) + 4 + $ln
-                         - QRinput::estimateBitsMode8($q); // - 4 - l8
+                    $dif = DBEM_QRinput::estimateBitsMode8($p) // + 4 + l8
+                         + DBEM_QRinput::estimateBitsModeNum($q - $p) + 4 + $ln
+                         - DBEM_QRinput::estimateBitsMode8($q); // - 4 - l8
                     if($dif < 0) {
                         break;
                     } else {
@@ -2183,9 +2185,9 @@
                     while(self::isalnumat($this->dataStr, $q)) {
                         $q++;
                     }
-                    $dif = QRinput::estimateBitsMode8($p)  // + 4 + l8
-                         + QRinput::estimateBitsModeAn($q - $p) + 4 + $la
-                         - QRinput::estimateBitsMode8($q); // - 4 - l8
+                    $dif = DBEM_QRinput::estimateBitsMode8($p)  // + 4 + l8
+                         + DBEM_QRinput::estimateBitsModeAn($q - $p) + 4 + $la
+                         - DBEM_QRinput::estimateBitsMode8($q); // - 4 - l8
                     if($dif < 0) {
                         break;
                     } else {
@@ -2256,13 +2258,13 @@
         }
 
         //----------------------------------------------------------------------
-        public static function splitStringToQRinput($string, QRinput $input, $modeHint, $casesensitive = true)
+        public static function splitStringToDBEM_QRinput($string, DBEM_QRinput $input, $modeHint, $casesensitive = true)
         {
             if(is_null($string) || $string == '\0' || $string == '') {
                 throw new Exception('empty string!!!');
             }
 
-            $split = new QRsplit($string, $input, $modeHint);
+            $split = new DBEM_QRsplit($string, $input, $modeHint);
 
             if(!$casesensitive)
                 $split->toUpper();
@@ -2307,7 +2309,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
  
-    class QRrsItem {
+    class DBEM_QRrsItem {
     
         public $mm;                  // Bits per symbol 
         public $nn;                  // Symbols per block (= (1<<mm)-1) 
@@ -2348,7 +2350,7 @@
             if($nroots < 0 || $nroots >= (1<<$symsize))          return $rs; // Can't have more roots than symbol values!
             if($pad < 0 || $pad >= ((1<<$symsize) -1 - $nroots)) return $rs; // Too much padding
 
-            $rs = new QRrsItem();
+            $rs = new DBEM_QRrsItem();
             $rs->mm = $symsize;
             $rs->nn = (1<<$symsize)-1;
             $rs->pad = $pad;
@@ -2463,7 +2465,7 @@
     
     //##########################################################################
     
-    class QRrs {
+    class DBEM_QRrs {
     
         public static $items = array();
         
@@ -2481,7 +2483,7 @@
                 return $rs;
             }
 
-            $rs = QRrsItem::init_rs_char($symsize, $gfpoly, $fcr, $prim, $nroots, $pad);
+            $rs = DBEM_QRrsItem::init_rs_char($symsize, $gfpoly, $fcr, $prim, $nroots, $pad);
             array_unshift(self::$items, $rs);
 
             return $rs;
@@ -2526,21 +2528,21 @@
 	define('N3', 40);
 	define('N4', 10);
 
-	class QRmask {
+	class DBEM_QRmask {
 
 		public $runLength = array();
 
 		//----------------------------------------------------------------------
 		public function __construct()
         {
-            $this->runLength = array_fill(0, QRSPEC_WIDTH_MAX + 1, 0);
+            $this->runLength = array_fill(0, DBEM_QRSPEC_WIDTH_MAX + 1, 0);
         }
 
         //----------------------------------------------------------------------
         public function writeFormatInformation($width, &$frame, $mask, $level)
         {
             $blacks = 0;
-            $format =  QRspec::getFormatInfo($mask, $level);
+            $format =  DBEM_QRspec::getFormatInfo($mask, $level);
 
             for($i=0; $i<8; $i++) {
                 if($format & 1) {
@@ -2639,15 +2641,15 @@
             $b = 0;
             $bitMask = array();
 
-            $fileName = QR_CACHE_DIR.'mask_'.$maskNo.DIRECTORY_SEPARATOR.'mask_'.$width.'_'.$maskNo.'.dat';
+            $fileName = DBEM_QR_CACHE_DIR.'mask_'.$maskNo.DIRECTORY_SEPARATOR.'mask_'.$width.'_'.$maskNo.'.dat';
 
-            if (QR_CACHEABLE) {
+            if (DBEM_QR_CACHEABLE) {
                 if (file_exists($fileName)) {
                     $bitMask = self::unserial(file_get_contents($fileName));
                 } else {
                     $bitMask = $this->generateMaskNo($maskNo, $width, $s, $d);
-                    if (!file_exists(QR_CACHE_DIR.'mask_'.$maskNo))
-                        mkdir(QR_CACHE_DIR.'mask_'.$maskNo);
+                    if (!file_exists(DBEM_QR_CACHE_DIR.'mask_'.$maskNo))
+                        mkdir(DBEM_QR_CACHE_DIR.'mask_'.$maskNo);
                     file_put_contents($fileName, self::serial($bitMask));
                 }
             } else {
@@ -2786,9 +2788,9 @@
 
             $checked_masks = array(0,1,2,3,4,5,6,7);
 
-            if (QR_FIND_FROM_RANDOM !== false) {
+            if (DBEM_QR_FIND_FROM_RANDOM !== false) {
 
-                $howManuOut = 8-(QR_FIND_FROM_RANDOM % 9);
+                $howManuOut = 8-(DBEM_QR_FIND_FROM_RANDOM % 9);
                 for ($i = 0; $i <  $howManuOut; $i++) {
                     $remPos = rand (0, count($checked_masks)-1);
                     unset($checked_masks[$remPos]);
@@ -2857,13 +2859,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
  
-    class QRrsblock {
+    class DBEM_QRrsblock {
         public $dataLength;
         public $data = array();
         public $eccLength;
         public $ecc = array();
         
-        public function __construct($dl, $data, $el, &$ecc, QRrsItem $rs)
+        public function __construct($dl, $data, $el, &$ecc, DBEM_QRrsItem $rs)
         {
             $rs->encode_rs_char($data, $ecc);
         
@@ -2876,7 +2878,7 @@
     
     //##########################################################################
 
-    class QRrawcode {
+    class DBEM_QRrawcode {
         public $version;
         public $datacode = array();
         public $ecccode = array();
@@ -2888,7 +2890,7 @@
         public $b1;
         
         //----------------------------------------------------------------------
-        public function __construct(QRinput $input)
+        public function __construct(DBEM_QRinput $input)
         {
             $spec = array(0,0,0,0,0);
             
@@ -2897,14 +2899,14 @@
                 throw new Exception('null imput string');
             }
 
-            QRspec::getEccSpec($input->getVersion(), $input->getErrorCorrectionLevel(), $spec);
+            DBEM_QRspec::getEccSpec($input->getVersion(), $input->getErrorCorrectionLevel(), $spec);
 
             $this->version = $input->getVersion();
-            $this->b1 = QRspec::rsBlockNum1($spec);
-            $this->dataLength = QRspec::rsDataLength($spec);
-            $this->eccLength = QRspec::rsEccLength($spec);
+            $this->b1 = DBEM_QRspec::rsBlockNum1($spec);
+            $this->dataLength = DBEM_QRspec::rsDataLength($spec);
+            $this->eccLength = DBEM_QRspec::rsEccLength($spec);
             $this->ecccode = array_fill(0, $this->eccLength, 0);
-            $this->blocks = QRspec::rsBlockNum($spec);
+            $this->blocks = DBEM_QRspec::rsBlockNum($spec);
             
             $ret = $this->init($spec);
             if($ret < 0) {
@@ -2918,17 +2920,17 @@
         //----------------------------------------------------------------------
         public function init(array $spec)
         {
-            $dl = QRspec::rsDataCodes1($spec);
-            $el = QRspec::rsEccCodes1($spec);
-            $rs = QRrs::init_rs(8, 0x11d, 0, 1, $el, 255 - $dl - $el);
+            $dl = DBEM_QRspec::rsDataCodes1($spec);
+            $el = DBEM_QRspec::rsEccCodes1($spec);
+            $rs = DBEM_QRrs::init_rs(8, 0x11d, 0, 1, $el, 255 - $dl - $el);
             
 
             $blockNo = 0;
             $dataPos = 0;
             $eccPos = 0;
-            for($i=0; $i<QRspec::rsBlockNum1($spec); $i++) {
+            for($i=0; $i<DBEM_QRspec::rsBlockNum1($spec); $i++) {
                 $ecc = array_slice($this->ecccode,$eccPos);
-                $this->rsblocks[$blockNo] = new QRrsblock($dl, array_slice($this->datacode, $dataPos), $el,  $ecc, $rs);
+                $this->rsblocks[$blockNo] = new DBEM_QRrsblock($dl, array_slice($this->datacode, $dataPos), $el,  $ecc, $rs);
                 $this->ecccode = array_merge(array_slice($this->ecccode,0, $eccPos), $ecc);
                 
                 $dataPos += $dl;
@@ -2936,18 +2938,18 @@
                 $blockNo++;
             }
 
-            if(QRspec::rsBlockNum2($spec) == 0)
+            if(DBEM_QRspec::rsBlockNum2($spec) == 0)
                 return 0;
 
-            $dl = QRspec::rsDataCodes2($spec);
-            $el = QRspec::rsEccCodes2($spec);
-            $rs = QRrs::init_rs(8, 0x11d, 0, 1, $el, 255 - $dl - $el);
+            $dl = DBEM_QRspec::rsDataCodes2($spec);
+            $el = DBEM_QRspec::rsEccCodes2($spec);
+            $rs = DBEM_QRrs::init_rs(8, 0x11d, 0, 1, $el, 255 - $dl - $el);
             
             if($rs == NULL) return -1;
             
-            for($i=0; $i<QRspec::rsBlockNum2($spec); $i++) {
+            for($i=0; $i<DBEM_QRspec::rsBlockNum2($spec); $i++) {
                 $ecc = array_slice($this->ecccode,$eccPos);
-                $this->rsblocks[$blockNo] = new QRrsblock($dl, array_slice($this->datacode, $dataPos), $el, $ecc, $rs);
+                $this->rsblocks[$blockNo] = new DBEM_QRrsblock($dl, array_slice($this->datacode, $dataPos), $el, $ecc, $rs);
                 $this->ecccode = array_merge(array_slice($this->ecccode,0, $eccPos), $ecc);
                 
                 $dataPos += $dl;
@@ -2985,31 +2987,31 @@
 
     //##########################################################################
     
-    class QRcode {
+    class DBEM_QRcode_Lib {
     
         public $version;
         public $width;
         public $data; 
         
         //----------------------------------------------------------------------
-        public function encodeMask(QRinput $input, $mask)
+        public function encodeMask(DBEM_QRinput $input, $mask)
         {
-            if($input->getVersion() < 0 || $input->getVersion() > QRSPEC_VERSION_MAX) {
+            if($input->getVersion() < 0 || $input->getVersion() > DBEM_QRSPEC_VERSION_MAX) {
                 throw new Exception('wrong version');
             }
             if($input->getErrorCorrectionLevel() > QR_ECLEVEL_H) {
                 throw new Exception('wrong level');
             }
 
-            $raw = new QRrawcode($input);
+            $raw = new DBEM_QRrawcode($input);
             
-            QRtools::markTime('after_raw');
+            DBEM_QRtools::markTime('after_raw');
             
             $version = $raw->version;
-            $width = QRspec::getWidth($version);
-            $frame = QRspec::newFrame($version);
+            $width = DBEM_QRspec::getWidth($version);
+            $frame = DBEM_QRspec::newFrame($version);
             
-            $filler = new FrameFiller($width, $frame);
+            $filler = new DBEM_FrameFiller($width, $frame);
             if(is_null($filler)) {
                 return NULL;
             }
@@ -3025,12 +3027,12 @@
                 }
             }
             
-            QRtools::markTime('after_filler');
+            DBEM_QRtools::markTime('after_filler');
             
             unset($raw);
             
             // remainder bits
-            $j = QRspec::getRemainder($version);
+            $j = DBEM_QRspec::getRemainder($version);
             for($i=0; $i<$j; $i++) {
                 $addr = $filler->next();
                 $filler->setFrameAt($addr, 0x02);
@@ -3041,13 +3043,13 @@
             
             
             // masking
-            $maskObj = new QRmask();
+            $maskObj = new DBEM_QRmask();
             if($mask < 0) {
             
-                if (QR_FIND_BEST_MASK) {
+                if (DBEM_QR_FIND_BEST_MASK) {
                     $masked = $maskObj->mask($width, $frame, $input->getErrorCorrectionLevel());
                 } else {
-                    $masked = $maskObj->makeMask($width, $frame, (intval(QR_DEFAULT_MASK) % 8), $input->getErrorCorrectionLevel());
+                    $masked = $maskObj->makeMask($width, $frame, (intval(DBEM_QR_DEFAULT_MASK) % 8), $input->getErrorCorrectionLevel());
                 }
             } else {
                 $masked = $maskObj->makeMask($width, $frame, $mask, $input->getErrorCorrectionLevel());
@@ -3057,7 +3059,7 @@
                 return NULL;
             }
             
-            QRtools::markTime('after_mask');
+            DBEM_QRtools::markTime('after_mask');
             
             $this->version = $version;
             $this->width = $width;
@@ -3067,7 +3069,7 @@
         }
     
         //----------------------------------------------------------------------
-        public function encodeInput(QRinput $input)
+        public function encodeInput(DBEM_QRinput $input)
         {
             return $this->encodeMask($input, -1);
         }
@@ -3080,7 +3082,7 @@
                 return NULL;
             }
 
-            $input = new QRinput($version, $level);
+            $input = new DBEM_QRinput($version, $level);
             if($input == NULL) return NULL;
 
             $ret = $input->append($input, QR_MODE_8, strlen($string), str_split($string));
@@ -3100,10 +3102,10 @@
                 return NULL;
             }
 
-            $input = new QRinput($version, $level);
+            $input = new DBEM_QRinput($version, $level);
             if($input == NULL) return NULL;
 
-            $ret = QRsplit::splitStringToQRinput($string, $input, $hint, $casesensitive);
+            $ret = DBEM_QRsplit::splitStringToDBEM_QRinput($string, $input, $hint, $casesensitive);
             if($ret < 0) {
                 return NULL;
             }
@@ -3114,42 +3116,42 @@
         //----------------------------------------------------------------------
         public static function png($text, $outfile = false, $level = QR_ECLEVEL_L, $size = 3, $margin = 4, $saveandprint=false, $back_color = 0xFFFFFF, $fore_color = 0x000000) 
         {
-            $enc = QRencode::factory($level, $size, $margin, $back_color, $fore_color);
+            $enc = DBEM_QRencode::factory($level, $size, $margin, $back_color, $fore_color);
             return $enc->encodePNG($text, $outfile, $saveandprint=false);
         }
 
         //----------------------------------------------------------------------
         public static function text($text, $outfile = false, $level = QR_ECLEVEL_L, $size = 3, $margin = 4) 
         {
-            $enc = QRencode::factory($level, $size, $margin);
+            $enc = DBEM_QRencode::factory($level, $size, $margin);
             return $enc->encode($text, $outfile);
         }
         
         //----------------------------------------------------------------------
         public static function eps($text, $outfile = false, $level = QR_ECLEVEL_L, $size = 3, $margin = 4, $saveandprint=false, $back_color = 0xFFFFFF, $fore_color = 0x000000, $cmyk = false) 
         {
-            $enc = QRencode::factory($level, $size, $margin, $back_color, $fore_color, $cmyk);
+            $enc = DBEM_QRencode::factory($level, $size, $margin, $back_color, $fore_color, $cmyk);
             return $enc->encodeEPS($text, $outfile, $saveandprint=false);
         }
         
         //----------------------------------------------------------------------
         public static function svg($text, $outfile = false, $level = QR_ECLEVEL_L, $size = 3, $margin = 4, $saveandprint=false, $back_color = 0xFFFFFF, $fore_color = 0x000000)
         {
-            $enc = QRencode::factory($level, $size, $margin, $back_color, $fore_color);
+            $enc = DBEM_QRencode::factory($level, $size, $margin, $back_color, $fore_color);
             return $enc->encodeSVG($text, $outfile, $saveandprint=false);
         }
 
         //----------------------------------------------------------------------
         public static function raw($text, $outfile = false, $level = QR_ECLEVEL_L, $size = 3, $margin = 4) 
         {
-            $enc = QRencode::factory($level, $size, $margin);
+            $enc = DBEM_QRencode::factory($level, $size, $margin);
             return $enc->encodeRAW($text, $outfile);
         }
     }
     
     //##########################################################################
     
-    class FrameFiller {
+    class DBEM_FrameFiller {
     
         public $width;
         public $frame;
@@ -3239,7 +3241,7 @@
     
     //##########################################################################    
     
-    class QRencode {
+    class DBEM_QRencode {
     
         public $casesensitive = true;
         public $eightbit = false;
@@ -3258,7 +3260,7 @@
         //----------------------------------------------------------------------
         public static function factory($level = QR_ECLEVEL_L, $size = 3, $margin = 4, $back_color = 0xFFFFFF, $fore_color = 0x000000, $cmyk = false)
         {
-            $enc = new QRencode();
+            $enc = new DBEM_QRencode();
             $enc->size = $size;
             $enc->margin = $margin;
             $enc->fore_color = $fore_color;
@@ -3296,7 +3298,7 @@
         //----------------------------------------------------------------------
         public function encodeRAW($intext, $outfile = false) 
         {
-            $code = new QRcode();
+            $code = new DBEM_QRcode_Lib();
 
             if($this->eightbit) {
                 $code->encodeString8bit($intext, $this->version, $this->level);
@@ -3310,7 +3312,7 @@
         //----------------------------------------------------------------------
         public function encode($intext, $outfile = false) 
         {
-            $code = new QRcode();
+            $code = new DBEM_QRcode_Lib();
 
             if($this->eightbit) {
                 $code->encodeString8bit($intext, $this->version, $this->level);
@@ -3318,12 +3320,12 @@
                 $code->encodeString($intext, $this->version, $this->level, $this->hint, $this->casesensitive);
             }
             
-            QRtools::markTime('after_encode');
+            DBEM_QRtools::markTime('after_encode');
             
             if ($outfile!== false) {
-                file_put_contents($outfile, join("\n", QRtools::binarize($code->data)));
+                file_put_contents($outfile, join("\n", DBEM_QRtools::binarize($code->data)));
             } else {
-                return QRtools::binarize($code->data);
+                return DBEM_QRtools::binarize($code->data);
             }
         }
         
@@ -3338,15 +3340,15 @@
                 ob_end_clean();
                 
                 if ($err != '')
-                    QRtools::log($outfile, $err);
+                    DBEM_QRtools::log($outfile, $err);
                 
-                $maxSize = (int)(QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
+                $maxSize = (int)(DBEM_QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
                 
-                QRimage::png($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color);
+                DBEM_QRimage::png($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color);
             
             } catch (Exception $e) {
             
-                QRtools::log($outfile, $e->getMessage());
+                DBEM_QRtools::log($outfile, $e->getMessage());
             
             }
         }
@@ -3362,15 +3364,15 @@
                 ob_end_clean();
                 
                 if ($err != '')
-                    QRtools::log($outfile, $err);
+                    DBEM_QRtools::log($outfile, $err);
                 
-                $maxSize = (int)(QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
+                $maxSize = (int)(DBEM_QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
                 
-                QRvect::eps($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color, $this->cmyk);
+                DBEM_QRvect::eps($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color, $this->cmyk);
             
             } catch (Exception $e) {
             
-                QRtools::log($outfile, $e->getMessage());
+                DBEM_QRtools::log($outfile, $e->getMessage());
             
             }
         }
@@ -3386,15 +3388,15 @@
                 ob_end_clean();
                 
                 if ($err != '')
-                    QRtools::log($outfile, $err);
+                    DBEM_QRtools::log($outfile, $err);
                 
-                $maxSize = (int)(QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
+                $maxSize = (int)(DBEM_QR_PNG_MAXIMUM_SIZE / (count($tab)+2*$this->margin));
 
-                QRvect::svg($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color);
+                DBEM_QRvect::svg($tab, $outfile, min(max(1, $this->size), $maxSize), $this->margin,$saveandprint, $this->back_color, $this->fore_color);
             
             } catch (Exception $e) {
             
-                QRtools::log($outfile, $e->getMessage());
+                DBEM_QRtools::log($outfile, $e->getMessage());
             
             }
         }
@@ -3431,9 +3433,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
  
-    define('QR_VECT', true);
+    define('DBEM_QR_VECT', true);
 
-    class QRvect {
+    class DBEM_QRvect {
     
         //----------------------------------------------------------------------
         public static function eps($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color = 0xFFFFFF, $fore_color = 0x000000, $cmyk = false) 
@@ -3446,12 +3448,12 @@
                 echo $vect;
             } else {
                 if($saveandprint===TRUE){
-                    QRtools::save($vect, $filename);
+                    DBEM_QRtools::save($vect, $filename);
                     header("Content-Type: application/postscript");
                     header('Content-Disposition: filename="qrcode.eps"');
                     echo $vect;
                 }else{
-                    QRtools::save($vect, $filename);
+                    DBEM_QRtools::save($vect, $filename);
                 }
             }
         }
@@ -3556,12 +3558,12 @@
                 echo $vect;
             } else {
                 if($saveandprint===TRUE){
-                    QRtools::save($vect, $filename);
+                    DBEM_QRtools::save($vect, $filename);
                     header("Content-Type: image/svg+xml");
                     //header('Content-Disposition: filename="'.$filename.'"');
                     echo $vect;
                 }else{
-                    QRtools::save($vect, $filename);
+                    DBEM_QRtools::save($vect, $filename);
                 }
             }
         }

@@ -14,6 +14,12 @@ class DBEM_Email {
         $subject = self::replace_placeholders($email_data['subject'], $placeholders);
         $message = self::replace_placeholders($email_data['message'], $placeholders);
 
+        // Se c'è un orario assegnato e il template non usa {orario}, aggiungilo in fondo
+        $assigned_time = isset($reg->assigned_time) ? $reg->assigned_time : '';
+        if (!empty($assigned_time) && strpos($email_data['message'], '{orario}') === false) {
+            $message .= "\n\n🕐 " . __('Orario assegnato:', 'db-event-manager') . ' ' . $assigned_time;
+        }
+
         // QR code
         $upload_dir = wp_upload_dir();
         $qr_path = $upload_dir['basedir'] . '/dbem/qrcodes/' . $reg->token . '.png';
@@ -133,7 +139,7 @@ class DBEM_Email {
 
         $subject = sprintf(__('Promemoria: %s', 'db-event-manager'), $event_title);
 
-        $date_formatted = $start ? wp_date('d/m/Y H:i', strtotime($start)) : '';
+        $date_formatted = $start ? date('d/m/Y H:i', strtotime($start)) : '';
 
         $message = sprintf(
             __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!\n\n📅 Data: %s\n📍 Luogo: %s\n\nNon dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager'),
@@ -171,7 +177,15 @@ class DBEM_Email {
         $start = get_post_meta($event_id, '_dbem_date_start', true);
         $location = get_post_meta($event_id, '_dbem_location', true);
 
-        $date_formatted = $start ? wp_date('d/m/Y H:i', strtotime($start)) : '';
+        // Formato data: il valore datetime-local è già in ora locale, usiamo date() non wp_date()
+        // Se l'evento ha assegnazione orario, mostra solo la data
+        $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true);
+        if ($start) {
+            $ts = strtotime($start);
+            $date_formatted = ($time_slot_enabled === '1') ? date('d/m/Y', $ts) : date('d/m/Y H:i', $ts);
+        } else {
+            $date_formatted = '';
+        }
 
         // Riepilogo dati
         $data = json_decode($reg->data, true);
@@ -186,12 +200,16 @@ class DBEM_Email {
         $upload_dir = wp_upload_dir();
         $qr_url = $upload_dir['baseurl'] . '/dbem/qrcodes/' . $reg->token . '.png';
 
+        // Orario assegnato (vuoto se non impostato)
+        $assigned_time = isset($reg->assigned_time) ? $reg->assigned_time : '';
+
         return array(
             '{nome}'           => $reg->name,
             '{email}'          => $reg->email,
             '{evento}'         => $event_title,
             '{data_evento}'    => $date_formatted,
             '{luogo}'          => $location,
+            '{orario}'         => $assigned_time,
             '{riepilogo_dati}' => $riepilogo,
             '{qrcode_url}'     => $qr_url,
             '{token}'          => $reg->token,

@@ -26,7 +26,7 @@ class DBEM_Export {
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
 
         // Header
-        $headers = array('ID', 'Nome', 'Email', 'Stato', 'Data Iscrizione', 'Check-in', 'IP');
+        $headers = array('ID', 'Nome', 'Email', 'Stato', 'Data Iscrizione', 'Check-in', 'Orario assegnato', 'IP');
 
         // Determina campi custom dalle iscrizioni
         $custom_keys = array();
@@ -48,6 +48,8 @@ class DBEM_Export {
             'confirmed'  => 'Confermato',
             'cancelled'  => 'Annullato',
             'checked_in' => 'Presente',
+            'pending'    => 'In attesa',
+            'rejected'   => 'Rifiutato',
         );
 
         foreach ($regs as $reg) {
@@ -59,6 +61,7 @@ class DBEM_Export {
                 $status_labels[$reg->status] ?? $reg->status,
                 $reg->registered_at,
                 $reg->checked_in_at ?: '',
+                isset($reg->assigned_time) ? $reg->assigned_time : '',
                 $reg->ip_address,
             );
             foreach ($custom_keys as $ck) {

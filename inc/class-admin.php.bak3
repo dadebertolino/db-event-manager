@@ -500,11 +500,6 @@ class DBEM_Admin {
                     📱 <?php _e('Check-in da telefono', 'db-event-manager'); ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
                 </a>
             </p>
-            <p>
-                <a href="<?php echo esc_url(home_url('/?dbem_participants_page=1')); ?>" target="_blank" class="button" style="width:100%;text-align:center;">
-                    👥 <?php _e('Partecipanti da telefono', 'db-event-manager') ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
-                </a>
-            </p>
         </div>
         <?php
     }

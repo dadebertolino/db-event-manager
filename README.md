@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.0.0  
+**Versione:** 1.1.0  
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -33,15 +33,17 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
 ### ✅ Approvazione iscrizioni
 - Modalità configurabile per evento: automatica o con approvazione
+- **Assegnazione orario**: l'approvatore può assegnare un orario al partecipante al momento dell'approvazione
 - Email approvatore personalizzabile (può essere diverso dal creatore evento)
 - L'approvatore riceve email con bottoni ✅ Approva e ❌ Rifiuta — un clic, niente login
+- Se l'assegnazione orario è attiva, cliccando "Approva" si apre un form con campo orario, riepilogo iscrizione e bottoni Approva/Rifiuta
 - Link protetti con HMAC (non indovinabili, non riusabili)
-- Approvazione → genera QR code → invia email conferma all'iscritto
+- Approvazione → genera QR code → invia email conferma all'iscritto (con orario se assegnato)
 - Rifiuto → invia email notifica all'iscritto
-- Gestibile anche dalla pagina Partecipanti admin (singola e bulk)
+- Gestibile anche dalla pagina Partecipanti admin o pubblica (singola e bulk)
 
 ### 📱 QR Code personale
-- QR code generato con phpqrcode (libreria PHP pura, affidabile, zero dipendenze)
+- QR code generato con phpqrcode (LGPL 3), libreria PHP pura con namespace isolato (`DBEM_`) per evitare conflitti con altri plugin
 - Visibile nel corpo dell'email di conferma + allegato PNG
 - Contiene link univoco per check-in
 - Leggibile da qualsiasi scanner (smartphone, app dedicate)
@@ -55,6 +57,14 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Dopo check-in riuscito, lo scanner si riapre automaticamente
 - Funziona anche dalla pagina admin Event Manager → Check-in
 
+### 👥 Pagina pubblica partecipanti
+- **Pagina pubblica** accessibile da telefono senza login WordPress
+- Protetta dallo stesso PIN del check-in
+- Selettore evento, contatore presenti/iscritti, filtri per stato
+- Tabella con nome, email, stato, orario assegnato
+- Azioni: approva, rifiuta, segna presente, annulla, reinvia email
+- Link: `tuosito.it/?dbem_participants_page=1`
+
 ### 📧 Email automatiche
 - Conferma iscrizione con QR code nel corpo + allegato
 - Notifica "in attesa di approvazione" (per modalità con approvazione)
@@ -64,7 +74,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Survey post-evento (manuale o automatico)
 - Email annullamento
 - Notifica admin personalizzabile per evento (anche più destinatari)
-- Placeholder dinamici: {nome}, {email}, {evento}, {data_evento}, {luogo}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}, {survey_link}
+- Placeholder dinamici: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}, {survey_link}
 - Compatibile con qualsiasi plugin SMTP
 
 ### 📋 Survey post-evento
@@ -75,11 +85,11 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Export CSV
 
 ### 👥 Gestione partecipanti
-- Tabella con nome, email, stato, check-in
+- Tabella con nome, email, stato, check-in, orario assegnato
 - Stati: 🕐 In attesa, ⏳ Confermato, ✅ Presente, ❌ Annullato, 🚫 Rifiutato
 - Azioni con tooltip: approva, rifiuta, conferma, annulla, segna presente, reinvia email, elimina
 - Azioni bulk (conferma, annulla, rifiuta, segna presente, elimina)
-- Export CSV con tutti i dati
+- Export CSV con tutti i dati + orario assegnato
 
 ### 🏷️ Categorie evento
 - Tassonomia gerarchica (come le categorie WordPress)
@@ -104,8 +114,8 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 ### ⚙️ Impostazioni
 - Pagina elenco eventi personalizzabile (pagina WP o archivio automatico)
 - Titolo pagina archivio configurabile
-- PIN check-in per proteggere la pagina pubblica
-- Link check-in da condividere con lo staff
+- PIN check-in per proteggere le pagine pubbliche (check-in e partecipanti)
+- Link check-in e partecipanti da condividere con lo staff
 - Riepilogo shortcode disponibili
 
 ---
@@ -124,8 +134,9 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 2. Scrivi la descrizione nell'editor Gutenberg
 3. Configura il form iscrizione (integrato o DB Form Builder)
 4. Scegli la modalità: accettazione automatica o con approvazione
-5. Personalizza l'email di conferma
-6. Pubblica — il link è nella sidebar
+5. Se scegli approvazione, abilita "Assegnazione orario" per permettere di assegnare un orario a ogni partecipante
+6. Personalizza l'email di conferma (usa {orario} per includere l'orario assegnato)
+7. Pubblica — il link è nella sidebar
 
 ### Check-in all'ingresso
 
@@ -133,6 +144,14 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 2. Condividi il link check-in con lo staff
 3. All'ingresso: link sul telefono → PIN → scansiona QR
 4. Se qualcuno non ha il QR: cerca per nome nella barra di ricerca
+
+### Gestione partecipanti da telefono
+
+1. Apri `tuosito.it/?dbem_participants_page=1`
+2. Inserisci il PIN
+3. Seleziona l'evento
+4. Vedi la lista iscritti con stato, orario, contatore
+5. Approva, rifiuta, segna presente o reinvia email direttamente
 
 ---
 
@@ -149,6 +168,17 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 | `[dbem_events category="workshop,seminario"]` | Più categorie |
 
 Tutti i parametri sono combinabili.
+
+---
+
+## Pagine pubbliche
+
+| URL | Descrizione | Protezione |
+|-----|-------------|------------|
+| `/?dbem_checkin_page=1` | Check-in con scanner QR | PIN |
+| `/?dbem_participants_page=1` | Lista partecipanti con azioni | PIN |
+| `/?dbem_checkin={token}` | Check-in diretto da QR code | Token univoco |
+| `/?dbem_survey={token}` | Survey post-evento | Token univoco |
 
 ---
 
@@ -188,7 +218,7 @@ db-event-manager/
 │   ├── class-shortcodes.php
 │   ├── class-gutenberg.php
 │   └── lib/
-│       └── phpqrcode.php        # Libreria QR code PHP pura (LGPL 3)
+│       └── phpqrcode.php        # QR code PHP pura (LGPL 3), classi prefissate DBEM_
 └── templates/
     ├── single-dbem_event.php
     ├── archive-dbem_event.php
@@ -198,6 +228,7 @@ db-event-manager/
     │   └── survey.php
     └── frontend/
         ├── checkin.php
+        ├── participants.php
         └── survey.php
 ```
 
@@ -205,15 +236,16 @@ db-event-manager/
 
 ## Note tecniche
 
-- **QR code**: phpqrcode (LGPL 3), libreria PHP pura provata, zero dipendenze
+- **QR code**: phpqrcode (LGPL 3), classi prefissate `DBEM_` per evitare conflitti con altri plugin
 - **Scanner QR**: html5-qrcode inclusa localmente (375KB)
 - **Drag & drop**: SortableJS inclusa localmente (45KB)
-- **Sicurezza**: nonce, capability check, sanitizzazione, rate limiting, PIN check-in, HMAC per link approvazione
+- **Sicurezza**: nonce, capability check, sanitizzazione, rate limiting, PIN check-in/partecipanti, HMAC per link approvazione
 - **Token**: bin2hex(random_bytes(32)) — 64 caratteri hex
 - **Email**: HTML responsive, compatibile con plugin SMTP
 - **Auto-updater**: controlla GitHub Releases ogni 12h
 - **Integrazione DBFB**: rileva se DB Form Builder è attivo, nessuna dipendenza hard
 - **Template**: sovrascrivibili dal tema
+- **Timezone**: le date degli eventi sono salvate in ora locale e visualizzate senza conversione timezone
 
 ---
 
@@ -230,6 +262,19 @@ db-event-manager/
 ---
 
 ## Changelog
+
+### 1.1.0
+- Approvazione con assegnazione orario: l'approvatore può assegnare un orario al partecipante
+- Form orario inline nel link di approvazione (riepilogo iscrizione + campo orario + bottoni)
+- Nuovo placeholder email `{orario}` — se non usato nel template, viene aggiunto automaticamente
+- Se assegnazione orario è attiva, la data evento mostra solo il giorno (senza ora) nel frontend e nelle email
+- Pagina pubblica partecipanti con PIN, selettore evento, filtri stato, azioni (approva/rifiuta/check-in/reinvia email)
+- Colonna "Orario assegnato" nella tabella partecipanti admin e nel CSV export
+- Libreria phpqrcode refactorizzata con namespace isolato (`DBEM_QRcode_Lib`) per evitare conflitti con altri plugin
+- Generazione QR via file temporaneo per compatibilità con ambienti restrittivi
+- Fix timezone: le date vengono visualizzate in ora locale senza doppia conversione
+- Nuove costanti protette con `if (!defined(...))` per convivenza con altri plugin QR
+- Stati "In attesa" e "Rifiutato" aggiunti ai label export CSV
 
 ### 1.0.0
 - Release iniziale
@@ -253,12 +298,12 @@ db-event-manager/
 
 ## Licenza
 
-GPL v2 or later. Sei libero di utilizzare, modificare e distribuire questo plugin.
+GPL v2 or later.  
+Sei libero di utilizzare, modificare e distribuire questo plugin.
 
 ---
 
 ## Autore
 
 **Davide Bertolino**  
-🌐 [davidebertolino.it](https://www.davidebertolino.it)  
-📧 info@davidebertolino.it
+🌐 [davidebertolino.it](https://www.davidebertolino.it)

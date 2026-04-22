@@ -136,9 +136,9 @@ class DBEM_Shortcodes {
             <article class="dbem-event-card dbem-status-<?php echo esc_attr($event_status); ?>" role="listitem">
                 <div class="dbem-card-date">
                     <?php if ($start): ?>
-                        <span class="dbem-card-day"><?php echo esc_html(date('d', strtotime($start))); ?></span>
-                        <span class="dbem-card-month"><?php echo esc_html(date_i18n('M', strtotime($start))); ?></span>
-                        <span class="dbem-card-year"><?php echo esc_html(date('Y', strtotime($start))); ?></span>
+                        <span class="dbem-card-day"><?php echo esc_html(wp_date('d', strtotime($start))); ?></span>
+                        <span class="dbem-card-month"><?php echo esc_html(wp_date('M', strtotime($start))); ?></span>
+                        <span class="dbem-card-year"><?php echo esc_html(wp_date('Y', strtotime($start))); ?></span>
                     <?php endif; ?>
                 </div>
                 <div class="dbem-card-content">
@@ -147,11 +147,7 @@ class DBEM_Shortcodes {
                     </h3>
                     <?php if ($start): ?>
                         <p class="dbem-card-meta">
-                            <?php
-                            $ts_enabled = get_post_meta($eid, '_dbem_time_slot_enabled', true);
-                            $date_fmt = ($ts_enabled === '1') ? date('d/m/Y', strtotime($start)) : date('d/m/Y H:i', strtotime($start));
-                            ?>
-                            <span>📅 <?php echo esc_html($date_fmt); ?></span>
+                            <span>📅 <?php echo esc_html(wp_date('d/m/Y H:i', strtotime($start))); ?></span>
                             <?php if ($location): ?><span>📍 <?php echo esc_html($location); ?></span><?php endif; ?>
                         </p>
                     <?php endif; ?>

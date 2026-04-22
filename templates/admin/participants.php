@@ -76,12 +76,13 @@ $status_labels = array(
                     <th><?php esc_html_e('Email', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Data iscrizione', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Check-in', 'db-event-manager'); ?></th>
+                    <th><?php esc_html_e('Orario', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Azioni', 'db-event-manager'); ?></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($registrations)): ?>
-                    <tr><td colspan="7"><?php esc_html_e('Nessun iscritto.', 'db-event-manager'); ?></td></tr>
+                    <tr><td colspan="8"><?php esc_html_e('Nessun iscritto.', 'db-event-manager'); ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($registrations as $reg):
                         $s = $status_labels[$reg->status] ?? $status_labels['confirmed'];
@@ -97,6 +98,7 @@ $status_labels = array(
                         <td><a href="mailto:<?php echo esc_attr($reg->email); ?>"><?php echo esc_html($reg->email); ?></a></td>
                         <td><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($reg->registered_at))); ?></td>
                         <td><?php echo $reg->checked_in_at ? esc_html(wp_date('d/m/Y H:i', strtotime($reg->checked_in_at))) : '—'; ?></td>
+                        <td><?php echo !empty($reg->assigned_time) ? esc_html($reg->assigned_time) : '—'; ?></td>
                         <td class="dbem-actions">
                             <?php if ($reg->status === 'pending'): ?>
                                 <button class="button button-small dbem-action-btn dbem-tip" data-action="confirm" data-id="<?php echo esc_attr($reg->id); ?>" aria-label="<?php esc_attr_e('Approva iscrizione', 'db-event-manager'); ?>" data-tooltip="<?php esc_attr_e('Approva', 'db-event-manager'); ?>">✅</button>

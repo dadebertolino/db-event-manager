@@ -5,6 +5,7 @@ class DBEM_DB {
 
     public static function activate() {
         self::create_tables();
+        self::maybe_upgrade();
         self::create_upload_dir();
         // Schedule cron
         if (!wp_next_scheduled('dbem_cron_check_events')) {
@@ -29,6 +30,7 @@ class DBEM_DB {
             token varchar(64) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'confirmed',
             checked_in_at datetime DEFAULT NULL,
+            assigned_time varchar(50) DEFAULT '',
             registered_at datetime NOT NULL,
             ip_address varchar(45) DEFAULT '',
             PRIMARY KEY (id),
@@ -64,12 +66,25 @@ class DBEM_DB {
         }
     }
 
+    /**
+     * Aggiorna schema DB per nuove colonne (safe per esecuzioni multiple)
+     */
+    public static function maybe_upgrade() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $col = $wpdb->get_results("SHOW COLUMNS FROM $table LIKE 'assigned_time'");
+        if (empty($col)) {
+            $wpdb->query("ALTER TABLE $table ADD COLUMN assigned_time varchar(50) DEFAULT '' AFTER checked_in_at");
+        }
+    }
+
     public static function ensure_tables() {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
             self::create_tables();
         }
+        self::maybe_upgrade();
     }
 
     /**
@@ -108,7 +123,7 @@ class DBEM_DB {
     public static function get_registrations($event_id, $status = null, $orderby = 'registered_at', $order = 'DESC') {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $allowed_orderby = array('registered_at', 'name', 'email', 'status', 'checked_in_at');
+        $allowed_orderby = array('registered_at', 'name', 'email', 'status', 'checked_in_at', 'assigned_time');
         $orderby = in_array($orderby, $allowed_orderby) ? $orderby : 'registered_at';
         $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
 
@@ -200,4 +215,17 @@ class DBEM_DB {
             $event_id, $email
         ));
     }
+
+    /**
+     * Aggiorna orario assegnato a una registrazione
+     */
+    public static function update_assigned_time($registration_id, $time) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        return $wpdb->update($table,
+            array('assigned_time' => sanitize_text_field($time)),
+            array('id' => $registration_id), array('%s'), array('%d')
+        );
+    }
+
 }

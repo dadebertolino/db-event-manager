@@ -353,4 +353,116 @@ class DBEM_Checkin {
                 wp_send_json_error(array('message' => __('Azione non valida', 'db-event-manager')));
         }
     }
+
+
+    /**
+     * AJAX: iscrizione manuale da pagina pubblica (protetta da PIN)
+     */
+    public static function handle_public_add_participant() {
+        // Verifica PIN
+        $pin_stored = get_option('dbem_checkin_pin', '');
+        if ($pin_stored) {
+            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
+            if ($pin_sent !== $pin_stored) {
+                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager')));
+            }
+        }
+
+        $event_id = absint($_POST['event_id'] ?? 0);
+        $name = sanitize_text_field($_POST['name'] ?? '');
+        $email = sanitize_email($_POST['email'] ?? '');
+        $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
+
+        if (!$event_id || !$name || !$email) {
+            wp_send_json_error(array('message' => __('Nome, email e evento sono obbligatori', 'db-event-manager')));
+        }
+        if (!is_email($email)) {
+            wp_send_json_error(array('message' => __('Email non valida', 'db-event-manager')));
+        }
+
+        DBEM_DB::ensure_tables();
+
+        // Controlla duplicato
+        if (DBEM_DB::email_exists_for_event($event_id, $email)) {
+            wp_send_json_error(array('message' => sprintf(__('%s è già iscritto a questo evento', 'db-event-manager'), $email)));
+        }
+
+        // Controlla posti
+        $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
+        if ($max > 0) {
+            $count = DBEM_DB::count_registrations($event_id);
+            if ($count >= $max) {
+                wp_send_json_error(array('message' => __('Posti esauriti', 'db-event-manager')));
+            }
+        }
+
+        // Genera token
+        $token = bin2hex(random_bytes(32));
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $wpdb->insert($table, array(
+            'event_id'      => $event_id,
+            'name'          => $name,
+            'email'         => $email,
+            'token'         => $token,
+            'status'        => 'confirmed',
+            'data'          => json_encode(array('nome' => $name, 'email' => $email)),
+            'assigned_time' => $assigned_time,
+            'registered_at' => current_time('mysql'),
+            'ip_address'    => 'manual',
+        ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+
+        if (!$wpdb->insert_id) {
+            wp_send_json_error(array('message' => __('Errore nel salvataggio', 'db-event-manager')));
+        }
+
+        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $wpdb->insert_id));
+
+        // Genera QR + invia email
+        DBEM_QRCode::generate($token);
+        DBEM_Email::send_confirmation($event_id, $reg);
+
+        wp_send_json_success(array('message' => sprintf(__('%s iscritto con successo', 'db-event-manager'), $name)));
+    }
+
+    /**
+     * AJAX: modifica orario assegnato da pagina pubblica (protetta da PIN)
+     */
+    public static function handle_public_update_time() {
+        // Verifica PIN
+        $pin_stored = get_option('dbem_checkin_pin', '');
+        if ($pin_stored) {
+            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
+            if ($pin_sent !== $pin_stored) {
+                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager')));
+            }
+        }
+
+        $reg_id = absint($_POST['registration_id'] ?? 0);
+        $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
+
+        if (!$reg_id) {
+            wp_send_json_error(array('message' => __('ID iscrizione mancante', 'db-event-manager')));
+        }
+
+        DBEM_DB::ensure_tables();
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
+
+        if (!$reg) {
+            wp_send_json_error(array('message' => __('Iscrizione non trovata', 'db-event-manager')));
+        }
+
+        $wpdb->update($table,
+            array('assigned_time' => $assigned_time),
+            array('id' => $reg_id),
+            array('%s'),
+            array('%d')
+        );
+
+        $label = $assigned_time ? $assigned_time : __('rimosso', 'db-event-manager');
+        wp_send_json_success(array('message' => sprintf(__('Orario di %s aggiornato: %s  — per notificare, premi 📧', 'db-event-manager'), $reg->name, $label)));
+    }
 }

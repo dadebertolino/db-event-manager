@@ -57,7 +57,6 @@ $events = get_posts(array(
         .pp-table th{background:#f8f9fa;padding:10px 12px;text-align:left;font-size:13px;color:#666;font-weight:600;border-bottom:2px solid #e9ecef}
         .pp-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;vertical-align:middle}
         .pp-table tr:last-child td{border-bottom:none}
-        .pp-table tr:hover td{background:#f8f9fa}
 
         /* Status badge */
         .pp-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
@@ -67,12 +66,17 @@ $events = get_posts(array(
         .pp-badge-cancelled{background:#f8d7da;color:#721c24}
         .pp-badge-rejected{background:#e2e3e5;color:#383d41}
 
-        /* Azioni */
-        .pp-actions{display:flex;gap:4px;flex-wrap:wrap}
-        .pp-action{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;font-size:16px;background:#f0f0f0;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center}
-        .pp-action:hover{background:#e0e0e0}
+        /* Azioni — sempre visibili, dimensioni fisse */
+        .pp-actions{display:flex;gap:6px;flex-wrap:nowrap}
+        .pp-action{width:40px;height:40px;border:none;border-radius:8px;cursor:pointer;font-size:18px;background:#f0f0f0;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+        .pp-action:hover{background:#ddd}
+        .pp-action:active{background:#ccc}
         .pp-action:disabled{opacity:.4;cursor:default}
-        .pp-action[title]:hover::after{content:attr(title)}
+
+        /* Toolbar (export) */
+        .pp-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px}
+        .pp-toolbar-btn{padding:10px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+        .pp-toolbar-btn:hover{border-color:#2271b1;color:#2271b1}
 
         /* Feedback */
         .pp-feedback{position:fixed;top:70px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:600;z-index:200;display:none;animation:pp-slide .3s ease}
@@ -155,6 +159,49 @@ $events = get_posts(array(
         <!-- Feedback -->
         <div id="pp-feedback" class="pp-feedback" role="alert" aria-live="polite"></div>
 
+        <!-- Toolbar -->
+        <div class="pp-toolbar" id="pp-toolbar" style="display:none">
+            <button type="button" class="pp-toolbar-btn" id="pp-add-btn">➕ <?php esc_html_e('Aggiungi', 'db-event-manager'); ?></button>
+            <button type="button" class="pp-toolbar-btn" id="pp-export-btn">📥 <?php esc_html_e('Export CSV', 'db-event-manager'); ?></button>
+        </div>
+
+        <!-- Form iscrizione manuale -->
+        <div id="pp-add-form" style="display:none;background:#fff;padding:20px;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+            <h3 style="margin:0 0 16px;font-size:16px">➕ <?php esc_html_e('Iscrizione manuale', 'db-event-manager'); ?></h3>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
+                <div style="flex:1;min-width:150px">
+                    <label for="pp-add-name" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px"><?php esc_html_e('Nome *', 'db-event-manager'); ?></label>
+                    <input type="text" id="pp-add-name" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px" required>
+                </div>
+                <div style="flex:1;min-width:180px">
+                    <label for="pp-add-email" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px"><?php esc_html_e('Email *', 'db-event-manager'); ?></label>
+                    <input type="email" id="pp-add-email" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px" required>
+                </div>
+                <div style="flex:0 0 140px">
+                    <label for="pp-add-time" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px"><?php esc_html_e('Orario', 'db-event-manager'); ?></label>
+                    <input type="text" id="pp-add-time" placeholder="<?php esc_attr_e('Es. 10:30', 'db-event-manager'); ?>" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px">
+                </div>
+                <div style="flex:0 0 auto;display:flex;gap:6px">
+                    <button type="button" id="pp-add-submit" style="padding:10px 20px;background:#1d6e3f;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">✅ <?php esc_html_e('Iscrivere', 'db-event-manager'); ?></button>
+                    <button type="button" id="pp-add-cancel" style="padding:10px 16px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal modifica orario -->
+        <div id="pp-time-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;justify-content:center;align-items:center">
+            <div style="background:#fff;padding:24px;border-radius:12px;width:90%;max-width:400px;text-align:center">
+                <h3 style="margin:0 0 8px;font-size:18px">🕐 <?php esc_html_e('Modifica orario', 'db-event-manager'); ?></h3>
+                <p id="pp-time-modal-name" style="color:#666;margin-bottom:16px"></p>
+                <input type="text" id="pp-time-modal-input" placeholder="<?php esc_attr_e('Es. 10:30, 14:00-14:30', 'db-event-manager'); ?>" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:16px;text-align:center;margin-bottom:16px">
+                <input type="hidden" id="pp-time-modal-id">
+                <div style="display:flex;gap:10px;justify-content:center">
+                    <button type="button" id="pp-time-save" style="padding:12px 24px;background:#2271b1;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">💾 <?php esc_html_e('Salva', 'db-event-manager'); ?></button>
+                    <button type="button" id="pp-time-cancel" style="padding:12px 24px;background:#f0f0f0;border:none;border-radius:8px;font-size:16px;cursor:pointer"><?php esc_html_e('Annulla', 'db-event-manager'); ?></button>
+                </div>
+            </div>
+        </div>
+
         <!-- Tabella -->
         <div id="pp-table-wrap"></div>
 
@@ -216,6 +263,7 @@ $events = get_posts(array(
         } else {
             document.getElementById('pp-counter').style.display = 'none';
             document.getElementById('pp-filters').style.display = 'none';
+            document.getElementById('pp-toolbar').style.display = 'none';
             document.getElementById('pp-table-wrap').innerHTML = '';
         }
     });
@@ -242,6 +290,7 @@ $events = get_posts(array(
             updateCounter(resp.data.stats);
             document.getElementById('pp-counter').style.display = 'block';
             document.getElementById('pp-filters').style.display = 'flex';
+            document.getElementById('pp-toolbar').style.display = 'flex';
             renderTable();
         })
         .catch(function() {
@@ -304,7 +353,7 @@ $events = get_posts(array(
 
         // Bind azioni
         document.querySelectorAll('.pp-action').forEach(function(btn) {
-            btn.addEventListener('click', function() { doAction(this.dataset.action, this.dataset.id); });
+            btn.addEventListener('click', function() { doAction(this.dataset.action, this.dataset.id, this); });
         });
     }
 
@@ -320,11 +369,23 @@ $events = get_posts(array(
             btns += '<button class="pp-action" data-action="confirm" data-id="' + r.id + '" title="<?php echo esc_js(__('Riconferma', 'db-event-manager')); ?>">🔄</button>';
         }
         btns += '<button class="pp-action" data-action="resend" data-id="' + r.id + '" title="<?php echo esc_js(__('Reinvia email', 'db-event-manager')); ?>">📧</button>';
+        btns += '<button class="pp-action" data-action="edit_time" data-id="' + r.id + '" data-name="' + escHtml(r.name) + '" data-time="' + escHtml(r.assigned_time || '') + '" title="<?php echo esc_js(__('Modifica orario', 'db-event-manager')); ?>">🕐</button>';
         return btns;
     }
 
     /* === Azioni === */
-    function doAction(action, regId) {
+    function doAction(action, regId, btn) {
+        // Modifica orario: apri modal
+        if (action === 'edit_time') {
+            var modal = document.getElementById('pp-time-modal');
+            document.getElementById('pp-time-modal-id').value = regId;
+            document.getElementById('pp-time-modal-name').textContent = btn ? btn.dataset.name : '';
+            document.getElementById('pp-time-modal-input').value = btn ? btn.dataset.time : '';
+            modal.style.display = 'flex';
+            document.getElementById('pp-time-modal-input').focus();
+            return;
+        }
+
         var body = 'action=dbem_public_participant_action&participant_action=' + action
             + '&registration_id=' + regId + '&event_id=' + currentEvent;
         if (pin) body += '&pin=' + encodeURIComponent(pin);
@@ -362,6 +423,150 @@ $events = get_posts(array(
         d.textContent = s || '';
         return d.innerHTML;
     }
+
+    /* === Export CSV === */
+    document.getElementById('pp-export-btn').addEventListener('click', function() {
+        if (!allData.length) return;
+
+        var statusMap = {
+            pending: '<?php echo esc_js(__('In attesa', 'db-event-manager')); ?>',
+            confirmed: '<?php echo esc_js(__('Confermato', 'db-event-manager')); ?>',
+            checked_in: '<?php echo esc_js(__('Presente', 'db-event-manager')); ?>',
+            cancelled: '<?php echo esc_js(__('Annullato', 'db-event-manager')); ?>',
+            rejected: '<?php echo esc_js(__('Rifiutato', 'db-event-manager')); ?>'
+        };
+
+        var headers = ['Nome', 'Email', 'Stato', 'Orario assegnato', 'Data iscrizione', 'Check-in'];
+        var rows = [headers.join(';')];
+
+        // Usa dati filtrati o tutti
+        var data = currentFilter === 'all' ? allData : allData.filter(function(r) { return r.status === currentFilter; });
+
+        data.forEach(function(r) {
+            var row = [
+                csvEsc(r.name),
+                csvEsc(r.email),
+                csvEsc(statusMap[r.status] || r.status),
+                csvEsc(r.assigned_time || ''),
+                csvEsc(r.registered_at || ''),
+                csvEsc(r.checked_in_at || '')
+            ];
+            rows.push(row.join(';'));
+        });
+
+        var bom = '\uFEFF';
+        var csv = bom + rows.join('\n');
+        var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+
+        var eventName = document.getElementById('pp-event-select');
+        var fileName = 'partecipanti';
+        if (eventName && eventName.selectedIndex > 0) {
+            fileName = eventName.options[eventName.selectedIndex].text.replace(/[^a-zA-Z0-9àèìòùé\s-]/g, '').trim().replace(/\s+/g, '_');
+        }
+        a.download = fileName + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showFeedback('success', '<?php echo esc_js(__('CSV scaricato', 'db-event-manager')); ?>');
+    });
+
+    function csvEsc(s) {
+        s = (s || '').toString();
+        if (s.indexOf(';') > -1 || s.indexOf('"') > -1 || s.indexOf('\n') > -1) {
+            return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+    }
+
+    /* === Form iscrizione manuale === */
+    var addForm = document.getElementById('pp-add-form');
+    document.getElementById('pp-add-btn').addEventListener('click', function() {
+        addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+        if (addForm.style.display === 'block') document.getElementById('pp-add-name').focus();
+    });
+    document.getElementById('pp-add-cancel').addEventListener('click', function() {
+        addForm.style.display = 'none';
+    });
+    document.getElementById('pp-add-submit').addEventListener('click', function() {
+        var name = document.getElementById('pp-add-name').value.trim();
+        var email = document.getElementById('pp-add-email').value.trim();
+        var time = document.getElementById('pp-add-time').value.trim();
+
+        if (!name || !email) {
+            showFeedback('error', '<?php echo esc_js(__('Nome e email sono obbligatori', 'db-event-manager')); ?>');
+            return;
+        }
+
+        var body = 'action=dbem_public_add_participant&event_id=' + currentEvent
+            + '&name=' + encodeURIComponent(name)
+            + '&email=' + encodeURIComponent(email)
+            + '&assigned_time=' + encodeURIComponent(time);
+        if (pin) body += '&pin=' + encodeURIComponent(pin);
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.success) {
+                showFeedback('success', resp.data.message);
+                document.getElementById('pp-add-name').value = '';
+                document.getElementById('pp-add-email').value = '';
+                document.getElementById('pp-add-time').value = '';
+                addForm.style.display = 'none';
+                loadParticipants();
+            } else {
+                showFeedback('error', resp.data.message || resp.data || 'Errore');
+            }
+        })
+        .catch(function() { showFeedback('error', 'Errore di rete'); });
+    });
+
+    /* === Modal modifica orario === */
+    var timeModal = document.getElementById('pp-time-modal');
+    document.getElementById('pp-time-cancel').addEventListener('click', function() {
+        timeModal.style.display = 'none';
+    });
+    timeModal.addEventListener('click', function(e) {
+        if (e.target === timeModal) timeModal.style.display = 'none';
+    });
+    document.getElementById('pp-time-modal-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('pp-time-save').click();
+        if (e.key === 'Escape') timeModal.style.display = 'none';
+    });
+    document.getElementById('pp-time-save').addEventListener('click', function() {
+        var regId = document.getElementById('pp-time-modal-id').value;
+        var newTime = document.getElementById('pp-time-modal-input').value.trim();
+
+        var body = 'action=dbem_public_update_time&registration_id=' + regId
+            + '&assigned_time=' + encodeURIComponent(newTime)
+            + '&event_id=' + currentEvent;
+        if (pin) body += '&pin=' + encodeURIComponent(pin);
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            timeModal.style.display = 'none';
+            if (resp.success) {
+                showFeedback('success', resp.data.message);
+                loadParticipants();
+            } else {
+                showFeedback('error', resp.data.message || 'Errore');
+            }
+        })
+        .catch(function() { showFeedback('error', 'Errore di rete'); });
+    });
 })();
 </script>
 

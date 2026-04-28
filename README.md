@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.1.0  
+**Versione:** 1.2.0  
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -31,7 +31,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Honeypot anti-spam, rate limiting, GDPR checkbox
 - Accessibilità WCAG 2.1 AA
 
-### ✅ Approvazione iscrizioni
+### ✅ Approvazione con assegnazione orario
 - Modalità configurabile per evento: automatica o con approvazione
 - **Assegnazione orario**: l'approvatore può assegnare un orario al partecipante al momento dell'approvazione
 - Email approvatore personalizzabile (può essere diverso dal creatore evento)
@@ -62,7 +62,10 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Protetta dallo stesso PIN del check-in
 - Selettore evento, contatore presenti/iscritti, filtri per stato
 - Tabella con nome, email, stato, orario assegnato
-- Azioni: approva, rifiuta, segna presente, annulla, reinvia email
+- Azioni: approva, rifiuta, segna presente, annulla, reinvia email, modifica orario
+- **Iscrizione manuale**: il responsabile può iscrivere un partecipante direttamente (nome + email + orario opzionale), con generazione QR e invio email automatico
+- **Modifica orario**: bottone 🕐 su ogni riga per modificare l'orario assegnato. Per notificare il partecipante del cambio, premere 📧
+- **Export CSV**: scarica la lista filtrata in formato CSV
 - Link: `tuosito.it/?dbem_participants_page=1`
 
 ### 📧 Email automatiche
@@ -122,7 +125,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
 ## Installazione
 
-1. Scarica lo ZIP da [GitHub Releases](https://github.com/dadebertolino/db-event-manager/releases)
+1. Scarica lo ZIP da [GitHub Releases](https://github.com/dadebertolino/db-event-manager/releases/latest)
 2. WordPress Admin → Plugin → Aggiungi nuovo → Carica plugin → Seleziona ZIP
 3. Attiva il plugin
 4. Vai in **Impostazioni → Permalink → Salva modifiche**
@@ -151,7 +154,9 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 2. Inserisci il PIN
 3. Seleziona l'evento
 4. Vedi la lista iscritti con stato, orario, contatore
-5. Approva, rifiuta, segna presente o reinvia email direttamente
+5. Approva, rifiuta, segna presente, modifica orario o reinvia email
+6. Usa ➕ per iscrivere manualmente un partecipante
+7. Usa 📥 per scaricare l'export CSV
 
 ---
 
@@ -263,14 +268,20 @@ db-event-manager/
 
 ## Changelog
 
+### 1.2.0
+- Pagina pubblica partecipanti: iscrizione manuale (nome + email + orario opzionale) con generazione QR e invio email automatico
+- Pagina pubblica partecipanti: modifica orario assegnato con modal dedicato (bottone 🕐)
+- Pagina pubblica partecipanti: export CSV lato client con filtro attivo
+- Fix sfarfallio hover sulla tabella partecipanti
+- Bottoni azioni a dimensione fissa per stabilità layout
+
 ### 1.1.0
-- Approvazione con assegnazione orario: l'approvatore può assegnare un orario al partecipante
-- Form orario inline nel link di approvazione (riepilogo iscrizione + campo orario + bottoni)
-- Nuovo placeholder email `{orario}` — se non usato nel template, viene aggiunto automaticamente
-- Se assegnazione orario è attiva, la data evento mostra solo il giorno (senza ora) nel frontend e nelle email
-- Pagina pubblica partecipanti con PIN, selettore evento, filtri stato, azioni (approva/rifiuta/check-in/reinvia email)
+- Approvazione con assegnazione orario
+- Form orario inline nel link di approvazione email
+- Nuovo placeholder email `{orario}`
+- Se assegnazione orario è attiva, la data evento mostra solo il giorno (senza ora)
 - Colonna "Orario assegnato" nella tabella partecipanti admin e nel CSV export
-- Libreria phpqrcode refactorizzata con namespace isolato (`DBEM_QRcode_Lib`) per evitare conflitti con altri plugin
+- Libreria phpqrcode refactorizzata con namespace isolato (`DBEM_QRcode_Lib`) per evitare conflitti
 - Generazione QR via file temporaneo per compatibilità con ambienti restrittivi
 - Fix timezone: le date vengono visualizzate in ora locale senza doppia conversione
 - Nuove costanti protette con `if (!defined(...))` per convivenza con altri plugin QR

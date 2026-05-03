@@ -33,6 +33,11 @@ class DBEM_DB {
             assigned_time varchar(50) DEFAULT '',
             registered_at datetime NOT NULL,
             ip_address varchar(45) DEFAULT '',
+            gdpr_consent_given tinyint(1) DEFAULT NULL,
+            gdpr_consent_text text,
+            gdpr_consent_timestamp datetime DEFAULT NULL,
+            gdpr_consent_privacy_url varchar(500) DEFAULT NULL,
+            gdpr_consent_policy_version bigint(20) unsigned DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY token (token),
             KEY event_id (event_id),
@@ -75,6 +80,29 @@ class DBEM_DB {
         $col = $wpdb->get_results("SHOW COLUMNS FROM $table LIKE 'assigned_time'");
         if (empty($col)) {
             $wpdb->query("ALTER TABLE $table ADD COLUMN assigned_time varchar(50) DEFAULT '' AFTER checked_in_at");
+        }
+
+        // v1.3.0: colonne consent GDPR
+        $consent_col = $wpdb->get_results("SHOW COLUMNS FROM $table LIKE 'gdpr_consent_given'");
+        if (empty($consent_col)) {
+            $consent_cols = array(
+                'gdpr_consent_given'          => "tinyint(1) DEFAULT NULL AFTER ip_address",
+                'gdpr_consent_text'           => "text AFTER gdpr_consent_given",
+                'gdpr_consent_timestamp'      => "datetime DEFAULT NULL AFTER gdpr_consent_text",
+                'gdpr_consent_privacy_url'    => "varchar(500) DEFAULT NULL AFTER gdpr_consent_timestamp",
+                'gdpr_consent_policy_version' => "bigint(20) unsigned DEFAULT 0 AFTER gdpr_consent_privacy_url",
+            );
+            foreach ($consent_cols as $ccol => $cdef) {
+                $exists = $wpdb->get_var("SHOW COLUMNS FROM $table LIKE '$ccol'");
+                if (!$exists) {
+                    $wpdb->query("ALTER TABLE $table ADD COLUMN $ccol $cdef");
+                }
+            }
+            // Index per query Hub Consent Register
+            $idx = $wpdb->get_var("SHOW INDEX FROM $table WHERE Key_name = 'gdpr_consent_policy_version'");
+            if (!$idx) {
+                $wpdb->query("ALTER TABLE $table ADD INDEX gdpr_consent_policy_version (gdpr_consent_policy_version)");
+            }
         }
     }
 

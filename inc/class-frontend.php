@@ -199,13 +199,32 @@ class DBEM_Frontend {
                 <?php echo self::render_form_field($field, $i, $event_id); ?>
             <?php endforeach; ?>
 
-            <div class="dbem-field dbem-field-checkbox">
+            <?php
+            // Checkbox GDPR — visibile solo se abilitata per questo evento
+            $gdpr_enabled = get_post_meta($event_id, '_dbem_gdpr_enabled', true);
+            if ($gdpr_enabled === '1'):
+                $gdpr_text = get_post_meta($event_id, '_dbem_gdpr_text', true);
+                if (empty($gdpr_text)) {
+                    $gdpr_text = __('Acconsento al trattamento dei dati personali secondo la Privacy Policy', 'db-event-manager');
+                }
+                $gdpr_link = get_post_meta($event_id, '_dbem_gdpr_link', true);
+                if (empty($gdpr_link) && function_exists('get_privacy_policy_url')) {
+                    $gdpr_link = get_privacy_policy_url();
+                }
+            ?>
+            <div class="dbem-field dbem-field-checkbox dbem-field-privacy">
                 <label class="dbem-checkbox-label">
                     <input type="checkbox" name="dbem_privacy" value="1" required aria-required="true">
-                    <span><?php esc_html_e('Accetto l\'informativa sulla privacy e il trattamento dei dati personali', 'db-event-manager'); ?> <span class="dbem-required" aria-hidden="true">*</span></span>
+                    <span>
+                        <?php echo esc_html($gdpr_text); ?> <span class="dbem-required" aria-hidden="true">*</span>
+                        <?php if ($gdpr_link): ?>
+                            <br><a href="<?php echo esc_url($gdpr_link); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Leggi l\'informativa privacy', 'db-event-manager'); ?> <span class="screen-reader-text"><?php esc_html_e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span></a>
+                        <?php endif; ?>
+                    </span>
                 </label>
                 <span class="dbem-error" role="alert" aria-live="polite"></span>
             </div>
+            <?php endif; ?>
 
             <div class="dbem-field">
                 <button type="submit" class="dbem-submit">

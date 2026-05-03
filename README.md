@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.2.0  
+**Versione:** 1.3.0  
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -239,6 +239,30 @@ db-event-manager/
 
 ---
 
+## Integrazione ecosistema DB privacy
+
+Quando uno o più di questi plugin sono installati, DB Event Manager li sfrutta automaticamente — senza configurazione.
+
+### Dichiarazione trattamenti al registro privacy unificato
+Quando **DB Privacy Hub 1.0.0+** è installato, il plugin dichiara automaticamente i trattamenti nel pannello "Privacy → Registro trattamenti".
+
+| ID | Quando appare |
+|---|---|
+| `dbem_registrations` | Sempre (almeno 1 evento pubblicato) |
+| `dbem_email` | Almeno 1 evento con email di conferma configurata |
+| `dbem_survey` | Almeno 1 evento con survey attivo |
+
+### DSAR (accesso e cancellazione dati)
+Il plugin risponde alle richieste di esportazione/cancellazione dati personali (GDPR art. 15 e 17) tramite doppio canale: Privacy Hub (primario) e WordPress core (fallback). L'export include registrazioni, risposte survey e campi custom. La cancellazione rimuove anche i file QR code associati.
+
+### Consenso documentato (art. 7.1 GDPR)
+Ogni iscrizione con checkbox GDPR attiva salva 5 campi di prova del consenso: flag consenso, testo esatto mostrato all'utente, timestamp, URL informativa privacy, ID versione della Privacy Policy (se Privacy Hub è installato). I consensi sono visibili nel "Registro consensi" unificato del Privacy Hub.
+
+### Marker `DBEM_DSAR_AVAILABLE`
+La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di menzionare la procedura semplificata nella Privacy Policy generata.
+
+---
+
 ## Note tecniche
 
 - **QR code**: phpqrcode (LGPL 3), classi prefissate `DBEM_` per evitare conflitti con altri plugin
@@ -267,6 +291,15 @@ db-event-manager/
 ---
 
 ## Changelog
+
+### 1.3.0
+- Integrazione ecosistema privacy DB: dichiarazioni trattamenti al Privacy Hub, DSAR export/erase con dual channel (Hub + WP core), consent storage con 5 colonne GDPR
+- Checkbox GDPR configurabile per evento: on/off, testo personalizzabile, link privacy policy (fallback a pagina Privacy WP)
+- Link "Leggi l'informativa privacy" cliccabile nel form di iscrizione
+- Checkbox GDPR condizionale: visibile e validata solo se attivata per l'evento
+- Fix variabili consent mancanti nel metodo iscrizione via DB Form Builder
+- Dichiarazione email privacy con mittente configurato e info trasporto SMTP
+- Costante `DBEM_DSAR_AVAILABLE` per integrazione con Privacy Hub policy generator
 
 ### 1.2.0
 - Pagina pubblica partecipanti: iscrizione manuale (nome + email + orario opzionale) con generazione QR e invio email automatico

@@ -271,6 +271,30 @@ class DBEM_Admin {
             <?php else: ?>
                 <input type="hidden" name="_dbem_form_source" value="builtin">
             <?php endif; ?>
+
+            <tr>
+                <th colspan="2"><h3 style="margin:0;padding-top:12px;border-top:1px solid #ddd"><?php _e('Privacy / GDPR', 'db-event-manager'); ?></h3></th>
+            </tr>
+            <tr>
+                <th><label for="dbem_gdpr_enabled"><?php _e('Checkbox GDPR', 'db-event-manager'); ?></label></th>
+                <td>
+                    <label><input type="checkbox" id="dbem_gdpr_enabled" name="_dbem_gdpr_enabled" value="1" <?php checked(get_post_meta($post->ID, '_dbem_gdpr_enabled', true), '1'); ?>> <?php _e('Mostra checkbox consenso privacy nel form', 'db-event-manager'); ?></label>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="dbem_gdpr_text"><?php _e('Testo consenso', 'db-event-manager'); ?></label></th>
+                <td>
+                    <input type="text" id="dbem_gdpr_text" name="_dbem_gdpr_text" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_gdpr_text', true)); ?>" class="large-text" placeholder="<?php esc_attr_e('Acconsento al trattamento dei dati personali secondo la Privacy Policy', 'db-event-manager'); ?>">
+                    <p class="description"><?php _e('Se vuoto, usa il testo predefinito.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="dbem_gdpr_link"><?php _e('Link privacy policy', 'db-event-manager'); ?></label></th>
+                <td>
+                    <input type="url" id="dbem_gdpr_link" name="_dbem_gdpr_link" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_gdpr_link', true)); ?>" class="large-text" placeholder="<?php echo esc_attr(function_exists('get_privacy_policy_url') ? get_privacy_policy_url() : ''); ?>">
+                    <p class="description"><?php _e('Se vuoto, usa la pagina Privacy Policy di WordPress (Impostazioni → Privacy).', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
         </table>
 
         <!-- Form integrato -->
@@ -576,6 +600,15 @@ class DBEM_Admin {
 
         // Assegnazione orario
         update_post_meta($post_id, '_dbem_time_slot_enabled', isset($_POST['_dbem_time_slot_enabled']) ? '1' : '0');
+
+        // GDPR
+        update_post_meta($post_id, '_dbem_gdpr_enabled', isset($_POST['_dbem_gdpr_enabled']) ? '1' : '0');
+        if (isset($_POST['_dbem_gdpr_text'])) {
+            update_post_meta($post_id, '_dbem_gdpr_text', sanitize_text_field($_POST['_dbem_gdpr_text']));
+        }
+        if (isset($_POST['_dbem_gdpr_link'])) {
+            update_post_meta($post_id, '_dbem_gdpr_link', esc_url_raw($_POST['_dbem_gdpr_link']));
+        }
         if (isset($_POST['_dbem_dbfb_form_id'])) {
             update_post_meta($post_id, '_dbem_dbfb_form_id', absint($_POST['_dbem_dbfb_form_id']));
         }

@@ -47,8 +47,9 @@ class DBEM_Registration {
             wp_send_json_error(__('Inserisci un indirizzo email valido.', 'db-event-manager'));
         }
 
-        // GDPR
-        if (empty($_POST['dbem_privacy'])) {
+        // GDPR — validazione solo se checkbox attiva per questo evento
+        $gdpr_enabled = get_post_meta($event_id, '_dbem_gdpr_enabled', true);
+        if ($gdpr_enabled === '1' && empty($_POST['dbem_privacy'])) {
             wp_send_json_error(__('Devi accettare l\'informativa sulla privacy.', 'db-event-manager'));
         }
 
@@ -99,7 +100,35 @@ class DBEM_Registration {
         // Salva
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $result = $wpdb->insert($table, array(
+        $result = 
+
+        // Cattura prova del consenso (Capability 5 — art. 7.1 GDPR)
+        $gdpr_consent_given          = null;
+        $gdpr_consent_text           = null;
+        $gdpr_consent_timestamp      = null;
+        $gdpr_consent_privacy_url    = null;
+        $gdpr_consent_policy_version = 0;
+
+        $gdpr_enabled = get_post_meta($event_id, '_dbem_gdpr_enabled', true);
+        if ($gdpr_enabled === '1') {
+            $gdpr_consent_given     = 1;
+            $gdpr_consent_text      = get_post_meta($event_id, '_dbem_gdpr_text', true);
+            $gdpr_consent_timestamp = current_time('mysql');
+
+            // URL privacy: configurata per evento → fallback a quella globale WP
+            $privacy_url = get_post_meta($event_id, '_dbem_gdpr_link', true);
+            if (empty($privacy_url) && function_exists('get_privacy_policy_url')) {
+                $privacy_url = (string) get_privacy_policy_url();
+            }
+            $gdpr_consent_privacy_url = $privacy_url ?: null;
+
+            // Link alla versione esatta della Privacy Policy (Privacy Hub)
+            if (class_exists('DBPH_Policy_Archive') && method_exists('DBPH_Policy_Archive', 'get_current_version_id')) {
+                $gdpr_consent_policy_version = (int) DBPH_Policy_Archive::get_current_version_id();
+            }
+        }
+
+        $wpdb->insert($table, array(
             'event_id'      => $event_id,
             'data'          => wp_json_encode(array_merge(array('nome' => $name, 'email' => $email), $custom_data)),
             'email'         => $email,
@@ -107,6 +136,11 @@ class DBEM_Registration {
             'token'         => $token,
             'status'        => $initial_status,
             'registered_at' => current_time('mysql'),
+            'gdpr_consent_given'          => $gdpr_consent_given,
+            'gdpr_consent_text'           => $gdpr_consent_text,
+            'gdpr_consent_timestamp'      => $gdpr_consent_timestamp,
+            'gdpr_consent_privacy_url'    => $gdpr_consent_privacy_url,
+            'gdpr_consent_policy_version' => $gdpr_consent_policy_version,
             'ip_address'    => $ip,
         ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
 
@@ -201,6 +235,29 @@ class DBEM_Registration {
         $approval_mode = get_post_meta($event_id, '_dbem_approval_mode', true) ?: 'auto';
         $initial_status = ($approval_mode === 'approval') ? 'pending' : 'confirmed';
 
+        // Cattura prova del consenso (DBFB gestisce la propria checkbox,
+        // ma se l'evento ha GDPR attivo catturiamo comunque la prova)
+        $gdpr_consent_given          = null;
+        $gdpr_consent_text           = null;
+        $gdpr_consent_timestamp      = null;
+        $gdpr_consent_privacy_url    = null;
+        $gdpr_consent_policy_version = 0;
+
+        $gdpr_enabled = get_post_meta($event_id, '_dbem_gdpr_enabled', true);
+        if ($gdpr_enabled === '1') {
+            $gdpr_consent_given     = 1;
+            $gdpr_consent_text      = get_post_meta($event_id, '_dbem_gdpr_text', true);
+            $gdpr_consent_timestamp = current_time('mysql');
+            $privacy_url = get_post_meta($event_id, '_dbem_gdpr_link', true);
+            if (empty($privacy_url) && function_exists('get_privacy_policy_url')) {
+                $privacy_url = (string) get_privacy_policy_url();
+            }
+            $gdpr_consent_privacy_url = $privacy_url ?: null;
+            if (class_exists('DBPH_Policy_Archive') && method_exists('DBPH_Policy_Archive', 'get_current_version_id')) {
+                $gdpr_consent_policy_version = (int) DBPH_Policy_Archive::get_current_version_id();
+            }
+        }
+
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         $result = $wpdb->insert($table, array(
@@ -211,6 +268,11 @@ class DBEM_Registration {
             'token'         => $token,
             'status'        => $initial_status,
             'registered_at' => current_time('mysql'),
+            'gdpr_consent_given'          => $gdpr_consent_given,
+            'gdpr_consent_text'           => $gdpr_consent_text,
+            'gdpr_consent_timestamp'      => $gdpr_consent_timestamp,
+            'gdpr_consent_privacy_url'    => $gdpr_consent_privacy_url,
+            'gdpr_consent_policy_version' => $gdpr_consent_policy_version,
             'ip_address'    => $ip,
         ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
 

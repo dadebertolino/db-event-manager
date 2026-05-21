@@ -267,8 +267,22 @@ class DBEM_Checkin {
 
         $items = array();
         $stats = array('total' => 0, 'checked_in' => 0, 'pending' => 0, 'confirmed' => 0, 'cancelled' => 0, 'max' => $max);
+        $custom_keys = array(); // Raccoglie tutte le chiavi custom per l'export
 
         foreach ($regs as $r) {
+            // Decodifica campi custom dal JSON
+            $custom_data = array();
+            $raw = json_decode($r->data, true);
+            if (is_array($raw)) {
+                foreach ($raw as $k => $v) {
+                    // Escludi nome/email (già colonne dedicate)
+                    if (in_array(strtolower($k), array('nome', 'email', 'name'))) continue;
+                    if (is_array($v)) $v = implode(', ', $v);
+                    $custom_data[$k] = $v;
+                    if (!in_array($k, $custom_keys)) $custom_keys[] = $k;
+                }
+            }
+
             $items[] = array(
                 'id'            => $r->id,
                 'name'          => $r->name,
@@ -277,12 +291,13 @@ class DBEM_Checkin {
                 'assigned_time' => isset($r->assigned_time) ? $r->assigned_time : '',
                 'registered_at' => date('d/m/Y H:i', strtotime($r->registered_at)),
                 'checked_in_at' => $r->checked_in_at ? date('H:i', strtotime($r->checked_in_at)) : '',
+                'custom_data'   => $custom_data,
             );
             if (isset($stats[$r->status])) $stats[$r->status]++;
             if ($r->status !== 'cancelled' && $r->status !== 'rejected') $stats['total']++;
         }
 
-        wp_send_json_success(array('registrations' => $items, 'stats' => $stats));
+        wp_send_json_success(array('registrations' => $items, 'stats' => $stats, 'custom_keys' => $custom_keys));
     }
 
     /**

@@ -215,6 +215,7 @@ $events = get_posts(array(
     var pinRequired = <?php echo $pin_required ? 'true' : 'false'; ?>;
     var currentEvent = 0;
     var allData = [];
+    var allCustomKeys = [];
     var currentFilter = 'all';
 
     var statusLabels = {
@@ -287,6 +288,7 @@ $events = get_posts(array(
                 return;
             }
             allData = resp.data.registrations;
+            allCustomKeys = resp.data.custom_keys || [];
             updateCounter(resp.data.stats);
             document.getElementById('pp-counter').style.display = 'block';
             document.getElementById('pp-filters').style.display = 'flex';
@@ -437,6 +439,8 @@ $events = get_posts(array(
         };
 
         var headers = ['Nome', 'Email', 'Stato', 'Orario assegnato', 'Data iscrizione', 'Check-in'];
+        // Aggiungi colonne custom dinamiche
+        allCustomKeys.forEach(function(k) { headers.push(k); });
         var rows = [headers.join(';')];
 
         // Usa dati filtrati o tutti
@@ -451,6 +455,10 @@ $events = get_posts(array(
                 csvEsc(r.registered_at || ''),
                 csvEsc(r.checked_in_at || '')
             ];
+            // Aggiungi valori custom
+            allCustomKeys.forEach(function(k) {
+                row.push(csvEsc(r.custom_data && r.custom_data[k] ? r.custom_data[k] : ''));
+            });
             rows.push(row.join(';'));
         });
 

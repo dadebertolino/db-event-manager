@@ -140,9 +140,16 @@ class DBEM_Shortcodes {
                 $card_date = DBEM_CPT::get_card_date($eid);
             ?>
             <article class="dbem-event-card dbem-status-<?php echo esc_attr($event_status); ?>" role="listitem">
-                <div class="dbem-card-date<?php echo $card_date && $card_date['multiday'] ? ' dbem-card-date-multi' : ''; ?>">
+                <?php
+                $date_classes = 'dbem-card-date';
+                if ($card_date && $card_date['multiday']) $date_classes .= ' dbem-card-date-multi';
+                if ($card_date && $card_date['hide_day']) $date_classes .= ' dbem-card-date-noday';
+                ?>
+                <div class="<?php echo esc_attr($date_classes); ?>">
                     <?php if ($card_date): ?>
-                        <span class="dbem-card-day"><?php echo esc_html($card_date['day']); ?></span>
+                        <?php if (!$card_date['hide_day']): ?>
+                            <span class="dbem-card-day"><?php echo esc_html($card_date['day']); ?></span>
+                        <?php endif; ?>
                         <span class="dbem-card-month"><?php echo esc_html($card_date['month']); ?></span>
                         <span class="dbem-card-year"><?php echo esc_html($card_date['year']); ?></span>
                     <?php endif; ?>

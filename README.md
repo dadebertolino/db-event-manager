@@ -94,6 +94,10 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Azioni bulk (conferma, annulla, rifiuta, segna presente, elimina)
 - Export CSV con tutti i dati + orario assegnato
 
+### 🗓️ Eventi su più giorni
+- Se data di inizio e fine cadono in giorni diversi, il riquadro della card mostra l'intervallo (`21-25 SET`, `28-03 SET-OTT`) e compare il badge "Più date"
+- Opzione per evento per nascondere del tutto il giorno nel riquadro e lasciare solo mese e anno
+
 ### 🏷️ Categorie evento
 - Tassonomia gerarchica (come le categorie WordPress)
 - Colonna categoria nella lista admin
@@ -299,6 +303,10 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ## Changelog
 
 ### 1.4.0
+**Elenco eventi**
+- Gli eventi su più giorni mostrano un intervallo nel riquadro data (`21-25 SET`) invece del solo giorno di inizio, la riga di dettaglio riporta l'intervallo completo e compare il badge "Più date"
+- Nuova opzione per evento "Non mostrare il giorno nel riquadro della card": il riquadro riporta solo mese e anno
+
 **Sicurezza**
 - Le pagine pubbliche di check-in e partecipanti richiedono ora obbligatoriamente un PIN. Prima il PIN era opzionale e vuoto di default: chiunque conoscesse l'indirizzo poteva leggere le anagrafiche complete degli iscritti, approvare o annullare iscrizioni e inviare email dal sito. Il PIN viene generato automaticamente all'aggiornamento e si legge in Impostazioni
 - Nuova classe `DBEM_Security`: confronto del PIN in tempo costante (`hash_equals`), rate limit di 10 tentativi per IP ogni 15 minuti, verifica nonce su tutte le chiamate AJAX pubbliche (protezione CSRF)

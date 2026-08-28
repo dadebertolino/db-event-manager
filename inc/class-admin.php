@@ -158,6 +158,16 @@ class DBEM_Admin {
                 <td><input type="datetime-local" id="dbem_date_end" name="_dbem_date_end" value="<?php echo esc_attr($end); ?>" class="regular-text" required></td>
             </tr>
             <tr>
+                <th><label for="dbem_hide_card_day"><?php _e('Riquadro data', 'db-event-manager'); ?></label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" id="dbem_hide_card_day" name="_dbem_hide_card_day" value="1" <?php checked(get_post_meta($post->ID, '_dbem_hide_card_day', true), '1'); ?>>
+                        <?php _e('Non mostrare il giorno nel riquadro della card', 'db-event-manager'); ?>
+                    </label>
+                    <p class="description"><?php _e('Nell\'elenco eventi il riquadro colorato mostrerà solo mese e anno. Utile per gli eventi distribuiti su più giornate, dove il giorno di inizio da solo fa sembrare l\'evento di un giorno. La data completa resta visibile nella riga di dettaglio e nella pagina evento.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
                 <th><label for="dbem_location"><?php _e('Luogo', 'db-event-manager'); ?></label></th>
                 <td><input type="text" id="dbem_location" name="_dbem_location" value="<?php echo esc_attr($location); ?>" class="large-text"></td>
             </tr>
@@ -583,6 +593,7 @@ class DBEM_Admin {
         }
 
         // Checkbox
+        update_post_meta($post_id, '_dbem_hide_card_day', isset($_POST['_dbem_hide_card_day']) ? '1' : '0');
         update_post_meta($post_id, '_dbem_registration_open', isset($_POST['_dbem_registration_open']) ? '1' : '0');
         update_post_meta($post_id, '_dbem_survey_enabled', isset($_POST['_dbem_survey_enabled']) ? '1' : '0');
         update_post_meta($post_id, '_dbem_notify_admin', isset($_POST['_dbem_notify_admin']) ? '1' : '0');

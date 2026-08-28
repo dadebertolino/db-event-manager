@@ -130,6 +130,9 @@ class DBEM_CPT {
      * (es. "21-25 SET") invece del solo giorno di inizio, che da solo faceva
      * sembrare l'evento di un giorno.
      *
+     * Con _dbem_hide_card_day attivo il giorno viene omesso del tutto e il
+     * riquadro riporta solo mese e anno.
+     *
      * @return array|null null se l'evento non ha data di inizio
      */
     public static function get_card_date($event_id) {
@@ -147,6 +150,7 @@ class DBEM_CPT {
             'month'    => date_i18n('M', $ts_start),
             'year'     => date('Y', $ts_start),
             'multiday' => false,
+            'hide_day' => get_post_meta($event_id, '_dbem_hide_card_day', true) === '1',
             'range'    => $time_slot ? date('d/m/Y', $ts_start) : date('d/m/Y H:i', $ts_start),
         );
 

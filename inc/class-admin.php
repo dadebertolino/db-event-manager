@@ -350,6 +350,13 @@ class DBEM_Admin {
                         <p class="description"><?php _e('ID del campo nel form DBFB che contiene l\'email (es. "email", "e-mail", "field_2")', 'db-event-manager'); ?></p>
                     </td>
                 </tr>
+                <tr>
+                    <th><label for="dbem_dbfb_privacy_field"><?php _e('Campo Privacy', 'db-event-manager'); ?></label></th>
+                    <td>
+                        <input type="text" id="dbem_dbfb_privacy_field" name="_dbem_dbfb_privacy_field" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_dbfb_privacy_field', true)); ?>" class="regular-text" placeholder="privacy">
+                        <p class="description"><?php _e('ID della checkbox di consenso privacy nel form DBFB. Necessario per registrare la prova del consenso (art. 7.1 GDPR): se lasciato vuoto, l\'iscrizione viene salvata senza prova di consenso.', 'db-event-manager'); ?></p>
+                    </td>
+                </tr>
             </table>
         </div>
         <?php endif; ?>
@@ -618,6 +625,9 @@ class DBEM_Admin {
         if (isset($_POST['_dbem_dbfb_email_field'])) {
             update_post_meta($post_id, '_dbem_dbfb_email_field', sanitize_key($_POST['_dbem_dbfb_email_field']));
         }
+        if (isset($_POST['_dbem_dbfb_privacy_field'])) {
+            update_post_meta($post_id, '_dbem_dbfb_privacy_field', sanitize_key($_POST['_dbem_dbfb_privacy_field']));
+        }
 
         // Deadline
         if (isset($_POST['_dbem_registration_deadline'])) {
@@ -699,14 +709,19 @@ class DBEM_Admin {
         if (isset($_POST['dbem_settings_nonce']) && wp_verify_nonce($_POST['dbem_settings_nonce'], 'dbem_save_settings')) {
             update_option('dbem_events_page_id', absint($_POST['dbem_events_page_id'] ?? 0));
             update_option('dbem_events_page_title', sanitize_text_field($_POST['dbem_events_page_title'] ?? __('Eventi', 'db-event-manager')));
-            update_option('dbem_checkin_pin', sanitize_text_field($_POST['dbem_checkin_pin'] ?? ''));
+            // Il PIN non può essere vuoto: se svuotato, ne viene rigenerato uno
+            $new_pin = sanitize_text_field($_POST['dbem_checkin_pin'] ?? '');
+            if (!empty($_POST['dbem_regenerate_pin']) || $new_pin === '') {
+                $new_pin = DBEM_Security::generate_pin();
+            }
+            update_option('dbem_checkin_pin', $new_pin);
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
         }
 
         $events_page_id = get_option('dbem_events_page_id', 0);
         $events_page_title = get_option('dbem_events_page_title', __('Eventi', 'db-event-manager'));
-        $checkin_pin = get_option('dbem_checkin_pin', '');
+        $checkin_pin = DBEM_Security::get_pin();
         $checkin_url = home_url('/?dbem_checkin_page=1');
         $archive_url = get_post_type_archive_link('dbem_event');
         ?>
@@ -750,8 +765,17 @@ class DBEM_Admin {
                     <tr>
                         <th><label for="dbem_checkin_pin"><?php _e('PIN accesso check-in', 'db-event-manager'); ?></label></th>
                         <td>
-                            <input type="text" id="dbem_checkin_pin" name="dbem_checkin_pin" value="<?php echo esc_attr($checkin_pin); ?>" class="regular-text" placeholder="<?php esc_attr_e('Es. 1234', 'db-event-manager'); ?>">
-                            <p class="description"><?php _e('PIN richiesto per accedere alla pagina check-in da telefono. Se vuoto, la pagina è accessibile senza PIN.', 'db-event-manager'); ?></p>
+                            <input type="text" id="dbem_checkin_pin" name="dbem_checkin_pin" value="<?php echo esc_attr($checkin_pin); ?>" class="regular-text" autocomplete="off">
+                            <p class="description">
+                                <?php _e('PIN richiesto per le pagine pubbliche di check-in e partecipanti. <strong>È obbligatorio</strong>: senza PIN quelle pagine esporrebbero i dati personali degli iscritti a chiunque conosca l\'indirizzo. Se lasci il campo vuoto ne viene generato uno nuovo automaticamente.', 'db-event-manager'); ?>
+                            </p>
+                            <p>
+                                <label>
+                                    <input type="checkbox" name="dbem_regenerate_pin" value="1">
+                                    <?php _e('Genera un nuovo PIN al salvataggio', 'db-event-manager'); ?>
+                                </label>
+                            </p>
+                            <p class="description"><?php _e('Condividilo solo con lo staff all\'ingresso. Dopo 10 tentativi errati l\'indirizzo IP viene bloccato per 15 minuti.', 'db-event-manager'); ?></p>
                         </td>
                     </tr>
                     <tr>

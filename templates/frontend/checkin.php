@@ -1,7 +1,9 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-$pin_required = (bool) get_option('dbem_checkin_pin', '');
+// Il PIN è sempre obbligatorio: DBEM_Security lo genera se non configurato
+$pin_required = true;
+$public_nonce = DBEM_Security::public_nonce();
 $preloaded_token = sanitize_text_field($_GET['token'] ?? '');
 $site_name = get_bloginfo('name');
 ?>
@@ -181,7 +183,8 @@ $site_name = get_bloginfo('name');
     var scanner = null;
     var scanning = false;
     var preloadedToken = '<?php echo esc_js($preloaded_token); ?>';
-    var pinRequired = <?php echo $pin_required ? 'true' : 'false'; ?>;
+    var pinRequired = true;
+    var nonce = '<?php echo esc_js($public_nonce); ?>';
 
     /* === PIN === */
     if (pinRequired) {
@@ -192,20 +195,18 @@ $site_name = get_bloginfo('name');
         function tryPin() {
             pin = pinInput.value.trim();
             if (!pin) return;
-            // Verifica PIN con una richiesta di test
             fetch(ajaxUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=dbem_public_checkin&pin=' + encodeURIComponent(pin) + '&token=__pin_test__'
+                body: 'action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce)
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.data && data.data.status === 'pin_error') {
-                    pinError.textContent = data.data.message;
+                if (!data.success) {
+                    pinError.textContent = (data.data && data.data.message) || 'Errore';
                     pinError.style.display = 'block';
                     pinInput.select();
                 } else {
-                    // PIN corretto (token non trovato è ok, il PIN ha passato)
                     document.getElementById('ci-pin-screen').style.display = 'none';
                     document.getElementById('ci-main').style.display = 'block';
                     if (preloadedToken) processToken(preloadedToken);
@@ -279,7 +280,7 @@ $site_name = get_bloginfo('name');
         showFeedback('loading', '⏳', '', '', 'Verifica...');
 
         var body = 'action=dbem_public_checkin&token=' + encodeURIComponent(token);
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -345,7 +346,7 @@ $site_name = get_bloginfo('name');
         resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;">⏳ Ricerca...</p>';
 
         var body = 'action=dbem_public_search&search=' + encodeURIComponent(q);
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',

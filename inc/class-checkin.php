@@ -124,6 +124,7 @@ class DBEM_Checkin {
      * Pagina pubblica check-in (da telefono, senza login WP)
      */
     public static function render_public_page() {
+        nocache_headers();
         include DBEM_PLUGIN_DIR . 'templates/frontend/checkin.php';
         exit;
     }
@@ -132,14 +133,7 @@ class DBEM_Checkin {
      * Check-in AJAX pubblico (protetto da PIN)
      */
     public static function handle_public_checkin() {
-        // Verifica PIN
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager'), 'status' => 'pin_error'));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
         $token = sanitize_text_field($_POST['token'] ?? '');
         if (empty($token)) wp_send_json_error(array('message' => __('Token mancante', 'db-event-manager'), 'status' => 'invalid'));
@@ -205,13 +199,7 @@ class DBEM_Checkin {
      * Ricerca pubblica partecipanti (protetta da PIN)
      */
     public static function handle_public_search() {
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager'), 'status' => 'pin_error'));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
         $search = sanitize_text_field($_POST['search'] ?? '');
         if (strlen($search) < 2) {
@@ -241,6 +229,7 @@ class DBEM_Checkin {
      * Pagina pubblica partecipanti (protetta da PIN)
      */
     public static function render_public_participants_page() {
+        nocache_headers();
         include DBEM_PLUGIN_DIR . 'templates/frontend/participants.php';
         exit;
     }
@@ -249,14 +238,7 @@ class DBEM_Checkin {
      * AJAX: lista partecipanti pubblica (protetta da PIN)
      */
     public static function handle_public_participants() {
-        // Verifica PIN
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager'), 'status' => 'pin_error'));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id) wp_send_json_error(array('message' => __('Evento mancante', 'db-event-manager')));
@@ -304,23 +286,20 @@ class DBEM_Checkin {
      * AJAX: azione su partecipante da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_participant_action() {
-        // Verifica PIN
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager')));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
-        $action = sanitize_key($_POST['participant_action'] ?? '');
-        $reg_id = absint($_POST['registration_id'] ?? 0);
-        if (!$action || !$reg_id) wp_send_json_error(array('message' => __('Parametri mancanti', 'db-event-manager')));
+        $action   = sanitize_key($_POST['participant_action'] ?? '');
+        $reg_id   = absint($_POST['registration_id'] ?? 0);
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$action || !$reg_id || !$event_id) wp_send_json_error(array('message' => __('Parametri mancanti', 'db-event-manager')));
 
         DBEM_DB::ensure_tables();
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
+        // Vincola l'azione all'evento selezionato: impedisce di agire su ID arbitrari
+        $reg = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d AND event_id = %d", $reg_id, $event_id
+        ));
         if (!$reg) wp_send_json_error(array('message' => __('Iscrizione non trovata', 'db-event-manager')));
 
         switch ($action) {
@@ -374,14 +353,7 @@ class DBEM_Checkin {
      * AJAX: iscrizione manuale da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_add_participant() {
-        // Verifica PIN
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager')));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
         $event_id = absint($_POST['event_id'] ?? 0);
         $name = sanitize_text_field($_POST['name'] ?? '');
@@ -390,6 +362,9 @@ class DBEM_Checkin {
 
         if (!$event_id || !$name || !$email) {
             wp_send_json_error(array('message' => __('Nome, email e evento sono obbligatori', 'db-event-manager')));
+        }
+        if (get_post_type($event_id) !== 'dbem_event') {
+            wp_send_json_error(array('message' => __('Evento non valido', 'db-event-manager')));
         }
         if (!is_email($email)) {
             wp_send_json_error(array('message' => __('Email non valida', 'db-event-manager')));
@@ -445,26 +420,22 @@ class DBEM_Checkin {
      * AJAX: modifica orario assegnato da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_update_time() {
-        // Verifica PIN
-        $pin_stored = get_option('dbem_checkin_pin', '');
-        if ($pin_stored) {
-            $pin_sent = sanitize_text_field($_POST['pin'] ?? '');
-            if ($pin_sent !== $pin_stored) {
-                wp_send_json_error(array('message' => __('PIN non valido', 'db-event-manager')));
-            }
-        }
+        DBEM_Security::verify_public_request();
 
         $reg_id = absint($_POST['registration_id'] ?? 0);
+        $event_id = absint($_POST['event_id'] ?? 0);
         $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
 
-        if (!$reg_id) {
+        if (!$reg_id || !$event_id) {
             wp_send_json_error(array('message' => __('ID iscrizione mancante', 'db-event-manager')));
         }
 
         DBEM_DB::ensure_tables();
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
+        $reg = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d AND event_id = %d", $reg_id, $event_id
+        ));
 
         if (!$reg) {
             wp_send_json_error(array('message' => __('Iscrizione non trovata', 'db-event-manager')));

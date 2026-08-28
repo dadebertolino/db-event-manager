@@ -1,7 +1,9 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-$pin_required = (bool) get_option('dbem_checkin_pin', '');
+// Il PIN è sempre obbligatorio: DBEM_Security lo genera se non configurato
+$pin_required = true;
+$public_nonce = DBEM_Security::public_nonce();
 $site_name = get_bloginfo('name');
 
 // Eventi pubblicati
@@ -212,7 +214,8 @@ $events = get_posts(array(
 (function() {
     var ajaxUrl = '<?php echo esc_url(admin_url('admin-ajax.php')); ?>';
     var pin = '';
-    var pinRequired = <?php echo $pin_required ? 'true' : 'false'; ?>;
+    var nonce = '<?php echo esc_js($public_nonce); ?>';
+    var pinRequired = true;
     var currentEvent = 0;
     var allData = [];
     var allCustomKeys = [];
@@ -238,12 +241,12 @@ $events = get_posts(array(
             fetch(ajaxUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=dbem_public_checkin&pin=' + encodeURIComponent(pin) + '&token=__pin_test__'
+                body: 'action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce)
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.data && data.data.status === 'pin_error') {
-                    pinError.textContent = data.data.message;
+                if (!data.success) {
+                    pinError.textContent = (data.data && data.data.message) || 'Errore';
                     pinError.style.display = 'block';
                     pinInput.select();
                 } else {
@@ -274,7 +277,7 @@ $events = get_posts(array(
         document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-loading">⏳ <?php echo esc_js(__('Caricamento...', 'db-event-manager')); ?></div>';
 
         var body = 'action=dbem_public_participants&event_id=' + currentEvent;
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -371,7 +374,7 @@ $events = get_posts(array(
             btns += '<button class="pp-action" data-action="confirm" data-id="' + r.id + '" title="<?php echo esc_js(__('Riconferma', 'db-event-manager')); ?>">🔄</button>';
         }
         btns += '<button class="pp-action" data-action="resend" data-id="' + r.id + '" title="<?php echo esc_js(__('Reinvia email', 'db-event-manager')); ?>">📧</button>';
-        btns += '<button class="pp-action" data-action="edit_time" data-id="' + r.id + '" data-name="' + escHtml(r.name) + '" data-time="' + escHtml(r.assigned_time || '') + '" title="<?php echo esc_js(__('Modifica orario', 'db-event-manager')); ?>">🕐</button>';
+        btns += '<button class="pp-action" data-action="edit_time" data-id="' + r.id + '" data-name="' + escAttr(r.name) + '" data-time="' + escAttr(r.assigned_time || '') + '" title="<?php echo esc_js(__('Modifica orario', 'db-event-manager')); ?>">🕐</button>';
         return btns;
     }
 
@@ -390,7 +393,7 @@ $events = get_posts(array(
 
         var body = 'action=dbem_public_participant_action&participant_action=' + action
             + '&registration_id=' + regId + '&event_id=' + currentEvent;
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -424,6 +427,11 @@ $events = get_posts(array(
         var d = document.createElement('div');
         d.textContent = s || '';
         return d.innerHTML;
+    }
+
+    // escHtml non protegge il contesto attributo: le virgolette vanno codificate
+    function escAttr(s) {
+        return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     /* === Export CSV === */
@@ -514,7 +522,7 @@ $events = get_posts(array(
             + '&name=' + encodeURIComponent(name)
             + '&email=' + encodeURIComponent(email)
             + '&assigned_time=' + encodeURIComponent(time);
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -556,7 +564,7 @@ $events = get_posts(array(
         var body = 'action=dbem_public_update_time&registration_id=' + regId
             + '&assigned_time=' + encodeURIComponent(newTime)
             + '&event_id=' + currentEvent;
-        if (pin) body += '&pin=' + encodeURIComponent(pin);
+        body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
             method: 'POST',

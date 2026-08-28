@@ -250,6 +250,7 @@ class DBEM_Frontend {
 
         $name_field = get_post_meta($event_id, '_dbem_dbfb_name_field', true) ?: 'nome';
         $email_field = get_post_meta($event_id, '_dbem_dbfb_email_field', true) ?: 'email';
+        $privacy_field = get_post_meta($event_id, '_dbem_dbfb_privacy_field', true);
         $nonce = wp_create_nonce('dbem_registration_nonce');
 
         wp_enqueue_style('dbem-frontend');
@@ -259,6 +260,7 @@ class DBEM_Frontend {
         <div class="dbem-dbfb-wrap" data-event-id="<?php echo esc_attr($event_id); ?>"
              data-name-field="<?php echo esc_attr($name_field); ?>"
              data-email-field="<?php echo esc_attr($email_field); ?>"
+             data-privacy-field="<?php echo esc_attr($privacy_field); ?>"
              data-nonce="<?php echo esc_attr($nonce); ?>"
              data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
             <?php echo do_shortcode('[dbfb_form id="' . absint($dbfb_form_id) . '"]'); ?>
@@ -275,6 +277,7 @@ class DBEM_Frontend {
             var eventId = wrap.dataset.eventId;
             var nameField = wrap.dataset.nameField;
             var emailField = wrap.dataset.emailField;
+            var privacyField = wrap.dataset.privacyField;
             var nonce = wrap.dataset.nonce;
             var ajaxUrl = wrap.dataset.ajaxUrl;
             var dbemMsg = wrap.querySelector('.dbem-dbfb-message');
@@ -292,8 +295,14 @@ class DBEM_Frontend {
                 // Raccogli dati dal form (prima che venga resettato)
                 var inputs = form.querySelectorAll('input, select, textarea');
                 var data = {};
+                var privacyGiven = false;
                 inputs.forEach(function(el) {
-                    if (!el.name || el.name.indexOf('dbfb_') === 0) return;
+                    if (!el.name) return;
+                    // La checkbox privacy va letta anche se il nome è interno a DBFB
+                    if (privacyField && (el.name === privacyField || el.id === privacyField)) {
+                        privacyGiven = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : !!el.value;
+                    }
+                    if (el.name.indexOf('dbfb_') === 0) return;
                     if (el.type === 'checkbox' || el.type === 'radio') {
                         if (el.checked) data[el.name] = el.value;
                     } else {
@@ -315,6 +324,7 @@ class DBEM_Frontend {
                 body.append('dbem_email', email);
                 body.append('dbem_data', JSON.stringify(data));
                 body.append('dbem_nonce', nonce);
+                if (privacyGiven) body.append('dbem_privacy', '1');
 
                 fetch(ajaxUrl, {
                     method: 'POST',

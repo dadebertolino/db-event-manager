@@ -50,6 +50,7 @@ final class DB_Event_Manager {
     }
 
     private function includes() {
+        require_once DBEM_PLUGIN_DIR . 'inc/class-security.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-db.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-cpt.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-admin.php';
@@ -85,13 +86,14 @@ final class DB_Event_Manager {
         add_action('wp_enqueue_scripts', array('DBEM_Frontend', 'enqueue_scripts'));
 
         // AJAX
-        add_action('wp_ajax_dbem_save_event_meta', array('DBEM_Admin', 'save_event_meta'));
         add_action('wp_ajax_nopriv_dbem_register', array('DBEM_Registration', 'handle_registration'));
         add_action('wp_ajax_dbem_register', array('DBEM_Registration', 'handle_registration'));
         add_action('wp_ajax_nopriv_dbem_register_dbfb', array('DBEM_Registration', 'handle_dbfb_registration'));
         add_action('wp_ajax_dbem_register_dbfb', array('DBEM_Registration', 'handle_dbfb_registration'));
         add_action('wp_ajax_dbem_checkin', array('DBEM_Checkin', 'handle_checkin'));
         add_action('wp_ajax_dbem_checkin_search', array('DBEM_Checkin', 'handle_search'));
+        add_action('wp_ajax_nopriv_dbem_public_pin_check', array('DBEM_Security', 'handle_pin_check'));
+        add_action('wp_ajax_dbem_public_pin_check', array('DBEM_Security', 'handle_pin_check'));
         add_action('wp_ajax_nopriv_dbem_public_checkin', array('DBEM_Checkin', 'handle_public_checkin'));
         add_action('wp_ajax_dbem_public_checkin', array('DBEM_Checkin', 'handle_public_checkin'));
         add_action('wp_ajax_nopriv_dbem_public_search', array('DBEM_Checkin', 'handle_public_search'));

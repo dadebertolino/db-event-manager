@@ -7,6 +7,8 @@ class DBEM_DB {
         self::create_tables();
         self::maybe_upgrade();
         self::create_upload_dir();
+        // Genera il PIN delle pagine pubbliche se non esiste
+        DBEM_Security::get_pin();
         // Schedule cron
         if (!wp_next_scheduled('dbem_cron_check_events')) {
             wp_schedule_event(time(), 'hourly', 'dbem_cron_check_events');

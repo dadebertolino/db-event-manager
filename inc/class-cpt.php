@@ -124,6 +124,52 @@ class DBEM_CPT {
     }
 
     /**
+     * Parti del riquadro data usato nelle card evento.
+     *
+     * Se l'evento si estende su più giorni il riquadro mostra un intervallo
+     * (es. "21-25 SET") invece del solo giorno di inizio, che da solo faceva
+     * sembrare l'evento di un giorno.
+     *
+     * @return array|null null se l'evento non ha data di inizio
+     */
+    public static function get_card_date($event_id) {
+        $start = get_post_meta($event_id, '_dbem_date_start', true);
+        if (!$start) return null;
+
+        $end = get_post_meta($event_id, '_dbem_date_end', true);
+        $ts_start = strtotime($start);
+        $ts_end   = $end ? strtotime($end) : 0;
+
+        $time_slot = get_post_meta($event_id, '_dbem_time_slot_enabled', true) === '1';
+
+        $card = array(
+            'day'      => date('d', $ts_start),
+            'month'    => date_i18n('M', $ts_start),
+            'year'     => date('Y', $ts_start),
+            'multiday' => false,
+            'range'    => $time_slot ? date('d/m/Y', $ts_start) : date('d/m/Y H:i', $ts_start),
+        );
+
+        // Evento di un solo giorno (o senza data di fine): riquadro invariato
+        if (!$ts_end || date('Y-m-d', $ts_end) === date('Y-m-d', $ts_start)) {
+            return $card;
+        }
+
+        $card['multiday'] = true;
+        $card['range']    = date('d/m/Y', $ts_start) . ' — ' . date('d/m/Y', $ts_end);
+        $card['day']      = date('d', $ts_start) . '-' . date('d', $ts_end);
+
+        if (date('Y-m', $ts_start) !== date('Y-m', $ts_end)) {
+            $card['month'] = date_i18n('M', $ts_start) . '-' . date_i18n('M', $ts_end);
+        }
+        if (date('Y', $ts_start) !== date('Y', $ts_end)) {
+            $card['year'] = date('Y', $ts_start) . '-' . date('Y', $ts_end);
+        }
+
+        return $card;
+    }
+
+    /**
      * Posti rimanenti (0 = illimitati, -1 = esauriti)
      */
     public static function get_remaining_spots($event_id) {

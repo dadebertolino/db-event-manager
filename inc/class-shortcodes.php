@@ -137,26 +137,23 @@ class DBEM_Shortcodes {
                 $remaining = DBEM_CPT::get_remaining_spots($eid);
                 $reg_open = DBEM_CPT::are_registrations_open($eid);
                 $event_status = DBEM_CPT::get_event_status($eid);
+                $card_date = DBEM_CPT::get_card_date($eid);
             ?>
             <article class="dbem-event-card dbem-status-<?php echo esc_attr($event_status); ?>" role="listitem">
-                <div class="dbem-card-date">
-                    <?php if ($start): ?>
-                        <span class="dbem-card-day"><?php echo esc_html(date('d', strtotime($start))); ?></span>
-                        <span class="dbem-card-month"><?php echo esc_html(date_i18n('M', strtotime($start))); ?></span>
-                        <span class="dbem-card-year"><?php echo esc_html(date('Y', strtotime($start))); ?></span>
+                <div class="dbem-card-date<?php echo $card_date && $card_date['multiday'] ? ' dbem-card-date-multi' : ''; ?>">
+                    <?php if ($card_date): ?>
+                        <span class="dbem-card-day"><?php echo esc_html($card_date['day']); ?></span>
+                        <span class="dbem-card-month"><?php echo esc_html($card_date['month']); ?></span>
+                        <span class="dbem-card-year"><?php echo esc_html($card_date['year']); ?></span>
                     <?php endif; ?>
                 </div>
                 <div class="dbem-card-content">
                     <h3 class="dbem-card-title">
                         <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
                     </h3>
-                    <?php if ($start): ?>
+                    <?php if ($card_date): ?>
                         <p class="dbem-card-meta">
-                            <?php
-                            $ts_enabled = get_post_meta($eid, '_dbem_time_slot_enabled', true);
-                            $date_fmt = ($ts_enabled === '1') ? date('d/m/Y', strtotime($start)) : date('d/m/Y H:i', strtotime($start));
-                            ?>
-                            <span>📅 <?php echo esc_html($date_fmt); ?></span>
+                            <span>📅 <?php echo esc_html($card_date['range']); ?></span>
                             <?php if ($location): ?><span>📍 <?php echo esc_html($location); ?></span><?php endif; ?>
                         </p>
                     <?php endif; ?>
@@ -170,6 +167,9 @@ class DBEM_Shortcodes {
                         </p>
                     <?php endif; ?>
                     <div class="dbem-card-status">
+                        <?php if ($card_date && $card_date['multiday']): ?>
+                            <span class="dbem-badge dbem-badge-multiday"><?php esc_html_e('Più date', 'db-event-manager'); ?></span>
+                        <?php endif; ?>
                         <?php if ($event_status === 'past'): ?>
                             <span class="dbem-badge dbem-badge-past"><?php esc_html_e('Concluso', 'db-event-manager'); ?></span>
                         <?php elseif ($remaining === -1): ?>

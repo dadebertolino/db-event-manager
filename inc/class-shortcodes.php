@@ -40,7 +40,12 @@ class DBEM_Shortcodes {
 
             <?php if ($event_desc): ?>
                 <div class="dbem-event-description">
-                    <?php echo wp_kses_post(apply_filters('the_content', $event_desc)); ?>
+                    <?php
+                    // Niente apply_filters('the_content'): lo shortcode gira già dentro
+                    // the_content e il nesting causa ricorsione. wp_kses_post da solo
+                    // basta e non spoglia il markup dei blocchi.
+                    echo wp_kses_post(do_blocks(wpautop($event_desc)));
+                    ?>
                 </div>
             <?php endif; ?>
 

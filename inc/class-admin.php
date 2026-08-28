@@ -54,7 +54,7 @@ class DBEM_Admin {
 
         if (!$is_plugin_page) return;
 
-        wp_enqueue_style('db-admin-ui', DBEM_PLUGIN_URL . 'assets/css/db-admin-ui.css', array(), '1.0.0');
+        wp_enqueue_style('db-admin-ui', DBEM_PLUGIN_URL . 'assets/css/db-admin-ui.css', array(), DBEM_VERSION);
         wp_enqueue_style('dbem-admin', DBEM_PLUGIN_URL . 'assets/css/admin.css', array('db-admin-ui'), DBEM_VERSION);
         wp_enqueue_script('dbem-sortable', DBEM_PLUGIN_URL . 'assets/js/vendor/Sortable.min.js', array(), '1.15.0', true);
         wp_enqueue_script('dbem-admin', DBEM_PLUGIN_URL . 'assets/js/admin.js', array('jquery', 'dbem-sortable'), DBEM_VERSION, true);
@@ -228,8 +228,6 @@ class DBEM_Admin {
                     <p class="description"><?php _e('Chi riceve la richiesta di approvazione. Più indirizzi separati da virgola. Se vuoto, usa l\'email notifica admin.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
-        </table>
-
             <tr class="dbem-approval-row" style="<?php echo $approval_mode !== 'approval' ? 'display:none;' : ''; ?>">
                 <th><label for="dbem_time_slot_enabled"><?php _e('Assegnazione orario', 'db-event-manager'); ?></label></th>
                 <td>
@@ -241,18 +239,6 @@ class DBEM_Admin {
                 </td>
             </tr>
 
-
-        <script>
-        jQuery(function($) {
-            $('input[name="_dbem_approval_mode"]').on('change', function() {
-                if ($(this).val() === 'approval') {
-                    $('.dbem-approval-row').show();
-                } else {
-                    $('.dbem-approval-row').hide();
-                }
-            });
-        });
-        </script>
 
             <?php if ($dbfb_active): ?>
             <tr>
@@ -296,6 +282,18 @@ class DBEM_Admin {
                 </td>
             </tr>
         </table>
+
+        <script>
+        jQuery(function($) {
+            $('input[name="_dbem_approval_mode"]').on('change', function() {
+                if ($(this).val() === 'approval') {
+                    $('.dbem-approval-row').show();
+                } else {
+                    $('.dbem-approval-row').hide();
+                }
+            });
+        });
+        </script>
 
         <!-- Form integrato -->
         <div id="dbem-form-builtin" style="<?php echo ($dbfb_active && $form_source === 'dbfb') ? 'display:none;' : ''; ?>">
@@ -401,6 +399,14 @@ class DBEM_Admin {
                     <p class="description">
                         <?php _e('Placeholder disponibili: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}', 'db-event-manager'); ?>
                     </p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="dbem_reminder_hours"><?php _e('Promemoria evento', 'db-event-manager'); ?></label></th>
+                <td>
+                    <input type="number" id="dbem_reminder_hours" name="_dbem_reminder_hours" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_reminder_hours', true)); ?>" class="small-text" min="0">
+                    <span><?php _e('ore prima dell\'inizio evento (0 = nessun promemoria)', 'db-event-manager'); ?></span>
+                    <p class="description"><?php _e('Invia a tutti gli iscritti confermati un promemoria con data, luogo e QR code.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
@@ -546,7 +552,7 @@ class DBEM_Admin {
     public static function save_metabox($post_id, $post) {
         if (!isset($_POST['dbem_event_nonce']) || !wp_verify_nonce($_POST['dbem_event_nonce'], 'dbem_save_event')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-        if (!current_user_can('manage_options', $post_id)) return;
+        if (!current_user_can('edit_post', $post_id)) return;
 
         // Nome evento e descrizione
         if (isset($_POST['_dbem_event_name'])) {
@@ -673,6 +679,21 @@ class DBEM_Admin {
             update_post_meta($post_id, '_dbem_survey_auto_hours', absint($_POST['_dbem_survey_auto_hours']));
         }
 
+        if (isset($_POST['_dbem_reminder_hours'])) {
+            update_post_meta($post_id, '_dbem_reminder_hours', absint($_POST['_dbem_reminder_hours']));
+        }
+
+        // Schedule promemoria evento
+        $reminder_hours = absint(get_post_meta($post_id, '_dbem_reminder_hours', true));
+        $start = get_post_meta($post_id, '_dbem_date_start', true);
+        wp_clear_scheduled_hook('dbem_send_reminder', array($post_id));
+        if ($reminder_hours > 0 && $start) {
+            $reminder_time = strtotime($start) - ($reminder_hours * 3600);
+            if ($reminder_time > time()) {
+                wp_schedule_single_event($reminder_time, 'dbem_send_reminder', array($post_id));
+            }
+        }
+
         // Schedule survey automatico
         $survey_auto = absint(get_post_meta($post_id, '_dbem_survey_auto_hours', true));
         $end = get_post_meta($post_id, '_dbem_date_end', true);
@@ -715,6 +736,7 @@ class DBEM_Admin {
                 $new_pin = DBEM_Security::generate_pin();
             }
             update_option('dbem_checkin_pin', $new_pin);
+            update_option('dbem_delete_data_on_uninstall', isset($_POST['dbem_delete_data_on_uninstall']) ? '1' : '0');
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
         }
@@ -789,6 +811,24 @@ class DBEM_Admin {
 
                 <hr>
 
+                <h2><?php esc_html_e('Dati e privacy', 'db-event-manager'); ?></h2>
+                <table class="form-table">
+                    <tr>
+                        <th><?php _e('Disinstallazione', 'db-event-manager'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="dbem_delete_data_on_uninstall" value="1" <?php checked(get_option('dbem_delete_data_on_uninstall', '0'), '1'); ?>>
+                                <?php _e('Elimina tutti i dati quando il plugin viene disinstallato', 'db-event-manager'); ?>
+                            </label>
+                            <p class="description">
+                                <?php _e('Iscrizioni, risposte survey, file QR code e impostazioni. Con l\'opzione disattivata i dati restano nel database anche dopo la rimozione del plugin: attivala se non intendi reinstallarlo, per non conservare dati personali senza motivo.', 'db-event-manager'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+                <hr>
+
                 <h2><?php esc_html_e('Link utili', 'db-event-manager'); ?></h2>
                 <table class="form-table">
                     <tr>
@@ -849,11 +889,16 @@ class DBEM_Admin {
 
         switch ($action) {
             case 'confirm':
+                // Gli stati vanno letti PRIMA dell'update, altrimenti risultano tutti
+                // 'confirmed' e l'email di conferma parte anche a chi l'aveva già
+                $to_notify = $wpdb->get_col($wpdb->prepare(
+                    "SELECT id FROM $table WHERE id IN ($placeholders) AND status != 'confirmed'",
+                    ...$ids
+                ));
                 $wpdb->query($wpdb->prepare("UPDATE $table SET status = 'confirmed' WHERE id IN ($placeholders)", ...$ids));
-                // Se erano pending, genera QR e invia conferma
-                foreach ($ids as $rid) {
+                foreach ($to_notify as $rid) {
                     $r = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $rid));
-                    if ($r && $r->status === 'confirmed') {
+                    if ($r) {
                         DBEM_QRCode::generate($r->token);
                         DBEM_Email::send_confirmation($r->event_id, $r);
                     }

@@ -4,6 +4,20 @@ if (!defined('ABSPATH')) exit;
 class DBEM_Export {
 
     /**
+     * Neutralizza le formule nei CSV: un valore che inizia con = + - @ o un
+     * carattere di controllo viene eseguito da Excel/LibreOffice all'apertura.
+     * I dati arrivano da form pubblici, quindi non sono attendibili.
+     */
+    private static function csv_safe($value) {
+        if (is_array($value)) $value = implode(', ', $value);
+        $value = (string) $value;
+        if ($value !== '' && strpbrk($value[0], "=+-@\t\r") !== false) {
+            return "'" . $value;
+        }
+        return $value;
+    }
+
+    /**
      * Export CSV partecipanti
      */
     public static function handle_export() {
@@ -56,18 +70,16 @@ class DBEM_Export {
             $data = json_decode($reg->data, true);
             $row = array(
                 $reg->id,
-                $reg->name,
-                $reg->email,
+                self::csv_safe($reg->name),
+                self::csv_safe($reg->email),
                 $status_labels[$reg->status] ?? $reg->status,
                 $reg->registered_at,
                 $reg->checked_in_at ?: '',
-                isset($reg->assigned_time) ? $reg->assigned_time : '',
+                self::csv_safe(isset($reg->assigned_time) ? $reg->assigned_time : ''),
                 $reg->ip_address,
             );
             foreach ($custom_keys as $ck) {
-                $val = $data[$ck] ?? '';
-                if (is_array($val)) $val = implode(', ', $val);
-                $row[] = $val;
+                $row[] = self::csv_safe($data[$ck] ?? '');
             }
             fputcsv($output, $row);
         }
@@ -114,11 +126,9 @@ class DBEM_Export {
 
         foreach ($responses as $resp) {
             $data = json_decode($resp->data, true);
-            $row = array($resp->name, $resp->email, $resp->submitted_at);
+            $row = array(self::csv_safe($resp->name), self::csv_safe($resp->email), $resp->submitted_at);
             foreach ($survey_keys as $k) {
-                $val = $data[$k] ?? '';
-                if (is_array($val)) $val = implode(', ', $val);
-                $row[] = $val;
+                $row[] = self::csv_safe($data[$k] ?? '');
             }
             fputcsv($output, $row);
         }

@@ -493,6 +493,8 @@ $events = get_posts(array(
 
     function csvEsc(s) {
         s = (s || '').toString();
+        // Neutralizza le formule interpretate da Excel/LibreOffice
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
         if (s.indexOf(';') > -1 || s.indexOf('"') > -1 || s.indexOf('\n') > -1) {
             return '"' + s.replace(/"/g, '""') + '"';
         }

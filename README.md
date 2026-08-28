@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.3.0  
+**Versione:** 1.4.0  
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -50,7 +50,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
 ### ✅ Check-in con QR code
 - **Pagina pubblica check-in** — aprila sul telefono, niente login WordPress
-- Protetta da PIN configurabile
+- Protetta da PIN obbligatorio (generato automaticamente, modificabile in Impostazioni)
 - Scanner QR integrato (fotocamera smartphone)
 - Ricerca manuale per nome/email su tutti gli eventi
 - Feedback visivo grande e chiaro: ✅ Presente, ⚠️ Già registrato, ❌ Non valido
@@ -73,7 +73,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Notifica "in attesa di approvazione" (per modalità con approvazione)
 - Richiesta approvazione all'approvatore con bottoni Approva/Rifiuta
 - Notifica rifiuto iscrizione
-- Promemoria evento (programmabile via WP Cron)
+- Promemoria evento (configurabile per evento: N ore prima dell'inizio)
 - Survey post-evento (manuale o automatico)
 - Email annullamento
 - Notifica admin personalizzabile per evento (anche più destinatari)
@@ -117,8 +117,9 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 ### ⚙️ Impostazioni
 - Pagina elenco eventi personalizzabile (pagina WP o archivio automatico)
 - Titolo pagina archivio configurabile
-- PIN check-in per proteggere le pagine pubbliche (check-in e partecipanti)
+- PIN obbligatorio per le pagine pubbliche (check-in e partecipanti): generato automaticamente, rigenerabile dalla pagina Impostazioni
 - Link check-in e partecipanti da condividere con lo staff
+- Opzione "Elimina tutti i dati alla disinstallazione" (disattivata di default)
 - Riepilogo shortcode disponibili
 
 ---
@@ -192,6 +193,7 @@ Tutti i parametri sono combinabili.
 ```
 db-event-manager/
 ├── db-event-manager.php
+├── uninstall.php                # Pulizia dati alla rimozione (opzionale)
 ├── README.md
 ├── LICENSE
 ├── assets/
@@ -209,6 +211,7 @@ db-event-manager/
 │           └── html5-qrcode.min.js
 ├── inc/
 │   ├── class-updater.php        # GitHub auto-updater
+│   ├── class-security.php       # PIN, nonce e rate limit endpoint pubblici
 │   ├── class-db.php
 │   ├── class-cpt.php
 │   ├── class-admin.php
@@ -222,8 +225,11 @@ db-event-manager/
 │   ├── class-cron.php
 │   ├── class-shortcodes.php
 │   ├── class-gutenberg.php
+│   ├── class-privacy-declarations.php
+│   ├── class-privacy-dsar.php
 │   └── lib/
 │       └── phpqrcode.php        # QR code PHP pura (LGPL 3), classi prefissate DBEM_
+├── languages/                   # File di traduzione (.pot/.po/.mo)
 └── templates/
     ├── single-dbem_event.php
     ├── archive-dbem_event.php
@@ -291,6 +297,29 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.4.0
+**Sicurezza**
+- Le pagine pubbliche di check-in e partecipanti richiedono ora obbligatoriamente un PIN. Prima il PIN era opzionale e vuoto di default: chiunque conoscesse l'indirizzo poteva leggere le anagrafiche complete degli iscritti, approvare o annullare iscrizioni e inviare email dal sito. Il PIN viene generato automaticamente all'aggiornamento e si legge in Impostazioni
+- Nuova classe `DBEM_Security`: confronto del PIN in tempo costante (`hash_equals`), rate limit di 10 tentativi per IP ogni 15 minuti, verifica nonce su tutte le chiamate AJAX pubbliche (protezione CSRF)
+- Corretto un XSS memorizzato nella pagina pubblica partecipanti: il nome di un iscritto poteva iniettare attributi HTML nella tabella dell'organizzatore
+- Le azioni sui partecipanti sono vincolate all'evento selezionato
+- Export CSV: neutralizzate le formule (`=`, `+`, `-`, `@`) interpretate da Excel
+
+**Dati e consenso**
+- Corretto l'array di format di `wpdb->insert`: aveva 8 specificatori per 13 colonne, quindi l'indirizzo IP veniva salvato come `0` a ogni iscrizione e, con checkbox GDPR attiva, testo/timestamp/URL del consenso venivano azzerati (su MySQL in strict mode l'iscrizione falliva del tutto mostrando comunque un messaggio di successo)
+- Corretto uno statement troncato che rendeva inefficace il controllo di errore sull'inserimento
+- Il path DB Form Builder non registra più un consenso non verificato: nuovo campo "Campo Privacy" nella mappatura del form, la prova viene salvata solo a fronte di una checkbox effettivamente spuntata
+- Nuovo `uninstall.php` con opzione "Elimina tutti i dati alla disinstallazione" (disattivata di default)
+
+**Correzioni**
+- Il promemoria evento ora funziona: nuovo campo "Promemoria evento" (N ore prima dell'inizio). L'hook cron esisteva ma non veniva mai pianificato
+- L'azione in blocco "Conferma" non reinvia più l'email a chi era già confermato
+- Corretto il markup del metabox Iscrizioni: un `</table>` fuori posto lasciava la sezione Privacy/GDPR e "Assegnazione orario" senza layout
+- Capability corretta nel salvataggio evento (`edit_post` al posto di `manage_options`)
+- Rimossa la registrazione AJAX `dbem_save_event_meta`, il cui callback non è mai esistito
+- Aggiunto `load_plugin_textdomain` e cartella `languages/`: le stringhe sono ora traducibili
+- Lo shortcode `[dbem_event]` non applica più `the_content` in modo annidato
 
 ### 1.3.0
 - Integrazione ecosistema privacy DB: dichiarazioni trattamenti al Privacy Hub, DSAR export/erase con dual channel (Hub + WP core), consent storage con 5 colonne GDPR

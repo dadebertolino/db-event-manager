@@ -3,7 +3,7 @@
  * Plugin Name: DB Event Manager
  * Plugin URI: https://github.com/dadebertolino/db-event-manager
  * Description: Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento. Niente Eventbrite, niente SaaS, niente abbonamenti.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Davide Bertolino
  * Author URI: https://www.davidebertolino.it
  * License: GPL v2 or later
@@ -11,11 +11,12 @@
  * Text Domain: db-event-manager
  * Requires at least: 5.8
  * Requires PHP: 7.4
+ * Domain Path: /languages
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('DBEM_VERSION', '1.3.0');
+define('DBEM_VERSION', '1.4.0');
 define('DBEM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DBEM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DBEM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -80,6 +81,7 @@ final class DB_Event_Manager {
         register_activation_hook(__FILE__, array('DBEM_DB', 'activate'));
         register_deactivation_hook(__FILE__, array('DBEM_Cron', 'deactivate'));
 
+        add_action('init', array($this, 'load_textdomain'));
         add_action('init', array('DBEM_CPT', 'register'));
         add_action('admin_menu', array('DBEM_Admin', 'register_menus'));
         add_action('admin_enqueue_scripts', array('DBEM_Admin', 'enqueue_scripts'));
@@ -137,6 +139,10 @@ final class DB_Event_Manager {
 
         // Ordina archivio per data evento (non data pubblicazione)
         add_action('pre_get_posts', array($this, 'order_archive'));
+    }
+
+    public function load_textdomain() {
+        load_plugin_textdomain('db-event-manager', false, dirname(DBEM_PLUGIN_BASENAME) . '/languages');
     }
 
     /**

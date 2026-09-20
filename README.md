@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.4.0  
+**Versione:** 1.4.1  
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -301,6 +301,12 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.4.1
+- Aggiunta base di test automatica con PHPUnit
+- Aggiunto workflow GitHub Actions per esecuzione automatica di test su push/PR
+- Aggiunta configurazione git per ignorare vendor e cache di test
+- Verificata la stabilità del flusso di sicurezza, registrazione, reminder e approvazione
 
 ### 1.4.0
 **Elenco eventi**

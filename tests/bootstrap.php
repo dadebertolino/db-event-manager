@@ -207,6 +207,10 @@ if (!class_exists('wpdb')) {
                     return $row['status'] === 'pending';
                 }
 
+                if ($matches_event && str_contains($query, "status IN ('confirmed', 'checked_in')")) {
+                    return in_array($row['status'], array('confirmed', 'checked_in'), true);
+                }
+
                 if ($matches_event && str_contains($query, "status != 'cancelled'")) {
                     return $row['status'] !== 'cancelled';
                 }
@@ -220,6 +224,17 @@ if (!class_exists('wpdb')) {
         }
 
         public function get_row($query) {
+            if (str_contains($query, "event_id = 10") && str_contains($query, "email = 'alice@example.com'")) {
+                return (object) array(
+                    'id' => 1,
+                    'event_id' => 10,
+                    'email' => 'alice@example.com',
+                    'name' => 'Alice',
+                    'status' => 'confirmed',
+                    'token' => 'token-1',
+                );
+            }
+
             if (str_contains($query, 'id = 2')) {
                 return (object) array(
                     'id' => 2,

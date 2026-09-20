@@ -65,12 +65,14 @@ class DBEM_Admin {
             'i18n'     => array(
                 'confirm_delete'   => __('Sei sicuro di voler eliminare?', 'db-event-manager'),
                 'confirm_cancel'   => __('Sei sicuro di voler annullare questa iscrizione?', 'db-event-manager'),
+                'confirm_reminder' => __('Inviare il reminder a tutti i partecipanti confermati e presenti?', 'db-event-manager'),
                 'checked_in'       => __('Check-in effettuato', 'db-event-manager'),
                 'already_checked'  => __('Già registrato', 'db-event-manager'),
                 'cancelled'        => __('Iscrizione annullata', 'db-event-manager'),
                 'invalid_token'    => __('QR code non valido', 'db-event-manager'),
                 'no_results'       => __('Nessun risultato', 'db-event-manager'),
                 'email_sent'       => __('Email inviata', 'db-event-manager'),
+                                'reminder_sent'    => __('Promemoria inviati', 'db-event-manager'),
                 'error'            => __('Errore', 'db-event-manager'),
                 'loading'          => __('Caricamento...', 'db-event-manager'),
                 'add_field'        => __('Aggiungi campo', 'db-event-manager'),
@@ -187,6 +189,7 @@ class DBEM_Admin {
         $deadline = get_post_meta($post->ID, '_dbem_registration_deadline', true);
         $approval_mode = get_post_meta($post->ID, '_dbem_approval_mode', true) ?: 'auto';
         $approver_email = get_post_meta($post->ID, '_dbem_approver_email', true);
+        $allow_registration_update = get_post_meta($post->ID, '_dbem_allow_registration_update', true);
         $custom_fields = get_post_meta($post->ID, '_dbem_custom_fields', true);
         if (!$custom_fields) $custom_fields = array();
         $form_source = get_post_meta($post->ID, '_dbem_form_source', true) ?: 'builtin';
@@ -246,6 +249,16 @@ class DBEM_Admin {
                         <?php _e('Consenti di assegnare un orario al momento dell\'approvazione', 'db-event-manager'); ?>
                     </label>
                     <p class="description"><?php _e('L\'approvatore vedrà un campo per inserire l\'orario prima di confermare.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="dbem_allow_registration_update"><?php _e('Reiscrizione con stessa email', 'db-event-manager'); ?></label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" id="dbem_allow_registration_update" name="_dbem_allow_registration_update" value="1" <?php checked($allow_registration_update, '1'); ?>>
+                        <?php _e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
+                    </label>
+                    <p class="description"><?php _e('La nuova richiesta aggiorna nome, email, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
 
@@ -624,6 +637,7 @@ class DBEM_Admin {
 
         // Assegnazione orario
         update_post_meta($post_id, '_dbem_time_slot_enabled', isset($_POST['_dbem_time_slot_enabled']) ? '1' : '0');
+        update_post_meta($post_id, '_dbem_allow_registration_update', isset($_POST['_dbem_allow_registration_update']) ? '1' : '0');
 
         // GDPR
         update_post_meta($post_id, '_dbem_gdpr_enabled', isset($_POST['_dbem_gdpr_enabled']) ? '1' : '0');
@@ -959,6 +973,40 @@ class DBEM_Admin {
         } else {
             wp_send_json_error(__('Errore invio email', 'db-event-manager'));
         }
+    }
+
+    /**
+     * Invia il promemoria a tutti i partecipanti validi dell'evento
+     */
+    public static function handle_send_reminder() {
+        check_ajax_referer('dbem_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
+            wp_send_json_error(__('Evento non valido', 'db-event-manager'));
+        }
+
+        DBEM_DB::ensure_tables();
+        $sent = 0;
+        $failed = 0;
+        foreach (DBEM_DB::get_reminder_registrations($event_id) as $reg) {
+            if (DBEM_Email::send_reminder($event_id, $reg)) {
+                $sent++;
+            } else {
+                $failed++;
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => sprintf(
+                __('Promemoria inviati: %1$d. Non inviati: %2$d.', 'db-event-manager'),
+                $sent,
+                $failed
+            ),
+            'sent'   => $sent,
+            'failed' => $failed,
+        ));
     }
 }
 

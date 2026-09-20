@@ -111,6 +111,9 @@
 .dbem-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .dbem-bulk-actions { display: flex; gap: 6px; align-items: center; }
 .dbem-participants-table .check-column { width: 30px; }
+.dbem-registration-choices { min-width: 260px; max-width: 480px; line-height: 1.45; }
+.dbem-registration-choices div + div { margin-top: 4px; }
+.dbem-registration-choices strong { color: var(--db-text-muted); }
 .dbem-status-badge {
     display: inline-flex;
     align-items: center;
@@ -135,6 +138,7 @@
 
 .dbem-event-selector { margin-bottom: 16px; }
 .dbem-event-selector select { min-width: 250px; }
+.dbem-event-selector form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* === Survey Summary === */
 .dbem-survey-summary { margin-bottom: 24px; }

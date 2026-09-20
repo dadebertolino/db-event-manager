@@ -31,14 +31,9 @@ class DBEM_Registration {
             wp_send_json_error(__('Evento non valido.', 'db-event-manager'));
         }
 
-        // Verifica iscrizioni aperte
-        if (!DBEM_CPT::are_registrations_open($event_id)) {
-            wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
-        }
-
         // Valida campi obbligatori
         $name = sanitize_text_field($_POST['dbem_name'] ?? '');
-        $email = sanitize_email($_POST['dbem_email'] ?? '');
+        $email = strtolower(sanitize_email($_POST['dbem_email'] ?? ''));
 
         if (empty($name)) {
             wp_send_json_error(__('Il nome è obbligatorio.', 'db-event-manager'));
@@ -53,10 +48,15 @@ class DBEM_Registration {
             wp_send_json_error(__('Devi accettare l\'informativa sulla privacy.', 'db-event-manager'));
         }
 
-        // Controlla duplicati
+        // Controlla duplicati: l'aggiornamento è disponibile solo se attivato per l'evento
         DBEM_DB::ensure_tables();
-        if (DBEM_DB::email_exists_for_event($event_id, $email)) {
+        $existing = DBEM_DB::get_registration_by_email($event_id, $email);
+        $allow_update = get_post_meta($event_id, '_dbem_allow_registration_update', true) === '1';
+        if ($existing && !$allow_update) {
             wp_send_json_error(__('Questo indirizzo email è già registrato per questo evento.', 'db-event-manager'));
+        }
+        if (!$existing && !DBEM_CPT::are_registrations_open($event_id)) {
+            wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
         }
 
         // Campi custom
@@ -85,7 +85,7 @@ class DBEM_Registration {
         $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
         if ($max > 0) {
             $count = DBEM_DB::count_registrations($event_id);
-            if ($count >= $max) {
+            if ($count >= $max && !$existing) {
                 wp_send_json_error(__('I posti sono esauriti.', 'db-event-manager'));
             }
         }
@@ -130,20 +130,36 @@ class DBEM_Registration {
             }
         }
 
-        $result = $wpdb->insert($table, array(
-            'event_id'      => $event_id,
+        $registration_data = array(
             'data'          => wp_json_encode(array_merge(array('nome' => $name, 'email' => $email), $custom_data)),
             'email'         => $email,
             'name'          => $name,
-            'token'         => $token,
-            'status'        => $initial_status,
-            'registered_at' => current_time('mysql'),
             'gdpr_consent_given'          => $gdpr_consent_given,
             'gdpr_consent_text'           => $gdpr_consent_text,
             'gdpr_consent_timestamp'      => $gdpr_consent_timestamp,
             'gdpr_consent_privacy_url'    => $gdpr_consent_privacy_url,
             'gdpr_consent_policy_version' => $gdpr_consent_policy_version,
             'ip_address'    => $ip,
+        );
+
+        if ($existing) {
+            $result = DBEM_DB::replace_registration($existing->id, $registration_data);
+            $reg_id = $existing->id;
+        } else {
+            $result = $wpdb->insert($table, array(
+            'event_id'      => $event_id,
+            'data'          => $registration_data['data'],
+            'email'         => $registration_data['email'],
+            'name'          => $registration_data['name'],
+            'token'         => $token,
+            'status'        => $initial_status,
+            'registered_at' => current_time('mysql'),
+            'gdpr_consent_given'          => $registration_data['gdpr_consent_given'],
+            'gdpr_consent_text'           => $registration_data['gdpr_consent_text'],
+            'gdpr_consent_timestamp'      => $registration_data['gdpr_consent_timestamp'],
+            'gdpr_consent_privacy_url'    => $registration_data['gdpr_consent_privacy_url'],
+            'gdpr_consent_policy_version' => $registration_data['gdpr_consent_policy_version'],
+            'ip_address'    => $registration_data['ip_address'],
         ), array(
             '%d', // event_id
             '%s', // data
@@ -158,18 +174,20 @@ class DBEM_Registration {
             '%s', // gdpr_consent_privacy_url
             '%d', // gdpr_consent_policy_version
             '%s', // ip_address
-        ));
+            ));
+            $reg_id = $wpdb->insert_id;
+        }
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione. Riprova.', 'db-event-manager'));
         }
 
-        $reg_id = $wpdb->insert_id;
         $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
 
-        if ($initial_status === 'confirmed') {
+        $effective_status = $reg->status;
+        if (in_array($effective_status, array('confirmed', 'checked_in'), true)) {
             // Auto: QR + email conferma subito
-            DBEM_QRCode::generate($token);
+            DBEM_QRCode::generate($reg->token);
             DBEM_Email::send_confirmation($event_id, $reg);
         } else {
             // Approvazione: email "in attesa" all'iscritto + email approvazione al responsabile
@@ -183,9 +201,13 @@ class DBEM_Registration {
             DBEM_Email::notify_admin($event_id, $reg);
         }
 
-        $success_message = ($initial_status === 'confirmed')
-            ? __('Iscrizione completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager')
-            : __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');
+        if ($existing) {
+            $success_message = __('Iscrizione aggiornata! Controlla la tua email per i dati aggiornati.', 'db-event-manager');
+        } elseif ($initial_status === 'confirmed') {
+            $success_message = __('Iscrizione completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager');
+        } else {
+            $success_message = __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');
+        }
 
         wp_send_json_success(array(
             'message' => $success_message,
@@ -211,12 +233,8 @@ class DBEM_Registration {
             wp_send_json_error(__('Evento non valido.', 'db-event-manager'));
         }
 
-        if (!DBEM_CPT::are_registrations_open($event_id)) {
-            wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
-        }
-
         $name = sanitize_text_field($_POST['dbem_name'] ?? '');
-        $email = sanitize_email($_POST['dbem_email'] ?? '');
+        $email = strtolower(sanitize_email($_POST['dbem_email'] ?? ''));
 
         if (empty($name) || !is_email($email)) {
             wp_send_json_error(__('Nome e email sono obbligatori.', 'db-event-manager'));
@@ -224,13 +242,18 @@ class DBEM_Registration {
 
         DBEM_DB::ensure_tables();
 
-        if (DBEM_DB::email_exists_for_event($event_id, $email)) {
+        $existing = DBEM_DB::get_registration_by_email($event_id, $email);
+        $allow_update = get_post_meta($event_id, '_dbem_allow_registration_update', true) === '1';
+        if ($existing && !$allow_update) {
             wp_send_json_error(__('Questo indirizzo email è già registrato per questo evento.', 'db-event-manager'));
+        }
+        if (!$existing && !DBEM_CPT::are_registrations_open($event_id)) {
+            wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
         }
 
         // Posti
         $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
-        if ($max > 0 && DBEM_DB::count_registrations($event_id) >= $max) {
+        if ($max > 0 && DBEM_DB::count_registrations($event_id) >= $max && !$existing) {
             wp_send_json_error(__('I posti sono esauriti.', 'db-event-manager'));
         }
 
@@ -289,20 +312,36 @@ class DBEM_Registration {
 
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $result = $wpdb->insert($table, array(
-            'event_id'      => $event_id,
+        $registration_data = array(
             'data'          => wp_json_encode(array_merge(array('nome' => $name, 'email' => $email), $extra_data)),
             'email'         => $email,
             'name'          => $name,
-            'token'         => $token,
-            'status'        => $initial_status,
-            'registered_at' => current_time('mysql'),
             'gdpr_consent_given'          => $gdpr_consent_given,
             'gdpr_consent_text'           => $gdpr_consent_text,
             'gdpr_consent_timestamp'      => $gdpr_consent_timestamp,
             'gdpr_consent_privacy_url'    => $gdpr_consent_privacy_url,
             'gdpr_consent_policy_version' => $gdpr_consent_policy_version,
             'ip_address'    => $ip,
+        );
+
+        if ($existing) {
+            $result = DBEM_DB::replace_registration($existing->id, $registration_data);
+            $reg_id = $existing->id;
+        } else {
+            $result = $wpdb->insert($table, array(
+            'event_id'      => $event_id,
+            'data'          => $registration_data['data'],
+            'email'         => $registration_data['email'],
+            'name'          => $registration_data['name'],
+            'token'         => $token,
+            'status'        => $initial_status,
+            'registered_at' => current_time('mysql'),
+            'gdpr_consent_given'          => $registration_data['gdpr_consent_given'],
+            'gdpr_consent_text'           => $registration_data['gdpr_consent_text'],
+            'gdpr_consent_timestamp'      => $registration_data['gdpr_consent_timestamp'],
+            'gdpr_consent_privacy_url'    => $registration_data['gdpr_consent_privacy_url'],
+            'gdpr_consent_policy_version' => $registration_data['gdpr_consent_policy_version'],
+            'ip_address'    => $registration_data['ip_address'],
         ), array(
             '%d', // event_id
             '%s', // data
@@ -317,17 +356,19 @@ class DBEM_Registration {
             '%s', // gdpr_consent_privacy_url
             '%d', // gdpr_consent_policy_version
             '%s', // ip_address
-        ));
+            ));
+            $reg_id = $wpdb->insert_id;
+        }
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione.', 'db-event-manager'));
         }
 
-        $reg_id = $wpdb->insert_id;
         $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
 
-        if ($initial_status === 'confirmed') {
-            DBEM_QRCode::generate($token);
+        $effective_status = $reg->status;
+        if (in_array($effective_status, array('confirmed', 'checked_in'), true)) {
+            DBEM_QRCode::generate($reg->token);
             DBEM_Email::send_confirmation($event_id, $reg);
         } else {
             DBEM_Email::send_pending_notification($event_id, $reg);
@@ -339,9 +380,13 @@ class DBEM_Registration {
             DBEM_Email::notify_admin($event_id, $reg);
         }
 
-        $success_message = ($initial_status === 'confirmed')
-            ? __('Iscrizione all\'evento completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager')
-            : __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');
+        if ($existing) {
+            $success_message = __('Iscrizione aggiornata! Controlla la tua email per i dati aggiornati.', 'db-event-manager');
+        } elseif ($initial_status === 'confirmed') {
+            $success_message = __('Iscrizione all\'evento completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager');
+        } else {
+            $success_message = __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');
+        }
 
         wp_send_json_success(array(
             'message' => $success_message,

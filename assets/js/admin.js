@@ -175,6 +175,23 @@
                 }
             });
         });
+
+        $('#dbem-send-reminder').on('click', function() {
+            var btn = $(this);
+            var eventId = btn.data('event');
+            if (!confirm(dbem_admin.i18n.confirm_reminder)) return;
+            btn.prop('disabled', true).text('⏳ Invio...');
+            $('#dbem-reminder-feedback').text('');
+
+            $.post(dbem_admin.ajax_url, {
+                action: 'dbem_send_reminder',
+                nonce: dbem_admin.nonce,
+                event_id: eventId
+            }, function(resp) {
+                btn.prop('disabled', false).text('📧 ' + 'Invia reminder a tutti');
+                $('#dbem-reminder-feedback').text(resp.success ? '✅ ' + resp.data.message : '❌ ' + (resp.data || dbem_admin.i18n.error));
+            });
+        });
     }
 
     /* === Survey Send === */

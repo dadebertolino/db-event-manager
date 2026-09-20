@@ -13,6 +13,14 @@ final class DbRegistrationTest extends TestCase {
         $this->assertTrue(DBEM_DB::email_exists_for_event(10, 'alice@example.com'));
     }
 
+    public function testRegistrationLookupIsScopedToEventAndActiveStatus(): void {
+        $registration = DBEM_DB::get_registration_by_email(10, 'ALICE@example.com');
+
+        $this->assertNotNull($registration);
+        $this->assertSame(1, (int) $registration->id);
+        $this->assertSame(10, (int) $registration->event_id);
+    }
+
     public function testSearchRegistrationsReturnsOnlyMatchingEvent(): void {
         $results = DBEM_DB::get_registrations(10);
 

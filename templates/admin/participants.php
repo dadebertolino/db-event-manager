@@ -12,12 +12,54 @@ $events = get_posts(array(
 $selected_event = absint($_GET['event_id'] ?? 0);
 $registrations = array();
 $event_title = '';
+$custom_fields = array();
+$filter_field = isset($_GET['filter_field']) ? absint($_GET['filter_field']) : -1;
+$filter_value = isset($_GET['filter_value']) ? sanitize_text_field(wp_unslash($_GET['filter_value'])) : '';
 
 if ($selected_event) {
     DBEM_DB::ensure_tables();
     $registrations = DBEM_DB::get_registrations($selected_event);
     $event_title = DBEM_CPT::get_event_name($selected_event);
+    $custom_fields = get_post_meta($selected_event, '_dbem_custom_fields', true);
+    if (!is_array($custom_fields)) $custom_fields = array();
+
+    if ($filter_field >= 0 && $filter_value !== '' && isset($custom_fields[$filter_field])) {
+        $filter_label = $custom_fields[$filter_field]['label'] ?? '';
+        $registrations = array_values(array_filter($registrations, function ($reg) use ($filter_label, $filter_value) {
+            $data = json_decode($reg->data, true);
+            if (!is_array($data) || !array_key_exists($filter_label, $data)) return false;
+
+            $values = is_array($data[$filter_label]) ? $data[$filter_label] : array($data[$filter_label]);
+            return in_array($filter_value, array_map('strval', $values), true);
+        }));
+    }
 }
+
+$filterable_fields = array();
+foreach ($custom_fields as $index => $field) {
+    if (!empty($field['options']) && !empty($field['label'])) {
+        $filterable_fields[$index] = $field;
+    }
+}
+
+$get_registration_choices = function ($reg) use ($custom_fields) {
+    $data = json_decode($reg->data, true);
+    $choices = array();
+    if (!is_array($data)) return $choices;
+
+    foreach ($custom_fields as $field) {
+        $label = $field['label'] ?? '';
+        if ($label === '' || !array_key_exists($label, $data)) continue;
+
+        $values = is_array($data[$label]) ? $data[$label] : array($data[$label]);
+        $values = array_filter(array_map('sanitize_text_field', $values), function ($value) {
+            return $value !== '';
+        });
+        if ($values) $choices[$label] = $values;
+    }
+
+    return $choices;
+};
 
 $status_labels = array(
     'pending'    => array('label' => __('In attesa', 'db-event-manager'), 'icon' => '🕐', 'class' => 'pending'),
@@ -43,6 +85,33 @@ $status_labels = array(
                     </option>
                 <?php endforeach; ?>
             </select>
+            <?php if ($selected_event && $filterable_fields): ?>
+                <label for="dbem-filter-field"><?php esc_html_e('Filtra attività:', 'db-event-manager'); ?></label>
+                <select name="filter_field" id="dbem-filter-field">
+                    <option value="-1"><?php esc_html_e('Tutti i campi', 'db-event-manager'); ?></option>
+                    <?php foreach ($filterable_fields as $index => $field): ?>
+                        <option value="<?php echo esc_attr($index); ?>" <?php selected($filter_field, $index); ?>>
+                            <?php echo esc_html($field['label']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <select name="filter_value" id="dbem-filter-value">
+                    <option value=""><?php esc_html_e('Tutte le opzioni', 'db-event-manager'); ?></option>
+                    <?php if (isset($filterable_fields[$filter_field])): ?>
+                        <?php foreach ($filterable_fields[$filter_field]['options'] as $option): ?>
+                            <option value="<?php echo esc_attr($option); ?>" <?php selected($filter_value, $option); ?>>
+                                <?php echo esc_html($option); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+                <button type="submit" class="button"><?php esc_html_e('Filtra', 'db-event-manager'); ?></button>
+                <?php if ($filter_value !== ''): ?>
+                    <a class="button" href="<?php echo esc_url(admin_url('edit.php?post_type=dbem_event&page=dbem-participants&event_id=' . $selected_event)); ?>">
+                        <?php esc_html_e('Azzera filtro', 'db-event-manager'); ?>
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
         </form>
     </div>
 
@@ -65,6 +134,10 @@ $status_labels = array(
             <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-ajax.php?action=dbem_export_csv&event_id=' . $selected_event), 'dbem_admin_nonce', 'nonce')); ?>" class="button">
                 📥 <?php esc_html_e('Esporta CSV', 'db-event-manager'); ?>
             </a>
+            <button type="button" class="button" id="dbem-send-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
+                📧 <?php esc_html_e('Invia reminder a tutti', 'db-event-manager'); ?>
+            </button>
+            <span id="dbem-reminder-feedback" aria-live="polite"></span>
         </div>
 
         <table class="widefat striped dbem-participants-table">
@@ -74,6 +147,7 @@ $status_labels = array(
                     <th><?php esc_html_e('Stato', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Nome', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Email', 'db-event-manager'); ?></th>
+                    <th><?php esc_html_e('Attività prenotate', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Data iscrizione', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Check-in', 'db-event-manager'); ?></th>
                     <th><?php esc_html_e('Orario', 'db-event-manager'); ?></th>
@@ -82,10 +156,11 @@ $status_labels = array(
             </thead>
             <tbody>
                 <?php if (empty($registrations)): ?>
-                    <tr><td colspan="8"><?php esc_html_e('Nessun iscritto.', 'db-event-manager'); ?></td></tr>
+                    <tr><td colspan="9"><?php esc_html_e('Nessun iscritto.', 'db-event-manager'); ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($registrations as $reg):
                         $s = $status_labels[$reg->status] ?? $status_labels['confirmed'];
+                        $choices = $get_registration_choices($reg);
                     ?>
                     <tr data-id="<?php echo esc_attr($reg->id); ?>">
                         <td><input type="checkbox" class="dbem-row-check" value="<?php echo esc_attr($reg->id); ?>"></td>
@@ -96,6 +171,15 @@ $status_labels = array(
                         </td>
                         <td><?php echo esc_html($reg->name); ?></td>
                         <td><a href="mailto:<?php echo esc_attr($reg->email); ?>"><?php echo esc_html($reg->email); ?></a></td>
+                        <td class="dbem-registration-choices">
+                            <?php if ($choices): ?>
+                                <?php foreach ($choices as $label => $values): ?>
+                                    <div><strong><?php echo esc_html($label); ?>:</strong> <?php echo esc_html(implode(', ', $values)); ?></div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($reg->registered_at))); ?></td>
                         <td><?php echo $reg->checked_in_at ? esc_html(wp_date('d/m/Y H:i', strtotime($reg->checked_in_at))) : '—'; ?></td>
                         <td><?php echo !empty($reg->assigned_time) ? esc_html($reg->assigned_time) : '—'; ?></td>

@@ -47,7 +47,7 @@ class DBEM_Cron {
      */
     public static function send_reminder($event_id) {
         DBEM_DB::ensure_tables();
-        $regs = DBEM_DB::get_registrations($event_id, 'confirmed');
+        $regs = DBEM_DB::get_reminder_registrations($event_id);
 
         foreach ($regs as $reg) {
             DBEM_Email::send_reminder($event_id, $reg);

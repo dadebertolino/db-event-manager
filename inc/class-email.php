@@ -135,18 +135,24 @@ class DBEM_Email {
     public static function send_reminder($event_id, $reg) {
         $event_title = DBEM_CPT::get_event_name($event_id);
         $start = get_post_meta($event_id, '_dbem_date_start', true);
+        $end = get_post_meta($event_id, '_dbem_date_end', true);
         $location = get_post_meta($event_id, '_dbem_location', true);
+        $registration_details = self::get_registration_details($reg);
 
         $subject = sprintf(__('Promemoria: %s', 'db-event-manager'), $event_title);
 
-        $date_formatted = $start ? date('d/m/Y H:i', strtotime($start)) : '';
+        $date_formatted = self::format_event_date_range($start, $end);
+        $details_block = $registration_details
+            ? "\n📌 " . __('Le tue attività prenotate:', 'db-event-manager') . "\n" . $registration_details . "\n"
+            : '';
 
         $message = sprintf(
-            __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!\n\n📅 Data: %s\n📍 Luogo: %s\n\nNon dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager'),
+            __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!\n\n📅 Periodo generale: %s\n📍 Sede generale: %s%s\nNon dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager'),
             $reg->name,
             $event_title,
             $date_formatted,
-            $location
+            $location,
+            $details_block
         );
 
         // QR code URL + allegato
@@ -167,6 +173,48 @@ class DBEM_Email {
         }
 
         return wp_mail($reg->email, $subject, $html, $headers, $attachments);
+    }
+
+    /**
+     * Riepilogo delle attività selezionate nel form dal singolo partecipante
+     */
+    private static function get_registration_details($reg) {
+        $data = json_decode($reg->data, true);
+        if (!is_array($data)) return '';
+
+        $lines = array();
+        foreach ($data as $label => $value) {
+            if (in_array($label, array('nome', 'email'), true) || $value === '' || $value === array()) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = implode(', ', array_filter(array_map('sanitize_text_field', $value)));
+            } else {
+                $value = sanitize_text_field($value);
+            }
+
+            if ($value !== '') {
+                $lines[] = '- ' . $label . ': ' . $value;
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Formatta data singola o intervallo dell'evento
+     */
+    private static function format_event_date_range($start, $end) {
+        if (!$start) return '';
+
+        $start_timestamp = strtotime($start);
+        $start_formatted = date('d/m/Y H:i', $start_timestamp);
+        if (!$end || date('Y-m-d', $start_timestamp) === date('Y-m-d', strtotime($end))) {
+            return $start_formatted;
+        }
+
+        return $start_formatted . ' - ' . date('d/m/Y H:i', strtotime($end));
     }
 
     /**

@@ -168,6 +168,17 @@ class DBEM_DB {
             $event_id
         ));
     }
+    /**
+     * Ottieni destinatari validi per il promemoria
+     */
+    public static function get_reminder_registrations($event_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table WHERE event_id = %d AND status IN ('confirmed', 'checked_in') ORDER BY registered_at ASC",
+            $event_id
+        ));
+    }
 
     /**
      * Cerca iscrizioni per nome/email/token (per evento specifico)
@@ -244,6 +255,45 @@ class DBEM_DB {
             "SELECT COUNT(*) FROM $table WHERE event_id = %d AND email = %s AND status != 'cancelled'",
             $event_id, $email
         ));
+    }
+
+    /**
+     * Ottieni iscrizione attiva per email ed evento
+     */
+    public static function get_registration_by_email($event_id, $email) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE event_id = %d AND email = %s AND status != 'cancelled' ORDER BY id DESC LIMIT 1",
+            $event_id, strtolower(trim($email))
+        ));
+    }
+
+    /**
+     * Sostituisce i dati modificabili di un'iscrizione esistente
+     */
+    public static function replace_registration($registration_id, $data) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+
+        return $wpdb->update(
+            $table,
+            array(
+                'data'                        => $data['data'],
+                'email'                       => $data['email'],
+                'name'                        => $data['name'],
+                'registered_at'               => current_time('mysql'),
+                'gdpr_consent_given'          => $data['gdpr_consent_given'],
+                'gdpr_consent_text'           => $data['gdpr_consent_text'],
+                'gdpr_consent_timestamp'      => $data['gdpr_consent_timestamp'],
+                'gdpr_consent_privacy_url'    => $data['gdpr_consent_privacy_url'],
+                'gdpr_consent_policy_version' => $data['gdpr_consent_policy_version'],
+                'ip_address'                  => $data['ip_address'],
+            ),
+            array('id' => $registration_id),
+            array('%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s'),
+            array('%d')
+        );
     }
 
     /**

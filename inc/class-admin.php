@@ -307,7 +307,7 @@ class DBEM_Admin {
                         <input type="checkbox" id="dbem_allow_registration_update" name="_dbem_allow_registration_update" value="1" <?php checked($allow_registration_update, '1'); ?>>
                         <?php _e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('La nuova richiesta aggiorna nome, email, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php _e('Prima di sostituire, il form chiede conferma all\'utente. La nuova richiesta aggiorna nome, email, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
 

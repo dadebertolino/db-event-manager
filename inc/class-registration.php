@@ -81,6 +81,8 @@ class DBEM_Registration {
             }
         }
 
+        self::require_replace_confirmation($existing);
+
         // Ricontrolla posti (race condition)
         $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
         if ($max > 0) {
@@ -214,6 +216,19 @@ class DBEM_Registration {
         ));
     }
 
+    /**
+     * Con la reiscrizione attiva, l'iscrizione esistente si sostituisce solo
+     * dopo che l'utente l'ha confermato: il form reinvia con dbem_confirm_replace
+     */
+    public static function require_replace_confirmation($existing) {
+        if (!$existing || !empty($_POST['dbem_confirm_replace'])) return;
+
+        wp_send_json_error(array(
+            'code'    => 'confirm_replace',
+            'message' => __('Prenotazione già effettuata con questo indirizzo email. Vuoi sostituire la prenotazione precedente con quella di adesso?', 'db-event-manager'),
+        ));
+    }
+
     private static function get_client_ip() {
         return DBEM_Security::client_ip();
     }
@@ -250,6 +265,8 @@ class DBEM_Registration {
         if (!$existing && !DBEM_CPT::are_registrations_open($event_id)) {
             wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
         }
+
+        self::require_replace_confirmation($existing);
 
         // Posti
         $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);

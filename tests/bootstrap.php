@@ -204,6 +204,7 @@ if (!function_exists('check_ajax_referer')) {
 
 if (!function_exists('wp_send_json_error')) {
     function wp_send_json_error($data = null, $status_code = null) {
+        $GLOBALS['__dbem_json_error'] = $data;
         throw new RuntimeException('wp_send_json_error called in test bootstrap');
     }
 }
@@ -431,3 +432,4 @@ require_once dirname(__DIR__) . '/inc/class-db.php';
 require_once dirname(__DIR__) . '/inc/class-email.php';
 require_once dirname(__DIR__) . '/inc/class-cpt.php';
 require_once dirname(__DIR__) . '/inc/class-admin.php';
+require_once dirname(__DIR__) . '/inc/class-registration.php';

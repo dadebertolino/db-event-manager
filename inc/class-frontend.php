@@ -14,6 +14,9 @@ class DBEM_Frontend {
                 'error'      => __('Errore', 'db-event-manager'),
                 'required'   => __('Questo campo è obbligatorio', 'db-event-manager'),
                 'invalid_email' => __('Inserisci un email valido', 'db-event-manager'),
+                'replace_yes'   => __('Sì, sostituisci', 'db-event-manager'),
+                'replace_no'    => __('No, mantieni la precedente', 'db-event-manager'),
+                'replace_kept'  => __('Nessuna modifica: la prenotazione precedente resta valida.', 'db-event-manager'),
             ),
         ));
 
@@ -326,22 +329,63 @@ class DBEM_Frontend {
                 body.append('dbem_nonce', nonce);
                 if (privacyGiven) body.append('dbem_privacy', '1');
 
-                fetch(ajaxUrl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: body.toString()
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(resp) {
-                    if (resp.success) {
-                        dbemMsg.className = 'dbem-message dbem-dbfb-message dbem-message-success';
-                        dbemMsg.textContent = resp.data.message;
-                    } else {
-                        dbemMsg.className = 'dbem-message dbem-dbfb-message dbem-message-error';
-                        dbemMsg.textContent = resp.data || 'Errore iscrizione evento';
-                    }
+                function showResult(ok, text) {
+                    dbemMsg.className = 'dbem-message dbem-dbfb-message ' + (ok ? 'dbem-message-success' : 'dbem-message-error');
+                    dbemMsg.textContent = text;
                     dbemMsg.style.display = 'block';
-                });
+                }
+
+                // Iscrizione già presente: chiede se sostituirla prima di reinviare
+                function askReplace(question) {
+                    dbemMsg.className = 'dbem-message dbem-dbfb-message dbem-message-confirm';
+                    dbemMsg.textContent = '';
+                    var p = document.createElement('p');
+                    p.className = 'dbem-confirm-question';
+                    p.textContent = question;
+                    var actions = document.createElement('div');
+                    actions.className = 'dbem-confirm-actions';
+                    var yes = document.createElement('button');
+                    yes.type = 'button';
+                    yes.className = 'dbem-confirm-yes';
+                    yes.textContent = <?php echo wp_json_encode(__('Sì, sostituisci', 'db-event-manager')); ?>;
+                    var no = document.createElement('button');
+                    no.type = 'button';
+                    no.className = 'dbem-confirm-no';
+                    no.textContent = <?php echo wp_json_encode(__('No, mantieni la precedente', 'db-event-manager')); ?>;
+                    yes.addEventListener('click', function() {
+                        body.set('dbem_confirm_replace', '1');
+                        send();
+                    });
+                    no.addEventListener('click', function() {
+                        showResult(true, <?php echo wp_json_encode(__('Nessuna modifica: la prenotazione precedente resta valida.', 'db-event-manager')); ?>);
+                    });
+                    actions.appendChild(yes);
+                    actions.appendChild(no);
+                    dbemMsg.appendChild(p);
+                    dbemMsg.appendChild(actions);
+                    dbemMsg.style.display = 'block';
+                    yes.focus();
+                }
+
+                function send() {
+                    fetch(ajaxUrl, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: body.toString()
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(resp) {
+                        if (resp.success) {
+                            showResult(true, resp.data.message);
+                        } else if (resp.data && resp.data.code === 'confirm_replace') {
+                            askReplace(resp.data.message);
+                        } else {
+                            showResult(false, (resp.data && resp.data.message) || resp.data || 'Errore iscrizione evento');
+                        }
+                    });
+                }
+
+                send();
             });
 
             observer.observe(form, { childList: true, subtree: true, characterData: true });

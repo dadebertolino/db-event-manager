@@ -3,7 +3,7 @@
  * Plugin Name: DB Event Manager
  * Plugin URI: https://github.com/dadebertolino/db-event-manager
  * Description: Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento. Niente Eventbrite, niente SaaS, niente abbonamenti.
- * Version: 1.6.2
+ * Version: 1.6.3
  * Author: Davide Bertolino
  * Author URI: https://www.davidebertolino.it
  * License: GPL v2 or later
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DBEM_VERSION', '1.6.2');
+define('DBEM_VERSION', '1.6.3');
 define('DBEM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DBEM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DBEM_PLUGIN_BASENAME', plugin_basename(__FILE__));

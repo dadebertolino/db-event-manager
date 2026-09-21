@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.6.2
+**Versione:** 1.6.3
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -311,6 +311,11 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.3
+- Con la reiscrizione attiva, se l'email è già iscritta il form chiede «Vuoi sostituire la prenotazione precedente con quella di adesso?» prima di sostituirla
+- Due risposte possibili: «Sì, sostituisci» aggiorna la prenotazione mantenendo QR code e stato, «No, mantieni la precedente» lascia tutto invariato
+- Conferma disponibile sia nel form interno sia nei form DB Form Builder
 
 ### 1.6.2
 - Corretto il pulsante "Invia reminder a tutti", che nella 1.6.0 non inviava alcuna email

@@ -7,7 +7,7 @@ class DBEM_Checkin {
      * Pagina admin check-in
      */
     public static function render_page() {
-        if (!current_user_can('manage_options')) {
+        if (!DBEM_Admin::can_manage_events()) {
             wp_die(__('Accesso negato', 'db-event-manager'));
         }
         include DBEM_PLUGIN_DIR . 'templates/admin/checkin.php';
@@ -18,7 +18,7 @@ class DBEM_Checkin {
      */
     public static function handle_checkin() {
         check_ajax_referer('dbem_checkin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $token = sanitize_text_field($_POST['token'] ?? '');
         if (empty($token)) wp_send_json_error(__('Token mancante', 'db-event-manager'));
@@ -87,7 +87,7 @@ class DBEM_Checkin {
      */
     public static function handle_search() {
         check_ajax_referer('dbem_checkin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
         $search = sanitize_text_field($_POST['search'] ?? '');

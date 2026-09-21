@@ -151,33 +151,55 @@ class DBEM_DB {
      * Ottieni iscrizioni per evento
      */
     public static function get_registrations($event_id, $status = null, $orderby = 'registered_at', $order = 'DESC') {
+        return self::get_registrations_filtered($event_id, $status, $orderby, $order, null);
+    }
+
+    public static function get_registrations_filtered($event_id, $status = null, $orderby = 'registered_at', $order = 'DESC', $registration_ids = null) {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         $allowed_orderby = array('registered_at', 'name', 'email', 'status', 'checked_in_at', 'assigned_time');
         $orderby = in_array($orderby, $allowed_orderby) ? $orderby : 'registered_at';
         $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+        $query = "SELECT * FROM $table WHERE event_id = %d";
+        $args = array($event_id);
 
         if ($status) {
-            return $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $table WHERE event_id = %d AND status = %s ORDER BY $orderby $order",
-                $event_id, $status
-            ));
+            $query .= ' AND status = %s';
+            $args[] = $status;
         }
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE event_id = %d ORDER BY $orderby $order",
-            $event_id
-        ));
+
+        if ($registration_ids !== null) {
+            $registration_ids = array_values(array_filter(array_map('absint', (array) $registration_ids)));
+            if (!$registration_ids) return array();
+
+            $placeholders = implode(',', array_fill(0, count($registration_ids), '%d'));
+            $query .= " AND id IN ($placeholders)";
+            $args = array_merge($args, $registration_ids);
+        }
+
+        $query .= " ORDER BY $orderby $order";
+        return $wpdb->get_results($wpdb->prepare($query, ...$args));
     }
     /**
      * Ottieni destinatari validi per il promemoria
      */
-    public static function get_reminder_registrations($event_id) {
+    public static function get_reminder_registrations($event_id, $registration_ids = null) {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE event_id = %d AND status IN ('confirmed', 'checked_in') ORDER BY registered_at ASC",
-            $event_id
-        ));
+        $query = "SELECT * FROM $table WHERE event_id = %d AND status IN ('confirmed', 'checked_in')";
+        $args = array($event_id);
+
+        if ($registration_ids !== null) {
+            $registration_ids = array_values(array_filter(array_map('absint', (array) $registration_ids)));
+            if (!$registration_ids) return array();
+
+            $placeholders = implode(',', array_fill(0, count($registration_ids), '%d'));
+            $query .= " AND id IN ($placeholders)";
+            $args = array_merge($args, $registration_ids);
+        }
+
+        $query .= ' ORDER BY registered_at ASC';
+        return $wpdb->get_results($wpdb->prepare($query, ...$args));
     }
 
     /**

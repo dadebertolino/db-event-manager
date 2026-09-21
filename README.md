@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.5.0
+**Versione:** 1.6.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -126,6 +126,12 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Opzione "Elimina tutti i dati alla disinstallazione" (disattivata di default)
 - Riepilogo shortcode disponibili
 
+### 👤 Gestori degli eventi
+- Un amministratore può abilitare la gestione completa degli eventi dal profilo dell'utente, in **Utenti → Modifica utente → DB Event Manager**
+- L'utente autorizzato può creare, modificare, pubblicare ed eliminare eventi e categorie
+- Può inoltre usare partecipanti, check-in, survey, reminder ed esportazioni
+- Non può accedere o modificare le impostazioni globali del plugin
+
 ---
 
 ## Installazione
@@ -145,6 +151,8 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 5. Se scegli approvazione, abilita "Assegnazione orario" per permettere di assegnare un orario a ogni partecipante
 6. Personalizza l'email di conferma (usa {orario} per includere l'orario assegnato)
 7. Pubblica — il link è nella sidebar
+
+Per delegare la gestione operativa, vai in **Utenti**, apri l'utente desiderato e attiva **Gestione eventi** nella sezione **DB Event Manager**.
 
 ### Check-in all'ingresso
 
@@ -301,6 +309,12 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.0
+- Gestori eventi assegnabili ai singoli utenti con capability dedicate, senza accesso alle impostazioni globali
+- Gestione completa di eventi, categorie, partecipanti, check-in, survey, reminder ed esportazioni per gli utenti autorizzati
+- Reminder inviabili a tutti i partecipanti validi oppure solo a quelli visualizzati dopo il filtro
+- Export CSV disponibile per tutti i partecipanti oppure solo per quelli visualizzati dopo il filtro
 
 ### 1.5.0
 - Opzione per evento per consentire la reiscrizione con la stessa email: la nuova richiesta sostituisce i dati dell'iscrizione esistente e mantiene QR code e stato

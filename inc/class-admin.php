@@ -3,13 +3,51 @@ if (!defined('ABSPATH')) exit;
 
 class DBEM_Admin {
 
+    public static function can_manage_events() {
+        return current_user_can(DBEM_CPT::EVENT_MANAGER_CAP);
+    }
+
+    public static function render_event_manager_field($user) {
+        if (!current_user_can('edit_users') || !current_user_can('manage_options')) return;
+        ?>
+        <h2><?php esc_html_e('DB Event Manager', 'db-event-manager'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th><label for="dbem_manage_events"><?php esc_html_e('Gestione eventi', 'db-event-manager'); ?></label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="dbem_manage_events" id="dbem_manage_events" value="1" <?php checked($user->has_cap(DBEM_CPT::EVENT_MANAGER_CAP)); ?> />
+                        <?php esc_html_e('Può gestire eventi, partecipanti, check-in, survey ed esportazioni.', 'db-event-manager'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('Non consente di modificare le impostazioni globali del plugin.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    public static function save_event_manager_field($user_id) {
+        if (!current_user_can('edit_user', $user_id) || !current_user_can('manage_options')) return;
+
+        $user = new WP_User($user_id);
+        $capabilities = DBEM_CPT::get_event_capabilities();
+        $enabled = !empty($_POST['dbem_manage_events']);
+        foreach ($capabilities as $capability) {
+            if ($enabled) {
+                $user->add_cap($capability);
+            } else {
+                $user->remove_cap($capability);
+            }
+        }
+    }
+
     public static function register_menus() {
         // Sottomenu sotto il CPT
         add_submenu_page(
             'edit.php?post_type=dbem_event',
             __('Check-in', 'db-event-manager'),
             __('Check-in', 'db-event-manager'),
-            'manage_options',
+            DBEM_CPT::EVENT_MANAGER_CAP,
             'dbem-checkin',
             array('DBEM_Checkin', 'render_page')
         );
@@ -18,7 +56,7 @@ class DBEM_Admin {
             'edit.php?post_type=dbem_event',
             __('Partecipanti', 'db-event-manager'),
             __('Partecipanti', 'db-event-manager'),
-            'manage_options',
+            DBEM_CPT::EVENT_MANAGER_CAP,
             'dbem-participants',
             array(__CLASS__, 'render_participants_page')
         );
@@ -27,7 +65,7 @@ class DBEM_Admin {
             'edit.php?post_type=dbem_event',
             __('Survey', 'db-event-manager'),
             __('Survey', 'db-event-manager'),
-            'manage_options',
+            DBEM_CPT::EVENT_MANAGER_CAP,
             'dbem-survey',
             array('DBEM_Survey', 'render_admin_page')
         );
@@ -66,6 +104,7 @@ class DBEM_Admin {
                 'confirm_delete'   => __('Sei sicuro di voler eliminare?', 'db-event-manager'),
                 'confirm_cancel'   => __('Sei sicuro di voler annullare questa iscrizione?', 'db-event-manager'),
                 'confirm_reminder' => __('Inviare il reminder a tutti i partecipanti confermati e presenti?', 'db-event-manager'),
+                'confirm_reminder_visible' => __('Inviare il reminder solo ai partecipanti visualizzati?', 'db-event-manager'),
                 'checked_in'       => __('Check-in effettuato', 'db-event-manager'),
                 'already_checked'  => __('Già registrato', 'db-event-manager'),
                 'cancelled'        => __('Iscrizione annullata', 'db-event-manager'),
@@ -890,7 +929,7 @@ class DBEM_Admin {
      * Pagina partecipanti
      */
     public static function render_participants_page() {
-        if (!current_user_can('manage_options')) {
+        if (!self::can_manage_events()) {
             wp_die(__('Accesso negato', 'db-event-manager'));
         }
         include DBEM_PLUGIN_DIR . 'templates/admin/participants.php';
@@ -901,7 +940,7 @@ class DBEM_Admin {
      */
     public static function handle_bulk_action() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
@@ -957,7 +996,7 @@ class DBEM_Admin {
      */
     public static function handle_resend_email() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $reg_id = absint($_POST['registration_id'] ?? 0);
         if (!$reg_id) wp_send_json_error(__('ID mancante', 'db-event-manager'));
@@ -980,7 +1019,7 @@ class DBEM_Admin {
      */
     public static function handle_send_reminder() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
@@ -990,7 +1029,8 @@ class DBEM_Admin {
         DBEM_DB::ensure_tables();
         $sent = 0;
         $failed = 0;
-        foreach (DBEM_DB::get_reminder_registrations($event_id) as $reg) {
+        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : array();
+        foreach (DBEM_DB::get_reminder_registrations($event_id, $registration_ids) as $reg) {
             if (DBEM_Email::send_reminder($event_id, $reg)) {
                 $sent++;
             } else {

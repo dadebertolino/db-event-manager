@@ -131,9 +131,24 @@ $status_labels = array(
                 <button type="button" class="button" id="dbem-bulk-apply"><?php esc_html_e('Applica', 'db-event-manager'); ?></button>
             </div>
 
-            <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-ajax.php?action=dbem_export_csv&event_id=' . $selected_event), 'dbem_admin_nonce', 'nonce')); ?>" class="button">
+            <?php $export_url = wp_nonce_url(admin_url('admin-ajax.php?action=dbem_export_csv&event_id=' . $selected_event), 'dbem_admin_nonce', 'nonce'); ?>
+            <label for="dbem-export-scope">
+                <?php esc_html_e('Export:', 'db-event-manager'); ?>
+                <select id="dbem-export-scope">
+                    <option value="all"><?php esc_html_e('tutti i partecipanti', 'db-event-manager'); ?></option>
+                    <option value="visible"><?php esc_html_e('solo quelli visualizzati', 'db-event-manager'); ?></option>
+                </select>
+            </label>
+            <a id="dbem-export-csv" href="<?php echo esc_url($export_url); ?>" data-base="<?php echo esc_attr($export_url); ?>" class="button">
                 📥 <?php esc_html_e('Esporta CSV', 'db-event-manager'); ?>
             </a>
+            <label for="dbem-reminder-scope">
+                <?php esc_html_e('Reminder:', 'db-event-manager'); ?>
+                <select id="dbem-reminder-scope">
+                    <option value="all"><?php esc_html_e('tutti i partecipanti validi', 'db-event-manager'); ?></option>
+                    <option value="visible"><?php esc_html_e('solo quelli visualizzati', 'db-event-manager'); ?></option>
+                </select>
+            </label>
             <button type="button" class="button" id="dbem-send-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
                 📧 <?php esc_html_e('Invia reminder a tutti', 'db-event-manager'); ?>
             </button>

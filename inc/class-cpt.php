@@ -3,7 +3,43 @@ if (!defined('ABSPATH')) exit;
 
 class DBEM_CPT {
 
+    const EVENT_MANAGER_CAP = 'manage_dbem_events';
+
+    public static function get_event_capabilities() {
+        return array(
+            self::EVENT_MANAGER_CAP,
+            'edit_dbem_event',
+            'read_dbem_event',
+            'delete_dbem_event',
+            'edit_dbem_events',
+            'edit_others_dbem_events',
+            'publish_dbem_events',
+            'read_private_dbem_events',
+            'delete_dbem_events',
+            'delete_private_dbem_events',
+            'delete_published_dbem_events',
+            'delete_others_dbem_events',
+            'edit_private_dbem_events',
+            'edit_published_dbem_events',
+            'manage_dbem_event_categories',
+            'edit_dbem_event_categories',
+            'delete_dbem_event_categories',
+            'assign_dbem_event_categories',
+        );
+    }
+
+    public static function ensure_event_capabilities() {
+        $administrator = get_role('administrator');
+        if ($administrator) {
+            foreach (self::get_event_capabilities() as $capability) {
+                $administrator->add_cap($capability);
+            }
+        }
+    }
+
     public static function register() {
+        self::ensure_event_capabilities();
+
         $labels = array(
             'name'               => __('Eventi', 'db-event-manager'),
             'singular_name'      => __('Evento', 'db-event-manager'),
@@ -28,7 +64,8 @@ class DBEM_CPT {
             'show_in_rest'       => true,
             'menu_position'      => 25,
             'menu_icon'          => 'dashicons-calendar-alt',
-            'capability_type'    => 'post',
+            'capability_type'    => array('dbem_event', 'dbem_events'),
+            'map_meta_cap'       => true,
             'has_archive'        => 'eventi',
             'hierarchical'       => false,
             'supports'           => array('title', 'editor', 'thumbnail'),
@@ -61,6 +98,12 @@ class DBEM_CPT {
             'show_in_menu'      => true,
             'show_in_rest'      => true,
             'show_admin_column' => true,
+            'capabilities'      => array(
+                'manage_terms' => 'manage_dbem_event_categories',
+                'edit_terms'   => 'edit_dbem_event_categories',
+                'delete_terms' => 'delete_dbem_event_categories',
+                'assign_terms' => 'assign_dbem_event_categories',
+            ),
             'rewrite'           => array('slug' => 'eventi-categoria'),
         ));
     }

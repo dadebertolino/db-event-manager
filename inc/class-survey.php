@@ -7,7 +7,7 @@ class DBEM_Survey {
      * Pagina admin survey
      */
     public static function render_admin_page() {
-        if (!current_user_can('manage_options')) wp_die(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_die(__('Accesso negato', 'db-event-manager'));
         include DBEM_PLUGIN_DIR . 'templates/admin/survey.php';
     }
 
@@ -114,7 +114,7 @@ class DBEM_Survey {
      */
     public static function handle_send() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
         $target = sanitize_key($_POST['target'] ?? 'checked_in'); // checked_in | all

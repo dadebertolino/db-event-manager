@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.6.0
+**Versione:** 1.6.1
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -131,6 +131,8 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - L'utente autorizzato può creare, modificare, pubblicare ed eliminare eventi e categorie
 - Può inoltre usare partecipanti, check-in, survey, reminder ed esportazioni
 - Non può accedere o modificare le impostazioni globali del plugin
+- Se il suo ruolo non permette di caricare file, riceve anche `upload_files` per l'immagine in evidenza; il permesso viene tolto quando la gestione eventi è disattivata
+- Alla disinstallazione le capability vengono rimosse da ruoli e utenti
 
 ---
 
@@ -309,6 +311,12 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.1
+- Le capability dei gestori vengono assegnate all'amministratore all'attivazione e solo quando cambiano, non più a ogni caricamento
+- I gestori senza permesso di caricare file ricevono `upload_files` per l'immagine in evidenza, ritirato alla disattivazione solo se concesso dal plugin
+- La disinstallazione rimuove le capability da ruoli e utenti
+- Test PHPUnit sulle capability dei gestori; configurazione PHPUnit migrata al nuovo schema
 
 ### 1.6.0
 - Gestori eventi assegnabili ai singoli utenti con capability dedicate, senza accesso alle impostazioni globali

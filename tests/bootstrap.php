@@ -7,6 +7,95 @@ if (!defined('ABSPATH')) {
 $GLOBALS['__dbem_options'] = array();
 $GLOBALS['__dbem_transients'] = array();
 
+$GLOBALS['__dbem_roles'] = array();
+$GLOBALS['__dbem_users'] = array();
+$GLOBALS['__dbem_user_meta'] = array();
+$GLOBALS['__dbem_current_caps'] = array();
+
+if (!class_exists('WP_Role')) {
+    class WP_Role {
+        public $capabilities = array();
+        public $add_cap_calls = 0;
+
+        public function add_cap($cap) {
+            $this->add_cap_calls++;
+            $this->capabilities[$cap] = true;
+        }
+
+        public function remove_cap($cap) {
+            unset($this->capabilities[$cap]);
+        }
+    }
+}
+
+if (!class_exists('WP_User')) {
+    class WP_User {
+        public $ID;
+        public $caps = array();
+        public $role_caps = array();
+
+        public function __construct($id = 0) {
+            $this->ID = (int) $id;
+            if (isset($GLOBALS['__dbem_users'][$this->ID])) {
+                $existing = $GLOBALS['__dbem_users'][$this->ID];
+                $this->caps = &$existing->caps;
+                $this->role_caps = &$existing->role_caps;
+            }
+            $GLOBALS['__dbem_users'][$this->ID] = $this;
+        }
+
+        public function add_cap($cap) {
+            $this->caps[$cap] = true;
+        }
+
+        public function remove_cap($cap) {
+            unset($this->caps[$cap]);
+        }
+
+        public function has_cap($cap) {
+            return !empty($this->caps[$cap]) || !empty($this->role_caps[$cap]);
+        }
+    }
+}
+
+if (!function_exists('add_action')) {
+    function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
+        return true;
+    }
+}
+
+if (!function_exists('get_role')) {
+    function get_role($role) {
+        return $GLOBALS['__dbem_roles'][$role] ?? null;
+    }
+}
+
+if (!function_exists('current_user_can')) {
+    function current_user_can($cap, ...$args) {
+        return in_array($cap, $GLOBALS['__dbem_current_caps'], true);
+    }
+}
+
+if (!function_exists('get_user_meta')) {
+    function get_user_meta($user_id, $key = '', $single = false) {
+        return $GLOBALS['__dbem_user_meta'][$user_id][$key] ?? '';
+    }
+}
+
+if (!function_exists('update_user_meta')) {
+    function update_user_meta($user_id, $key, $value) {
+        $GLOBALS['__dbem_user_meta'][$user_id][$key] = $value;
+        return true;
+    }
+}
+
+if (!function_exists('delete_user_meta')) {
+    function delete_user_meta($user_id, $key) {
+        unset($GLOBALS['__dbem_user_meta'][$user_id][$key]);
+        return true;
+    }
+}
+
 if (!function_exists('__')) {
     function __($text, $domain = null) {
         return $text;
@@ -288,3 +377,5 @@ if (!class_exists('wpdb')) {
 require_once dirname(__DIR__) . '/inc/class-security.php';
 require_once dirname(__DIR__) . '/inc/class-db.php';
 require_once dirname(__DIR__) . '/inc/class-email.php';
+require_once dirname(__DIR__) . '/inc/class-cpt.php';
+require_once dirname(__DIR__) . '/inc/class-admin.php';

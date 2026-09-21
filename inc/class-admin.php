@@ -30,14 +30,22 @@ class DBEM_Admin {
         if (!current_user_can('edit_user', $user_id) || !current_user_can('manage_options')) return;
 
         $user = new WP_User($user_id);
-        $capabilities = DBEM_CPT::get_event_capabilities();
         $enabled = !empty($_POST['dbem_manage_events']);
-        foreach ($capabilities as $capability) {
+        foreach (DBEM_CPT::get_event_capabilities() as $capability) {
             if ($enabled) {
                 $user->add_cap($capability);
             } else {
                 $user->remove_cap($capability);
             }
+        }
+
+        // Serve per l'immagine in evidenza. Si toglie solo se l'ha data il plugin.
+        if ($enabled && !$user->has_cap('upload_files')) {
+            $user->add_cap('upload_files');
+            update_user_meta($user_id, 'dbem_granted_upload_files', '1');
+        } elseif (!$enabled && get_user_meta($user_id, 'dbem_granted_upload_files', true)) {
+            $user->remove_cap('upload_files');
+            delete_user_meta($user_id, 'dbem_granted_upload_files');
         }
     }
 

@@ -16,6 +16,7 @@ $options = array(
     'dbem_events_page_title',
     'dbem_checkin_pin',
     'dbem_delete_data_on_uninstall',
+    'dbem_caps_version',
 );
 
 $delete_data = get_option('dbem_delete_data_on_uninstall', '0') === '1';
@@ -59,6 +60,32 @@ if ($delete_data) {
         @rmdir(dirname($qr_dir));
     }
 }
+
+// Capability dei gestori eventi, su ruoli e singoli utenti
+require_once __DIR__ . '/inc/class-cpt.php';
+$capabilities = DBEM_CPT::get_event_capabilities();
+
+foreach (wp_roles()->role_objects as $role) {
+    foreach ($capabilities as $capability) {
+        $role->remove_cap($capability);
+    }
+}
+
+$delegates = get_users(array(
+    'blog_id'      => get_current_blog_id(),
+    'meta_key'     => $wpdb->get_blog_prefix() . 'capabilities',
+    'meta_value'   => DBEM_CPT::EVENT_MANAGER_CAP,
+    'meta_compare' => 'LIKE',
+));
+foreach ($delegates as $user) {
+    foreach ($capabilities as $capability) {
+        $user->remove_cap($capability);
+    }
+    if (get_user_meta($user->ID, 'dbem_granted_upload_files', true)) {
+        $user->remove_cap('upload_files');
+    }
+}
+delete_metadata('user', 0, 'dbem_granted_upload_files', '', true);
 
 foreach ($options as $option) {
     delete_option($option);

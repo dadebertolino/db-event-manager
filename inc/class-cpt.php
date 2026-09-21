@@ -5,6 +5,12 @@ class DBEM_CPT {
 
     const EVENT_MANAGER_CAP = 'manage_dbem_events';
 
+    /**
+     * Da incrementare quando cambia l'elenco delle capability,
+     * così vengono riassegnate all'amministratore una sola volta.
+     */
+    const CAPS_VERSION = '1';
+
     public static function get_event_capabilities() {
         return array(
             self::EVENT_MANAGER_CAP,
@@ -29,12 +35,15 @@ class DBEM_CPT {
     }
 
     public static function ensure_event_capabilities() {
+        if (get_option('dbem_caps_version') === self::CAPS_VERSION) return;
+
         $administrator = get_role('administrator');
-        if ($administrator) {
-            foreach (self::get_event_capabilities() as $capability) {
-                $administrator->add_cap($capability);
-            }
+        if (!$administrator) return;
+
+        foreach (self::get_event_capabilities() as $capability) {
+            $administrator->add_cap($capability);
         }
+        update_option('dbem_caps_version', self::CAPS_VERSION);
     }
 
     public static function register() {

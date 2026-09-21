@@ -7,6 +7,7 @@ class DBEM_DB {
         self::create_tables();
         self::maybe_upgrade();
         self::create_upload_dir();
+        DBEM_CPT::ensure_event_capabilities();
         // Genera il PIN delle pagine pubbliche se non esiste
         DBEM_Security::get_pin();
         // Schedule cron

@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.6.1
+**Versione:** 1.6.2
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -311,6 +311,14 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.2
+- Corretto il pulsante "Invia reminder a tutti", che nella 1.6.0 non inviava alcuna email
+- Anteprima del reminder manuale prima dell'invio, partecipante per partecipante, con oggetto, allegato e contenuto
+- Nuova opzione per evento "Contenuto del promemoria": data e sede dell'evento oppure solo le opzioni scelte dal partecipante (campi Selezione, Scelta singola e Scelta multipla), utile quando ogni opzione indica già giorno e orario
+- Il reminder riporta l'orario assegnato all'approvazione
+- Con l'assegnazione orario attiva, il periodo generale del reminder mostra solo la data
+- I campi Data del form compaiono nel reminder in formato gg/mm/aaaa
 
 ### 1.6.1
 - Le capability dei gestori vengono assegnate all'amministratore all'attivazione e solo quando cambiano, non più a ogni caricamento

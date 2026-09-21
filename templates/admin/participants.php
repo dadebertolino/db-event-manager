@@ -149,11 +149,39 @@ $status_labels = array(
                     <option value="visible"><?php esc_html_e('solo quelli visualizzati', 'db-event-manager'); ?></option>
                 </select>
             </label>
+            <button type="button" class="button" id="dbem-preview-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
+                👁 <?php esc_html_e('Anteprima', 'db-event-manager'); ?>
+            </button>
             <button type="button" class="button" id="dbem-send-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
                 📧 <?php esc_html_e('Invia reminder a tutti', 'db-event-manager'); ?>
             </button>
             <span id="dbem-reminder-feedback" aria-live="polite"></span>
         </div>
+
+        <dialog id="dbem-reminder-preview" class="dbem-preview-dialog" aria-labelledby="dbem-preview-title">
+            <div class="dbem-preview-header">
+                <h2 id="dbem-preview-title"><?php esc_html_e('Anteprima reminder', 'db-event-manager'); ?></h2>
+                <button type="button" class="button-link dbem-preview-close" aria-label="<?php esc_attr_e('Chiudi', 'db-event-manager'); ?>">✕</button>
+            </div>
+            <dl class="dbem-preview-meta">
+                <dt><?php esc_html_e('A:', 'db-event-manager'); ?></dt>
+                <dd id="dbem-preview-to"></dd>
+                <dt><?php esc_html_e('Oggetto:', 'db-event-manager'); ?></dt>
+                <dd id="dbem-preview-subject"></dd>
+                <dt><?php esc_html_e('Allegato:', 'db-event-manager'); ?></dt>
+                <dd id="dbem-preview-attachment"></dd>
+            </dl>
+            <div class="dbem-preview-nav">
+                <button type="button" class="button" id="dbem-preview-prev" aria-label="<?php esc_attr_e('Partecipante precedente', 'db-event-manager'); ?>">‹</button>
+                <span id="dbem-preview-counter" aria-live="polite"></span>
+                <button type="button" class="button" id="dbem-preview-next" aria-label="<?php esc_attr_e('Partecipante successivo', 'db-event-manager'); ?>">›</button>
+            </div>
+            <iframe id="dbem-preview-frame" title="<?php esc_attr_e('Contenuto del reminder', 'db-event-manager'); ?>" sandbox=""></iframe>
+            <div class="dbem-preview-footer">
+                <button type="button" class="button dbem-preview-close"><?php esc_html_e('Chiudi', 'db-event-manager'); ?></button>
+                <button type="button" class="button button-primary" id="dbem-preview-send"></button>
+            </div>
+        </dialog>
 
         <table class="widefat striped dbem-participants-table">
             <thead>

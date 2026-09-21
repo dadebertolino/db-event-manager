@@ -133,46 +133,106 @@ class DBEM_Email {
      * Invia email promemoria
      */
     public static function send_reminder($event_id, $reg) {
-        $event_title = DBEM_CPT::get_event_name($event_id);
-        $start = get_post_meta($event_id, '_dbem_date_start', true);
-        $end = get_post_meta($event_id, '_dbem_date_end', true);
-        $location = get_post_meta($event_id, '_dbem_location', true);
-        $registration_details = self::get_registration_details($reg);
-
-        $subject = sprintf(__('Promemoria: %s', 'db-event-manager'), $event_title);
-
-        $date_formatted = self::format_event_date_range($start, $end);
-        $details_block = $registration_details
-            ? "\n📌 " . __('Le tue attività prenotate:', 'db-event-manager') . "\n" . $registration_details . "\n"
-            : '';
-
-        $message = sprintf(
-            __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!\n\n📅 Periodo generale: %s\n📍 Sede generale: %s%s\nNon dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager'),
-            $reg->name,
-            $event_title,
-            $date_formatted,
-            $location,
-            $details_block
-        );
-
-        // QR code URL + allegato
-        $upload_dir = wp_upload_dir();
-        $qr_path = $upload_dir['basedir'] . '/dbem/qrcodes/' . $reg->token . '.png';
-        $qr_url = $upload_dir['baseurl'] . '/dbem/qrcodes/' . $reg->token . '.png';
-
-        $html = self::build_html_email($message, file_exists($qr_path) ? $qr_url : '');
+        $email = self::build_reminder($event_id, $reg);
 
         $headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
         );
 
+        return wp_mail($reg->email, $email['subject'], $email['html'], $headers, $email['attachments']);
+    }
+
+    /**
+     * Compone il promemoria senza inviarlo: usato dall'invio e dall'anteprima
+     */
+    public static function build_reminder($event_id, $reg) {
+        $event_title = DBEM_CPT::get_event_name($event_id);
+        $subject = sprintf(__('Promemoria: %s', 'db-event-manager'), $event_title);
+
+        $assigned_time = isset($reg->assigned_time) ? trim($reg->assigned_time) : '';
+        $time_block = $assigned_time !== ''
+            ? "\n🕐 " . __('Il tuo orario:', 'db-event-manager') . ' ' . $assigned_time
+            : '';
+
+        // Se le opzioni del form portano già data e orario, mostrano quelle al posto del periodo generale
+        $choices = get_post_meta($event_id, '_dbem_reminder_content', true) === 'options'
+            ? self::get_selected_choices($event_id, $reg)
+            : '';
+
+        if ($choices !== '') {
+            $body = "📌 " . __('Le tue scelte:', 'db-event-manager') . "\n" . $choices . $time_block . "\n";
+        } else {
+            // Con l'assegnazione orario l'ora di inizio evento trarrebbe in inganno: solo la data
+            $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true) === '1';
+            $start = get_post_meta($event_id, '_dbem_date_start', true);
+            $end = get_post_meta($event_id, '_dbem_date_end', true);
+            $registration_details = self::get_registration_details($reg);
+            $details_block = $registration_details
+                ? "\n📌 " . __('Le tue attività prenotate:', 'db-event-manager') . "\n" . $registration_details . "\n"
+                : '';
+
+            $body = sprintf(
+                __("📅 Periodo generale: %s\n📍 Sede generale: %s", 'db-event-manager'),
+                self::format_event_date_range($start, $end, $time_slot_enabled),
+                get_post_meta($event_id, '_dbem_location', true)
+            ) . $time_block . $details_block;
+        }
+
+        $message = sprintf(
+            __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!", 'db-event-manager'),
+            $reg->name,
+            $event_title
+        ) . "\n\n" . $body . "\n" . __("Non dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager');
+
+        // QR code URL + allegato
+        $upload_dir = wp_upload_dir();
+        $qr_path = $upload_dir['basedir'] . '/dbem/qrcodes/' . $reg->token . '.png';
+        $qr_url = $upload_dir['baseurl'] . '/dbem/qrcodes/' . $reg->token . '.png';
+
         $attachments = array();
         if (file_exists($qr_path)) {
             $attachments[] = $qr_path;
         }
 
-        return wp_mail($reg->email, $subject, $html, $headers, $attachments);
+        return array(
+            'subject'     => $subject,
+            'html'        => self::build_html_email($message, file_exists($qr_path) ? $qr_url : ''),
+            'attachments' => $attachments,
+        );
+    }
+
+    /**
+     * Opzioni scelte nei campi a scelta del form (selezione, scelta singola, scelta multipla).
+     * Un solo campo compilato: un'opzione per riga. Più campi: ogni gruppo sotto la sua etichetta.
+     */
+    private static function get_selected_choices($event_id, $reg) {
+        $fields = get_post_meta($event_id, '_dbem_custom_fields', true);
+        $data = json_decode($reg->data, true);
+        if (!is_array($fields) || !is_array($data)) return '';
+
+        $groups = array();
+        foreach ($fields as $field) {
+            if (!in_array($field['type'] ?? '', array('select', 'radio', 'checkbox'), true)) continue;
+
+            $label = $field['label'] ?? '';
+            $values = array_filter(array_map('sanitize_text_field', (array) ($data[$label] ?? array())), 'strlen');
+            if ($values) {
+                $groups[$label] = $values;
+            }
+        }
+
+        $lines = array();
+        foreach ($groups as $label => $values) {
+            if (count($groups) > 1) {
+                $lines[] = $label . ':';
+            }
+            foreach ($values as $value) {
+                $lines[] = '- ' . $value;
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -191,7 +251,7 @@ class DBEM_Email {
             if (is_array($value)) {
                 $value = implode(', ', array_filter(array_map('sanitize_text_field', $value)));
             } else {
-                $value = sanitize_text_field($value);
+                $value = self::format_field_date(sanitize_text_field($value));
             }
 
             if ($value !== '') {
@@ -205,16 +265,27 @@ class DBEM_Email {
     /**
      * Formatta data singola o intervallo dell'evento
      */
-    private static function format_event_date_range($start, $end) {
+    private static function format_event_date_range($start, $end, $date_only = false) {
         if (!$start) return '';
 
+        $format = $date_only ? 'd/m/Y' : 'd/m/Y H:i';
         $start_timestamp = strtotime($start);
-        $start_formatted = date('d/m/Y H:i', $start_timestamp);
+        $start_formatted = date($format, $start_timestamp);
         if (!$end || date('Y-m-d', $start_timestamp) === date('Y-m-d', strtotime($end))) {
             return $start_formatted;
         }
 
-        return $start_formatted . ' - ' . date('d/m/Y H:i', strtotime($end));
+        return $start_formatted . ' - ' . date($format, strtotime($end));
+    }
+
+    /**
+     * I campi Data del form arrivano come aaaa-mm-gg: li riporta a gg/mm/aaaa
+     */
+    private static function format_field_date($value) {
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) return $value;
+        if (!checkdate((int) $m[2], (int) $m[3], (int) $m[1])) return $value;
+
+        return $m[3] . '/' . $m[2] . '/' . $m[1];
     }
 
     /**

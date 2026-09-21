@@ -219,38 +219,97 @@
         $('#dbem-reminder-scope').on('change', updateReminderButton);
         updateReminderButton();
 
-        $('#dbem-send-reminder').on('click', function() {
-            var btn = $(this);
-            var eventId = btn.data('event');
-            var scope = $('#dbem-reminder-scope').val() || 'all';
-            var registrationIds = [];
+        // Destinatari scelti nel selettore: null = tutti i validi, [] = nessuno visualizzato
+        function reminderRecipientIds() {
+            if ($('#dbem-reminder-scope').val() !== 'visible') return null;
+            var ids = [];
+            $('tbody tr[data-id]:visible').each(function() { ids.push($(this).data('id')); });
+            return ids;
+        }
 
-            if (scope === 'visible') {
-                $('tbody tr[data-id]:visible').each(function() {
-                    registrationIds.push($(this).data('id'));
-                });
-                if (!registrationIds.length) {
-                    $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.no_results);
-                    return;
-                }
+        function reminderRequest(action, ids) {
+            var request = {
+                action: action,
+                nonce: dbem_admin.nonce,
+                event_id: $('#dbem-send-reminder').data('event')
+            };
+            if (ids) request.registration_ids = ids;
+            return request;
+        }
+
+        function sendReminder() {
+            var btn = $('#dbem-send-reminder');
+            var ids = reminderRecipientIds();
+            if (ids && !ids.length) {
+                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.no_results);
+                return;
             }
 
-            if (!confirm(scope === 'visible' ? dbem_admin.i18n.confirm_reminder_visible : dbem_admin.i18n.confirm_reminder)) return;
+            if (!confirm(ids ? dbem_admin.i18n.confirm_reminder_visible : dbem_admin.i18n.confirm_reminder)) return;
             btn.prop('disabled', true).text('⏳ Invio...');
             $('#dbem-reminder-feedback').text('');
 
-            var request = {
-                action: 'dbem_send_reminder',
-                nonce: dbem_admin.nonce,
-                event_id: eventId
-            };
-            if (scope === 'visible') request.registration_ids = registrationIds;
-
-            $.post(dbem_admin.ajax_url, request, function(resp) {
+            $.post(dbem_admin.ajax_url, reminderRequest('dbem_send_reminder', ids), function(resp) {
                 btn.prop('disabled', false);
                 updateReminderButton();
                 $('#dbem-reminder-feedback').text(resp.success ? '✅ ' + resp.data.message : '❌ ' + (resp.data || dbem_admin.i18n.error));
             });
+        }
+
+        $('#dbem-send-reminder').on('click', sendReminder);
+
+        /* Anteprima reminder */
+        var dialog = document.getElementById('dbem-reminder-preview');
+        var previewIds = null;
+        var previewIndex = 0;
+
+        function loadPreview(index) {
+            $('#dbem-preview-prev, #dbem-preview-next').prop('disabled', true);
+            $('#dbem-preview-counter').text(dbem_admin.i18n.loading);
+
+            var request = reminderRequest('dbem_preview_reminder', previewIds);
+            request.index = index;
+
+            $.post(dbem_admin.ajax_url, request, function(resp) {
+                if (!resp.success) {
+                    if (dialog.open) dialog.close();
+                    $('#dbem-reminder-feedback').text('❌ ' + (resp.data || dbem_admin.i18n.error));
+                    return;
+                }
+
+                var data = resp.data;
+                previewIndex = data.index;
+                $('#dbem-preview-to').text(data.to);
+                $('#dbem-preview-subject').text(data.subject);
+                $('#dbem-preview-attachment').text(data.attachment ? 'QR code (PNG)' : '—');
+                $('#dbem-preview-frame').attr('srcdoc', data.html);
+                $('#dbem-preview-counter').text(dbem_admin.i18n.preview_of.replace('%1$d', data.index + 1).replace('%2$d', data.total));
+                $('#dbem-preview-prev').prop('disabled', data.index === 0);
+                $('#dbem-preview-next').prop('disabled', data.index >= data.total - 1);
+                $('#dbem-preview-send').text('📧 ' + dbem_admin.i18n.send_to.replace('%d', data.total));
+
+                if (!dialog.open) dialog.showModal();
+            }).fail(function() {
+                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.error);
+            });
+        }
+
+        $('#dbem-preview-reminder').on('click', function() {
+            previewIds = reminderRecipientIds();
+            if (previewIds && !previewIds.length) {
+                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.no_results);
+                return;
+            }
+            $('#dbem-reminder-feedback').text('');
+            loadPreview(0);
+        });
+
+        $('#dbem-preview-prev').on('click', function() { loadPreview(previewIndex - 1); });
+        $('#dbem-preview-next').on('click', function() { loadPreview(previewIndex + 1); });
+        $('.dbem-preview-close').on('click', function() { dialog.close(); });
+        $('#dbem-preview-send').on('click', function() {
+            dialog.close();
+            sendReminder();
         });
     }
 

@@ -3,7 +3,7 @@
  * Plugin Name: DB Event Manager
  * Plugin URI: https://github.com/dadebertolino/db-event-manager
  * Description: Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento. Niente Eventbrite, niente SaaS, niente abbonamenti.
- * Version: 1.6.1
+ * Version: 1.6.2
  * Author: Davide Bertolino
  * Author URI: https://www.davidebertolino.it
  * License: GPL v2 or later
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DBEM_VERSION', '1.6.1');
+define('DBEM_VERSION', '1.6.2');
 define('DBEM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DBEM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DBEM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -114,7 +114,8 @@ final class DB_Event_Manager {
         add_action('wp_ajax_dbem_public_update_time', array('DBEM_Checkin', 'handle_public_update_time'));
         add_action('wp_ajax_dbem_bulk_action', array('DBEM_Admin', 'handle_bulk_action'));
         add_action('wp_ajax_dbem_resend_email', array('DBEM_Admin', 'handle_resend_email'));
-            add_action('wp_ajax_dbem_send_reminder', array('DBEM_Admin', 'handle_send_reminder'));
+        add_action('wp_ajax_dbem_send_reminder', array('DBEM_Admin', 'handle_send_reminder'));
+        add_action('wp_ajax_dbem_preview_reminder', array('DBEM_Admin', 'handle_preview_reminder'));
         add_action('wp_ajax_dbem_export_csv', array('DBEM_Export', 'handle_export'));
         add_action('wp_ajax_nopriv_dbem_submit_survey', array('DBEM_Survey', 'handle_submit'));
         add_action('wp_ajax_dbem_submit_survey', array('DBEM_Survey', 'handle_submit'));

@@ -113,6 +113,8 @@ class DBEM_Admin {
                 'confirm_cancel'   => __('Sei sicuro di voler annullare questa iscrizione?', 'db-event-manager'),
                 'confirm_reminder' => __('Inviare il reminder a tutti i partecipanti confermati e presenti?', 'db-event-manager'),
                 'confirm_reminder_visible' => __('Inviare il reminder solo ai partecipanti visualizzati?', 'db-event-manager'),
+                'preview_of'       => __('%1$d di %2$d', 'db-event-manager'),
+                'send_to'          => __('Invia a %d partecipanti', 'db-event-manager'),
                 'checked_in'       => __('Check-in effettuato', 'db-event-manager'),
                 'already_checked'  => __('Già registrato', 'db-event-manager'),
                 'cancelled'        => __('Iscrizione annullata', 'db-event-manager'),
@@ -476,7 +478,25 @@ class DBEM_Admin {
                 <td>
                     <input type="number" id="dbem_reminder_hours" name="_dbem_reminder_hours" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_reminder_hours', true)); ?>" class="small-text" min="0">
                     <span><?php _e('ore prima dell\'inizio evento (0 = nessun promemoria)', 'db-event-manager'); ?></span>
-                    <p class="description"><?php _e('Invia a tutti gli iscritti confermati un promemoria con data, luogo e QR code.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php _e('Invia agli iscritti confermati e presenti un promemoria con data, luogo, orario assegnato, attività prenotate e QR code.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th><?php _e('Contenuto del promemoria', 'db-event-manager'); ?></th>
+                <td>
+                    <?php $reminder_content = get_post_meta($post->ID, '_dbem_reminder_content', true) ?: 'date'; ?>
+                    <fieldset>
+                        <legend class="screen-reader-text"><?php _e('Contenuto del promemoria', 'db-event-manager'); ?></legend>
+                        <label>
+                            <input type="radio" name="_dbem_reminder_content" value="date" <?php checked($reminder_content, 'date'); ?>>
+                            <?php _e('Data e sede dell\'evento, con le attività prenotate', 'db-event-manager'); ?>
+                        </label><br>
+                        <label>
+                            <input type="radio" name="_dbem_reminder_content" value="options" <?php checked($reminder_content, 'options'); ?>>
+                            <?php _e('Solo le opzioni scelte dal partecipante, al posto di data e sede', 'db-event-manager'); ?>
+                        </label>
+                    </fieldset>
+                    <p class="description"><?php _e('La seconda scelta serve quando ogni opzione del form indica già giorno e orario, per esempio laboratori in date diverse. Vengono usati i campi Selezione, Scelta singola e Scelta multipla; se il partecipante non ne ha compilato nessuno, il promemoria mostra data e sede.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
@@ -751,6 +771,11 @@ class DBEM_Admin {
             update_post_meta($post_id, '_dbem_survey_auto_hours', absint($_POST['_dbem_survey_auto_hours']));
         }
 
+        if (isset($_POST['_dbem_reminder_content'])) {
+            $reminder_content = $_POST['_dbem_reminder_content'] === 'options' ? 'options' : 'date';
+            update_post_meta($post_id, '_dbem_reminder_content', $reminder_content);
+        }
+
         if (isset($_POST['_dbem_reminder_hours'])) {
             update_post_meta($post_id, '_dbem_reminder_hours', absint($_POST['_dbem_reminder_hours']));
         }
@@ -1023,6 +1048,39 @@ class DBEM_Admin {
     }
 
     /**
+     * Anteprima del promemoria per un destinatario, senza inviarlo
+     */
+    public static function handle_preview_reminder() {
+        check_ajax_referer('dbem_admin_nonce', 'nonce');
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
+            wp_send_json_error(__('Evento non valido', 'db-event-manager'));
+        }
+
+        DBEM_DB::ensure_tables();
+        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : null;
+        $recipients = DBEM_DB::get_reminder_registrations($event_id, $registration_ids);
+        if (!$recipients) {
+            wp_send_json_error(__('Nessun partecipante confermato o presente a cui inviare il reminder.', 'db-event-manager'));
+        }
+
+        $index = min(absint($_POST['index'] ?? 0), count($recipients) - 1);
+        $reg = $recipients[$index];
+        $email = DBEM_Email::build_reminder($event_id, $reg);
+
+        wp_send_json_success(array(
+            'index'      => $index,
+            'total'      => count($recipients),
+            'to'         => $reg->name . ' <' . $reg->email . '>',
+            'subject'    => $email['subject'],
+            'html'       => $email['html'],
+            'attachment' => !empty($email['attachments']),
+        ));
+    }
+
+    /**
      * Invia il promemoria a tutti i partecipanti validi dell'evento
      */
     public static function handle_send_reminder() {
@@ -1037,7 +1095,7 @@ class DBEM_Admin {
         DBEM_DB::ensure_tables();
         $sent = 0;
         $failed = 0;
-        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : array();
+        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : null;
         foreach (DBEM_DB::get_reminder_registrations($event_id, $registration_ids) as $reg) {
             if (DBEM_Email::send_reminder($event_id, $reg)) {
                 $sent++;

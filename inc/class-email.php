@@ -144,46 +144,81 @@ class DBEM_Email {
     }
 
     /**
-     * Compone il promemoria senza inviarlo: usato dall'invio e dall'anteprima
+     * Testo predefinito del promemoria. {dettagli} è il blocco con data, sede, orario
+     * e attività, oppure con le opzioni scelte, secondo il "Contenuto del promemoria".
      */
-    public static function build_reminder($event_id, $reg) {
-        $event_title = DBEM_CPT::get_event_name($event_id);
-        $subject = sprintf(__('Promemoria: %s', 'db-event-manager'), $event_title);
+    public static function default_reminder_template() {
+        return array(
+            'subject' => __('Promemoria: {evento}', 'db-event-manager'),
+            'message' => __("Ciao {nome},\n\nti ricordiamo che l'evento \"{evento}\" è in programma!\n\n{dettagli}\nNon dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager'),
+        );
+    }
+
+    /**
+     * Testo del promemoria salvato per l'evento, o quello predefinito
+     */
+    public static function get_reminder_template($event_id) {
+        $saved = get_post_meta($event_id, '_dbem_reminder_email', true);
+        if (is_array($saved) && !empty($saved['subject']) && !empty($saved['message'])) {
+            return array('subject' => $saved['subject'], 'message' => $saved['message'], 'custom' => true);
+        }
+        return self::default_reminder_template() + array('custom' => false);
+    }
+
+    /**
+     * Segnaposto disponibili nel promemoria, oltre a quelli della mail di conferma
+     */
+    public static function reminder_placeholder_names() {
+        return array('{nome}', '{email}', '{evento}', '{periodo}', '{data_evento}', '{luogo}', '{orario}', '{scelte}', '{attivita}', '{dettagli}', '{sito}');
+    }
+
+    /**
+     * Compone il promemoria senza inviarlo: usato dall'invio e dall'anteprima.
+     * $template (oggetto e messaggio) serve all'anteprima di un testo non ancora salvato.
+     */
+    public static function build_reminder($event_id, $reg, $template = null) {
+        if (!$template) {
+            $template = self::get_reminder_template($event_id);
+        }
 
         $assigned_time = isset($reg->assigned_time) ? trim($reg->assigned_time) : '';
         $time_block = $assigned_time !== ''
             ? "\n🕐 " . __('Il tuo orario:', 'db-event-manager') . ' ' . $assigned_time
             : '';
 
-        // Se le opzioni del form portano già data e orario, mostrano quelle al posto del periodo generale
-        $choices = get_post_meta($event_id, '_dbem_reminder_content', true) === 'options'
-            ? self::get_selected_choices($event_id, $reg)
-            : '';
+        // Con l'assegnazione orario l'ora di inizio evento trarrebbe in inganno: solo la data
+        $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true) === '1';
+        $period = self::format_event_date_range(
+            get_post_meta($event_id, '_dbem_date_start', true),
+            get_post_meta($event_id, '_dbem_date_end', true),
+            $time_slot_enabled
+        );
+        $location = get_post_meta($event_id, '_dbem_location', true);
+        $choices = self::get_selected_choices($event_id, $reg);
+        $registration_details = self::get_registration_details($reg);
 
-        if ($choices !== '') {
-            $body = "📌 " . __('Le tue scelte:', 'db-event-manager') . "\n" . $choices . $time_block . "\n";
+        // Se le opzioni del form portano già data e orario, mostrano quelle al posto del periodo generale
+        if ($choices !== '' && get_post_meta($event_id, '_dbem_reminder_content', true) === 'options') {
+            $details = "📌 " . __('Le tue scelte:', 'db-event-manager') . "\n" . $choices . $time_block . "\n";
         } else {
-            // Con l'assegnazione orario l'ora di inizio evento trarrebbe in inganno: solo la data
-            $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true) === '1';
-            $start = get_post_meta($event_id, '_dbem_date_start', true);
-            $end = get_post_meta($event_id, '_dbem_date_end', true);
-            $registration_details = self::get_registration_details($reg);
             $details_block = $registration_details
                 ? "\n📌 " . __('Le tue attività prenotate:', 'db-event-manager') . "\n" . $registration_details . "\n"
                 : '';
-
-            $body = sprintf(
+            $details = sprintf(
                 __("📅 Periodo generale: %s\n📍 Sede generale: %s", 'db-event-manager'),
-                self::format_event_date_range($start, $end, $time_slot_enabled),
-                get_post_meta($event_id, '_dbem_location', true)
+                $period,
+                $location
             ) . $time_block . $details_block;
         }
 
-        $message = sprintf(
-            __("Ciao %s,\n\nti ricordiamo che l'evento \"%s\" è in programma!", 'db-event-manager'),
-            $reg->name,
-            $event_title
-        ) . "\n\n" . $body . "\n" . __("Non dimenticare di portare il QR code per il check-in.\n\nA presto!", 'db-event-manager');
+        $placeholders = array_merge(self::get_placeholders($event_id, $reg), array(
+            '{periodo}'   => $period,
+            '{scelte}'    => $choices,
+            '{attivita}'  => $registration_details,
+            '{dettagli}'  => $details,
+        ));
+        $subject = self::replace_placeholders($template['subject'], $placeholders);
+        $message = self::replace_placeholders($template['message'], $placeholders);
 
         // QR code URL + allegato
         $upload_dir = wp_upload_dir();

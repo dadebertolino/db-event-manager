@@ -258,10 +258,25 @@
 
         $('#dbem-send-reminder').on('click', sendReminder);
 
-        /* Anteprima reminder */
+        /* Anteprima reminder, con modifica del testo */
         var dialog = document.getElementById('dbem-reminder-preview');
         var previewIds = null;
         var previewIndex = 0;
+        var templateLoaded = false;
+        var templateDirty = false;
+        var refreshTimer = null;
+
+        function setTemplateStatus(text) {
+            $('#dbem-template-status').text(text);
+        }
+
+        function fillTemplate(template) {
+            $('#dbem-template-subject').val(template.subject);
+            $('#dbem-template-message').val(template.message);
+            $('#dbem-template-kind').text(template.custom ? '(personalizzato)' : '(predefinito)');
+            templateLoaded = true;
+            templateDirty = false;
+        }
 
         function loadPreview(index) {
             $('#dbem-preview-prev, #dbem-preview-next').prop('disabled', true);
@@ -269,6 +284,10 @@
 
             var request = reminderRequest('dbem_preview_reminder', previewIds);
             request.index = index;
+            if (templateDirty) {
+                request.template_subject = $('#dbem-template-subject').val();
+                request.template_message = $('#dbem-template-message').val();
+            }
 
             $.post(dbem_admin.ajax_url, request, function(resp) {
                 if (!resp.success) {
@@ -279,6 +298,7 @@
 
                 var data = resp.data;
                 previewIndex = data.index;
+                if (!templateLoaded) fillTemplate(data.template);
                 $('#dbem-preview-to').text(data.to);
                 $('#dbem-preview-subject').text(data.subject);
                 $('#dbem-preview-attachment').text(data.attachment ? 'QR code (PNG)' : '—');
@@ -294,6 +314,25 @@
             });
         }
 
+        function saveTemplate(extra, done) {
+            var request = reminderRequest('dbem_save_reminder_template', null);
+            request.template_subject = $('#dbem-template-subject').val();
+            request.template_message = $('#dbem-template-message').val();
+            $.extend(request, extra || {});
+
+            $.post(dbem_admin.ajax_url, request, function(resp) {
+                if (!resp.success) {
+                    setTemplateStatus('❌ ' + (resp.data || dbem_admin.i18n.error));
+                    return;
+                }
+                fillTemplate(resp.data.template);
+                setTemplateStatus('✅ ' + resp.data.message);
+                if (done) done();
+            }).fail(function() {
+                setTemplateStatus('❌ ' + dbem_admin.i18n.error);
+            });
+        }
+
         $('#dbem-preview-reminder').on('click', function() {
             previewIds = reminderRecipientIds();
             if (previewIds && !previewIds.length) {
@@ -301,15 +340,43 @@
                 return;
             }
             $('#dbem-reminder-feedback').text('');
+            templateLoaded = false;
+            templateDirty = false;
+            setTemplateStatus('');
             loadPreview(0);
+        });
+
+        // L'anteprima segue il testo mentre lo modifichi
+        $('#dbem-template-subject, #dbem-template-message').on('input', function() {
+            templateDirty = true;
+            setTemplateStatus(dbem_admin.i18n.template_unsaved);
+            clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(function() { loadPreview(previewIndex); }, 600);
+        });
+
+        $('#dbem-template-save').on('click', function() {
+            saveTemplate(null, function() { loadPreview(previewIndex); });
+        });
+
+        $('#dbem-template-reset').on('click', function() {
+            if (!confirm(dbem_admin.i18n.confirm_reset)) return;
+            saveTemplate({ reset: 1 }, function() { loadPreview(previewIndex); });
         });
 
         $('#dbem-preview-prev').on('click', function() { loadPreview(previewIndex - 1); });
         $('#dbem-preview-next').on('click', function() { loadPreview(previewIndex + 1); });
         $('.dbem-preview-close').on('click', function() { dialog.close(); });
         $('#dbem-preview-send').on('click', function() {
-            dialog.close();
-            sendReminder();
+            // Si invia sempre il testo salvato: le modifiche in corso si salvano prima
+            if (!templateDirty) {
+                dialog.close();
+                sendReminder();
+                return;
+            }
+            saveTemplate(null, function() {
+                dialog.close();
+                sendReminder();
+            });
         });
     }
 
@@ -338,6 +405,24 @@
         });
     }
 
+    /* === Opzioni rinominate: avviso nell'editor a blocchi === */
+    function initOptionRenamesNotice() {
+        if (!$('#dbem_custom_fields_json').length || !window.wp || !wp.data || !wp.data.select('core/edit-post')) return;
+
+        var wasSaving = false;
+        wp.data.subscribe(function() {
+            var saving = wp.data.select('core/edit-post').isSavingMetaBoxes();
+            if (wasSaving && !saving) {
+                $.post(dbem_admin.ajax_url, { action: 'dbem_option_renames_notice', nonce: dbem_admin.nonce }, function(resp) {
+                    if (!resp.success || !resp.data.lines.length) return;
+                    var text = resp.data.title + ': ' + resp.data.lines.join('; ') + '. ' + resp.data.hint;
+                    wp.data.dispatch('core/notices').createNotice('info', text, { isDismissible: true, id: 'dbem-option-renames' });
+                });
+            }
+            wasSaving = saving;
+        });
+    }
+
     /* === Helpers === */
     function escHtml(s) { return $('<span>').text(s || '').html(); }
     function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -348,6 +433,7 @@
         initFieldsBuilder('#dbem-survey-fields', '#dbem_survey_fields_json');
         initParticipants();
         initSurvey();
+        initOptionRenamesNotice();
     });
 
 })(jQuery);

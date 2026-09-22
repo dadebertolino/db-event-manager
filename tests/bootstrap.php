@@ -305,6 +305,12 @@ if (!class_exists('wpdb')) {
             $this->tables[$this->prefix . 'dbem_survey_responses'] = array();
         }
 
+        public function set_rows($table, $rows) {
+            $previous = $this->tables[$table] ?? array();
+            $this->tables[$table] = $rows;
+            return $previous;
+        }
+
         public function prepare($query, ...$args) {
             $index = 0;
             return preg_replace_callback('/%s|%d/', function ($match) use (&$index, $args) {

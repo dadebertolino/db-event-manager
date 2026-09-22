@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.6.3
+**Versione:** 1.6.4
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -311,6 +311,13 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.4
+- Testo del reminder modificabile per evento dall'anteprima, con aggiornamento in tempo reale, salvataggio e ripristino del testo predefinito; il testo salvato vale anche per il reminder automatico
+- Segnaposto del reminder: {nome}, {email}, {evento}, {periodo}, {data_evento}, {luogo}, {orario}, {scelte}, {attivita}, {dettagli}, {sito}
+- Quando si modifica il testo di un'opzione nel form dell'evento, le iscrizioni esistenti vengono aggiornate con il nuovo testo, così reminder, filtri ed export restano allineati
+- Avviso dopo il salvataggio con le opzioni aggiornate e il numero di iscrizioni coinvolte, anche nell'editor a blocchi
+- Le opzioni aggiunte, rimosse o spostate non modificano le iscrizioni; i casi ambigui vengono lasciati invariati
 
 ### 1.6.3
 - Con la reiscrizione attiva, se l'email è già iscritta il form chiede «Vuoi sostituire la prenotazione precedente con quella di adesso?» prima di sostituirla

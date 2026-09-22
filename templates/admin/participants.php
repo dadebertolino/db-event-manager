@@ -176,6 +176,23 @@ $status_labels = array(
                 <span id="dbem-preview-counter" aria-live="polite"></span>
                 <button type="button" class="button" id="dbem-preview-next" aria-label="<?php esc_attr_e('Partecipante successivo', 'db-event-manager'); ?>">›</button>
             </div>
+            <details class="dbem-preview-editor">
+                <summary>✏️ <?php esc_html_e('Modifica testo', 'db-event-manager'); ?> <span id="dbem-template-kind" class="dbem-template-kind"></span></summary>
+                <label for="dbem-template-subject"><?php esc_html_e('Oggetto', 'db-event-manager'); ?></label>
+                <input type="text" id="dbem-template-subject" class="large-text">
+                <label for="dbem-template-message"><?php esc_html_e('Messaggio', 'db-event-manager'); ?></label>
+                <textarea id="dbem-template-message" rows="10" class="large-text"></textarea>
+                <p class="description">
+                    <?php echo esc_html(sprintf(__('Segnaposto: %s', 'db-event-manager'), implode(' ', DBEM_Email::reminder_placeholder_names()))); ?><br>
+                    <?php esc_html_e('{dettagli} è il blocco con data, sede, orario e attività, oppure con le opzioni scelte, secondo il "Contenuto del promemoria" dell\'evento. {scelte} e {attivita} sono le sole opzioni scelte o tutti i campi compilati.', 'db-event-manager'); ?><br>
+                    <?php esc_html_e('Il testo salvato vale per tutti i reminder di questo evento, anche per quello automatico.', 'db-event-manager'); ?>
+                </p>
+                <div class="dbem-preview-editor-actions">
+                    <button type="button" class="button" id="dbem-template-save"><?php esc_html_e('Salva testo', 'db-event-manager'); ?></button>
+                    <button type="button" class="button-link" id="dbem-template-reset"><?php esc_html_e('Ripristina testo predefinito', 'db-event-manager'); ?></button>
+                    <span id="dbem-template-status" aria-live="polite"></span>
+                </div>
+            </details>
             <iframe id="dbem-preview-frame" title="<?php esc_attr_e('Contenuto del reminder', 'db-event-manager'); ?>" sandbox=""></iframe>
             <div class="dbem-preview-footer">
                 <button type="button" class="button dbem-preview-close"><?php esc_html_e('Chiudi', 'db-event-manager'); ?></button>

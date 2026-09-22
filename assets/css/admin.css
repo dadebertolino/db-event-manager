@@ -229,6 +229,25 @@
     gap: 8px;
     padding: 12px 20px;
 }
+.dbem-preview-dialog[open] { overflow-y: auto; }
+.dbem-preview-editor {
+    margin: 0 20px 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--db-border-light);
+    border-radius: var(--db-radius);
+    background: var(--db-bg-subtle);
+}
+.dbem-preview-editor summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.dbem-preview-editor label { display: block; margin: 10px 0 4px; font-weight: 600; }
+.dbem-preview-editor textarea { font-family: inherit; }
+.dbem-template-kind { font-weight: 400; color: var(--db-text-muted); }
+.dbem-preview-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 4px;
+}
 #dbem-preview-frame {
     flex: 1;
     min-height: 360px;

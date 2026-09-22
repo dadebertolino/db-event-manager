@@ -142,4 +142,48 @@ final class ReminderTest extends TestCase {
 
         $this->assertStringContainsString('Il tuo orario: 15:00', $html);
     }
+
+    public function testDefaultTemplateKeepsPreviousText(): void {
+        $email = DBEM_Email::build_reminder(10, $this->registration());
+
+        $this->assertStringContainsString('&quot;Open Day&quot; è in programma!', $email['html']);
+        $this->assertStringContainsString('Sede generale: Aula Magna', $email['html']);
+        $this->assertStringContainsString('Non dimenticare di portare il QR code per il check-in.', $email['html']);
+        $this->assertFalse(DBEM_Email::get_reminder_template(10)['custom']);
+    }
+
+    public function testSavedTemplateIsUsedWithPlaceholders(): void {
+        $GLOBALS['__dbem_post_meta'][10]['_dbem_reminder_email'] = array(
+            'subject' => 'Ci vediamo a {evento}',
+            'message' => "Ciao {nome}, ti aspettiamo in {luogo} il {periodo}.\n{attivita}",
+        );
+
+        $email = DBEM_Email::build_reminder(10, $this->registration());
+
+        $this->assertSame('Ci vediamo a Open Day', $email['subject']);
+        $this->assertStringContainsString('Ciao Alice, ti aspettiamo in Aula Magna il 10/10/2026 09:00.', $email['html']);
+        $this->assertStringContainsString('- Laboratorio: Robotica, Chimica', $email['html']);
+        $this->assertStringNotContainsString('Sede generale', $email['html']);
+        $this->assertTrue(DBEM_Email::get_reminder_template(10)['custom']);
+    }
+
+    public function testDraftTemplateOverridesSavedOneForPreview(): void {
+        $GLOBALS['__dbem_post_meta'][10]['_dbem_reminder_email'] = array('subject' => 'Salvato', 'message' => 'Testo salvato');
+
+        $email = DBEM_Email::build_reminder(10, $this->registration(), array('subject' => 'Bozza {nome}', 'message' => 'Testo in bozza'));
+
+        $this->assertSame('Bozza Alice', $email['subject']);
+        $this->assertStringContainsString('Testo in bozza', $email['html']);
+    }
+
+    public function testChoicesPlaceholderWorksInEitherContentMode(): void {
+        $reg = $this->useLabOptions();
+        $GLOBALS['__dbem_post_meta'][10]['_dbem_reminder_content'] = 'date';
+        $GLOBALS['__dbem_post_meta'][10]['_dbem_reminder_email'] = array('subject' => 'X', 'message' => "Laboratori:\n{scelte}");
+
+        $html = DBEM_Email::build_reminder(10, $reg)['html'];
+
+        $this->assertStringContainsString('- Baruffi CAT 24 Settembre 2026 dalle 14:30 alle 18:30', $html);
+        $this->assertStringNotContainsString('Media Mondovì', $html);
+    }
 }

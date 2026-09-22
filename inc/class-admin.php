@@ -115,6 +115,9 @@ class DBEM_Admin {
                 'confirm_reminder_visible' => __('Inviare il reminder solo ai partecipanti visualizzati?', 'db-event-manager'),
                 'preview_of'       => __('%1$d di %2$d', 'db-event-manager'),
                 'send_to'          => __('Invia a %d partecipanti', 'db-event-manager'),
+                'template_saved'   => __('Testo salvato', 'db-event-manager'),
+                'template_unsaved' => __('Modifiche non salvate: l\'invio le salverà per questo evento.', 'db-event-manager'),
+                'confirm_reset'    => __('Tornare al testo predefinito del reminder?', 'db-event-manager'),
                 'checked_in'       => __('Check-in effettuato', 'db-event-manager'),
                 'already_checked'  => __('Già registrato', 'db-event-manager'),
                 'cancelled'        => __('Iscrizione annullata', 'db-event-manager'),
@@ -737,7 +740,9 @@ class DBEM_Admin {
             $fields = json_decode(stripslashes($_POST['_dbem_custom_fields']), true);
             if (is_array($fields)) {
                 $fields = self::sanitize_fields_array($fields);
+                $old_fields = get_post_meta($post_id, '_dbem_custom_fields', true);
                 update_post_meta($post_id, '_dbem_custom_fields', $fields);
+                self::apply_option_renames($post_id, is_array($old_fields) ? $old_fields : array(), $fields);
             }
         }
 
@@ -801,6 +806,156 @@ class DBEM_Admin {
                 wp_schedule_single_event($send_time, 'dbem_send_survey_auto', array($post_id));
             }
         }
+    }
+
+    /**
+     * Opzioni rinominate tra la versione salvata e quella nuova dei campi.
+     * I campi si abbinano per etichetta e tipo a scelta; dentro ogni campo le righe
+     * rimaste uguali fanno da punti fermi e, tra due punti fermi, le righe tolte e
+     * quelle aggiunte si abbinano in ordine solo se sono lo stesso numero.
+     * Restituisce etichetta => (testo vecchio => testo nuovo).
+     */
+    public static function find_renamed_options($old_fields, $new_fields) {
+        $choice_types = array('select', 'radio', 'checkbox');
+        $old_by_label = array();
+        foreach ($old_fields as $field) {
+            if (in_array($field['type'] ?? '', $choice_types, true)) {
+                $old_by_label[$field['label'] ?? ''] = array_values((array) ($field['options'] ?? array()));
+            }
+        }
+
+        $renames = array();
+        foreach ($new_fields as $field) {
+            $label = $field['label'] ?? '';
+            if (!in_array($field['type'] ?? '', $choice_types, true) || !isset($old_by_label[$label])) continue;
+
+            $map = self::pair_changed_lines($old_by_label[$label], array_values((array) ($field['options'] ?? array())));
+            if ($map) {
+                $renames[$label] = $map;
+            }
+        }
+
+        return $renames;
+    }
+
+    private static function pair_changed_lines($old, $new) {
+        // Sottosequenza comune più lunga: le righe invariate
+        $n = count($old);
+        $m = count($new);
+        $lcs = array_fill(0, $n + 1, array_fill(0, $m + 1, 0));
+        for ($i = $n - 1; $i >= 0; $i--) {
+            for ($j = $m - 1; $j >= 0; $j--) {
+                $lcs[$i][$j] = $old[$i] === $new[$j]
+                    ? $lcs[$i + 1][$j + 1] + 1
+                    : max($lcs[$i + 1][$j], $lcs[$i][$j + 1]);
+            }
+        }
+
+        $map = array();
+        $removed = array();
+        $added = array();
+        $flush = function () use (&$map, &$removed, &$added, $new) {
+            if ($removed && count($removed) === count($added)) {
+                foreach ($removed as $k => $text) {
+                    // Un testo che esiste ancora tra le nuove opzioni non è stato rinominato
+                    if (!in_array($text, $new, true)) {
+                        $map[$text] = $added[$k];
+                    }
+                }
+            }
+            $removed = array();
+            $added = array();
+        };
+
+        $i = 0;
+        $j = 0;
+        while ($i < $n || $j < $m) {
+            if ($i < $n && $j < $m && $old[$i] === $new[$j]) {
+                $flush();
+                $i++;
+                $j++;
+            } elseif ($j < $m && ($i >= $n || $lcs[$i][$j + 1] >= $lcs[$i + 1][$j])) {
+                $added[] = $new[$j++];
+            } else {
+                $removed[] = $old[$i++];
+            }
+        }
+        $flush();
+
+        return $map;
+    }
+
+    /**
+     * Porta le opzioni rinominate nelle iscrizioni esistenti e prepara l'avviso
+     */
+    private static function apply_option_renames($event_id, $old_fields, $new_fields) {
+        $renames = self::find_renamed_options($old_fields, $new_fields);
+        if (!$renames) return;
+
+        DBEM_DB::ensure_tables();
+        $summary = array();
+        foreach ($renames as $label => $map) {
+            foreach (DBEM_DB::rename_option_values($event_id, $label, $map) as $old_text => $count) {
+                $summary[] = array('from' => $old_text, 'to' => $map[$old_text], 'count' => $count);
+            }
+        }
+        set_transient('dbem_option_renames_' . get_current_user_id(), $summary, 300);
+    }
+
+    /**
+     * Righe dell'avviso sulle opzioni aggiornate, consumate alla prima lettura
+     */
+    private static function take_option_renames_summary() {
+        $key = 'dbem_option_renames_' . get_current_user_id();
+        $summary = get_transient($key);
+        if (!$summary) return array();
+        delete_transient($key);
+
+        $lines = array();
+        foreach ($summary as $row) {
+            $lines[] = sprintf(
+                _n('«%1$s» → «%2$s»: %3$d iscrizione', '«%1$s» → «%2$s»: %3$d iscrizioni', $row['count'], 'db-event-manager'),
+                $row['from'], $row['to'], $row['count']
+            );
+        }
+        return $lines;
+    }
+
+    private static function option_renames_hint() {
+        return __('Per avvisare i partecipanti: in Partecipanti filtra per la nuova opzione, scegli "solo quelli visualizzati", controlla l\'anteprima e invia il reminder.', 'db-event-manager');
+    }
+
+    /**
+     * Editor a blocchi: la scheda evento si salva senza ricaricare, l'avviso lo chiede il JS
+     */
+    public static function handle_option_renames_notice() {
+        check_ajax_referer('dbem_admin_nonce', 'nonce');
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+
+        wp_send_json_success(array(
+            'title' => __('Opzioni modificate: iscrizioni aggiornate', 'db-event-manager'),
+            'lines' => self::take_option_renames_summary(),
+            'hint'  => self::option_renames_hint(),
+        ));
+    }
+
+    /**
+     * Avviso dopo il salvataggio dell'evento con le opzioni aggiornate nelle iscrizioni
+     */
+    public static function render_option_renames_notice() {
+        $lines = self::take_option_renames_summary();
+        if (!$lines) return;
+        ?>
+        <div class="notice notice-info is-dismissible">
+            <p><strong><?php esc_html_e('Opzioni modificate: iscrizioni aggiornate', 'db-event-manager'); ?></strong></p>
+            <ul>
+                <?php foreach ($lines as $line): ?>
+                    <li><?php echo esc_html($line); ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <p><?php echo esc_html(self::option_renames_hint()); ?></p>
+        </div>
+        <?php
     }
 
     private static function sanitize_fields_array($fields) {
@@ -1068,7 +1223,9 @@ class DBEM_Admin {
 
         $index = min(absint($_POST['index'] ?? 0), count($recipients) - 1);
         $reg = $recipients[$index];
-        $email = DBEM_Email::build_reminder($event_id, $reg);
+        $template = DBEM_Email::get_reminder_template($event_id);
+        $draft = self::reminder_template_from_request();
+        $email = DBEM_Email::build_reminder($event_id, $reg, $draft ?: $template);
 
         wp_send_json_success(array(
             'index'      => $index,
@@ -1077,6 +1234,50 @@ class DBEM_Admin {
             'subject'    => $email['subject'],
             'html'       => $email['html'],
             'attachment' => !empty($email['attachments']),
+            'template'   => $template,
+        ));
+    }
+
+    /**
+     * Oggetto e messaggio inviati dall'editor dell'anteprima, se presenti e non vuoti
+     */
+    private static function reminder_template_from_request() {
+        $subject = sanitize_text_field(wp_unslash($_POST['template_subject'] ?? ''));
+        $message = sanitize_textarea_field(wp_unslash($_POST['template_message'] ?? ''));
+        if ($subject === '' || $message === '') return null;
+
+        return array('subject' => $subject, 'message' => $message);
+    }
+
+    /**
+     * Salva il testo del promemoria per l'evento, o torna a quello predefinito
+     */
+    public static function handle_save_reminder_template() {
+        check_ajax_referer('dbem_admin_nonce', 'nonce');
+        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
+            wp_send_json_error(__('Evento non valido', 'db-event-manager'));
+        }
+
+        if (!empty($_POST['reset'])) {
+            delete_post_meta($event_id, '_dbem_reminder_email');
+            wp_send_json_success(array(
+                'message'  => __('Ripristinato il testo predefinito.', 'db-event-manager'),
+                'template' => DBEM_Email::get_reminder_template($event_id),
+            ));
+        }
+
+        $template = self::reminder_template_from_request();
+        if (!$template) {
+            wp_send_json_error(__('Oggetto e messaggio non possono essere vuoti.', 'db-event-manager'));
+        }
+
+        update_post_meta($event_id, '_dbem_reminder_email', $template);
+        wp_send_json_success(array(
+            'message'  => __('Testo del reminder salvato per questo evento.', 'db-event-manager'),
+            'template' => DBEM_Email::get_reminder_template($event_id),
         ));
     }
 

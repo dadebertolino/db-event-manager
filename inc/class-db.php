@@ -320,6 +320,38 @@ class DBEM_DB {
     }
 
     /**
+     * Sostituisce i testi delle opzioni rinominate nelle iscrizioni di un evento.
+     * $map è testo vecchio => testo nuovo per il campo $label. Restituisce le iscrizioni
+     * aggiornate per ciascun testo vecchio.
+     */
+    public static function rename_option_values($event_id, $label, $map) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $counts = array_fill_keys(array_keys($map), 0);
+
+        foreach (self::get_registrations($event_id) as $reg) {
+            $data = json_decode($reg->data, true);
+            if (!is_array($data) || !array_key_exists($label, $data)) continue;
+
+            $changed = false;
+            $values = is_array($data[$label]) ? $data[$label] : array($data[$label]);
+            foreach ($values as $i => $value) {
+                if (is_string($value) && isset($map[$value])) {
+                    $counts[$value]++;
+                    $values[$i] = $map[$value];
+                    $changed = true;
+                }
+            }
+            if (!$changed) continue;
+
+            $data[$label] = is_array($data[$label]) ? $values : $values[0];
+            $wpdb->update($table, array('data' => wp_json_encode($data)), array('id' => $reg->id), array('%s'), array('%d'));
+        }
+
+        return $counts;
+    }
+
+    /**
      * Aggiorna orario assegnato a una registrazione
      */
     public static function update_assigned_time($registration_id, $time) {

@@ -498,6 +498,37 @@
         }
     };
 
+    /* === Segnaposto cliccabili negli editor email === */
+    var Placeholders = {
+        init: function() {
+            // Ultimo campo usato (oggetto o messaggio) per ogni elenco di segnaposto
+            $(document).on('focusin', 'input, textarea', function() {
+                var id = this.id;
+                if (!id) return;
+                $('.dbem-placeholders').each(function() {
+                    var $list = $(this);
+                    if ($list.data('subject') === id || $list.data('message') === id) $list.data('last', id);
+                });
+            });
+
+            $(document).on('click', '.dbem-placeholder', function() {
+                var $list = $(this).closest('.dbem-placeholders');
+                var target = document.getElementById($list.data('last') || $list.data('message'));
+                if (target) Placeholders.insert(target, $(this).data('token'));
+            });
+        },
+
+        insert: function(field, token) {
+            var start = typeof field.selectionStart === 'number' ? field.selectionStart : field.value.length;
+            var end = typeof field.selectionEnd === 'number' ? field.selectionEnd : start;
+            field.value = field.value.slice(0, start) + token + field.value.slice(end);
+            field.focus();
+            field.setSelectionRange(start + token.length, start + token.length);
+            // L'anteprima del reminder si aggiorna sull'evento input
+            $(field).trigger('input');
+        }
+    };
+
     /* === Helpers === */
     function escHtml(s) { return $('<span>').text(s || '').html(); }
     function escAttr(s) {
@@ -513,6 +544,7 @@
         initSurvey();
         initOptionRenamesNotice();
         Appearance.init();
+        Placeholders.init();
     });
 
 })(jQuery);

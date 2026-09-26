@@ -182,9 +182,8 @@ $status_labels = array(
                 <input type="text" id="dbem-template-subject" class="large-text">
                 <label for="dbem-template-message"><?php esc_html_e('Messaggio', 'db-event-manager'); ?></label>
                 <textarea id="dbem-template-message" rows="10" class="large-text"></textarea>
+                <?php DBEM_Admin::render_placeholder_buttons('reminder', 'dbem-template-subject', 'dbem-template-message'); ?>
                 <p class="description">
-                    <?php echo esc_html(sprintf(__('Segnaposto: %s', 'db-event-manager'), implode(' ', DBEM_Email::reminder_placeholder_names()))); ?><br>
-                    <?php esc_html_e('{dettagli} è il blocco con data, sede, orario e attività, oppure con le opzioni scelte, secondo il "Contenuto del promemoria" dell\'evento. {scelte} e {attivita} sono le sole opzioni scelte o tutti i campi compilati.', 'db-event-manager'); ?><br>
                     <?php esc_html_e('Il testo salvato vale per tutti i reminder di questo evento, anche per quello automatico.', 'db-event-manager'); ?>
                 </p>
                 <div class="dbem-preview-editor-actions">

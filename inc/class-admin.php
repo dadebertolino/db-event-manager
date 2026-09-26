@@ -7,6 +7,23 @@ class DBEM_Admin {
         return current_user_can(DBEM_CPT::EVENT_MANAGER_CAP);
     }
 
+    /**
+     * Segnaposto cliccabili sotto un editor email: un clic inserisce il segnaposto nel punto
+     * del cursore dell'ultimo campo usato tra oggetto e messaggio, altrimenti nel messaggio
+     */
+    public static function render_placeholder_buttons($context, $subject_id, $message_id) {
+        ?>
+        <div class="dbem-placeholders" data-subject="<?php echo esc_attr($subject_id); ?>" data-message="<?php echo esc_attr($message_id); ?>">
+            <span class="dbem-placeholders-title"><?php esc_html_e('Segnaposto, clic per inserire:', 'db-event-manager'); ?></span>
+            <?php foreach (DBEM_Email::placeholders_for($context) as $token => $description): ?>
+                <button type="button" class="button button-small dbem-placeholder" data-token="<?php echo esc_attr($token); ?>"
+                        title="<?php echo esc_attr($description); ?>"
+                        aria-label="<?php echo esc_attr(sprintf(/* translators: 1: segnaposto, 2: descrizione */ __('Inserisci %1$s: %2$s', 'db-event-manager'), $token, $description)); ?>"><?php echo esc_html($token); ?></button>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
     public static function render_event_manager_field($user) {
         if (!current_user_can('edit_users') || !current_user_can('manage_options')) return;
         ?>
@@ -488,9 +505,7 @@ class DBEM_Admin {
                 <th><label for="dbem_email_message"><?php esc_html_e('Messaggio email', 'db-event-manager'); ?></label></th>
                 <td>
                     <textarea id="dbem_email_message" name="_dbem_confirmation_email[message]" rows="10" class="large-text"><?php echo esc_textarea($email_data['message']); ?></textarea>
-                    <p class="description">
-                        <?php esc_html_e('Placeholder disponibili: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}', 'db-event-manager'); ?>
-                    </p>
+                    <?php self::render_placeholder_buttons('confirmation', 'dbem_email_subject', 'dbem_email_message'); ?>
                 </td>
             </tr>
             <tr>
@@ -585,7 +600,7 @@ class DBEM_Admin {
                 <th><label for="dbem_survey_email_message"><?php esc_html_e('Messaggio', 'db-event-manager'); ?></label></th>
                 <td>
                     <textarea id="dbem_survey_email_message" name="_dbem_survey_email[message]" rows="6" class="large-text"><?php echo esc_textarea($survey_email['message']); ?></textarea>
-                    <p class="description"><?php esc_html_e('Placeholder: {nome}, {email}, {evento}, {survey_link}, {sito}', 'db-event-manager'); ?></p>
+                    <?php self::render_placeholder_buttons('survey', 'dbem_survey_email_subject', 'dbem_survey_email_message'); ?>
                 </td>
             </tr>
         </table>
@@ -1010,6 +1025,9 @@ class DBEM_Admin {
             }
             update_option('dbem_checkin_pin', $new_pin);
             update_option('dbem_delete_data_on_uninstall', isset($_POST['dbem_delete_data_on_uninstall']) ? '1' : '0');
+            update_option('dbem_from_name', str_replace(array('"', '<', '>'), '', sanitize_text_field(wp_unslash($_POST['dbem_from_name'] ?? ''))));
+            $from_email = sanitize_email(wp_unslash($_POST['dbem_from_email'] ?? ''));
+            update_option('dbem_from_email', is_email($from_email) ? $from_email : '');
             update_option(DBEM_Appearance::OPTION, DBEM_Appearance::sanitize_colors(wp_unslash($_POST['dbem_appearance'] ?? array()))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
@@ -1079,6 +1097,26 @@ class DBEM_Admin {
                         <td>
                             <code><?php echo esc_html($checkin_url); ?></code>
                             <p class="description"><?php esc_html_e('Apri questo link sul telefono per scansionare i QR code all\'ingresso. Non serve login WordPress.', 'db-event-manager'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <hr>
+
+                <h2><?php esc_html_e('Mittente delle email', 'db-event-manager'); ?></h2>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="dbem_from_name"><?php esc_html_e('Nome', 'db-event-manager'); ?></label></th>
+                        <td>
+                            <input type="text" id="dbem_from_name" name="dbem_from_name" value="<?php echo esc_attr(get_option('dbem_from_name', '')); ?>" class="regular-text" placeholder="<?php echo esc_attr(html_entity_decode(get_bloginfo('name'), ENT_QUOTES, 'UTF-8')); ?>">
+                            <p class="description"><?php esc_html_e('Lascia vuoto per usare il nome del sito.', 'db-event-manager'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="dbem_from_email"><?php esc_html_e('Indirizzo', 'db-event-manager'); ?></label></th>
+                        <td>
+                            <input type="email" id="dbem_from_email" name="dbem_from_email" value="<?php echo esc_attr(get_option('dbem_from_email', '')); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
+                            <p class="description"><?php esc_html_e('Lascia vuoto per usare l\'email dell\'amministratore. Usa un indirizzo del dominio del sito: con un indirizzo di un altro dominio (es. Gmail) le email rischiano di finire nello spam. Se un plugin SMTP imposta già il mittente, lascia vuoto.', 'db-event-manager'); ?></p>
                         </td>
                     </tr>
                 </table>

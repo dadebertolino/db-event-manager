@@ -79,7 +79,7 @@ class DBEM_Privacy_Declarations {
             'legal_basis'    => __('Consenso esplicito (art. 6.1.a GDPR) tramite checkbox privacy nel form di iscrizione, oppure esecuzione della richiesta di partecipazione (art. 6.1.b GDPR).', 'db-event-manager'),
             'data_collected' => sprintf(
     		__('Nome, email del partecipante. Il QR code allegato contiene un token univoco (non dati personali in chiaro). Mittente configurato: %s. Le email vengono inviate via wp_mail() — il trasporto effettivo dipende dalla configurazione SMTP del sito.', 'db-event-manager'),
-    			get_option('admin_email')
+    			DBEM_Email::from_email()
 		),
 	    'retention'      => $features['retention_text'],
             'transfers'      => __('Nessuno. Tutti i dati sono salvati nel database WordPress locale.', 'db-event-manager'),
@@ -95,7 +95,7 @@ class DBEM_Privacy_Declarations {
                 'legal_basis'    => __('Esecuzione della richiesta di partecipazione (art. 6.1.b GDPR). L\'utente ha fornito l\'email al momento dell\'iscrizione.', 'db-event-manager'),
                 'data_collected' => sprintf(
                     __('Nome, email del partecipante. Il QR code allegato contiene un token univoco (non dati personali in chiaro). Mittente configurato: %s. Le email vengono inviate via wp_mail() — il trasporto effettivo dipende dalla configurazione SMTP del sito.', 'db-event-manager'),
-                    get_option('admin_email')
+                    DBEM_Email::from_email()
                 ),
                 'retention'      => __('Le email inviate non sono conservate nel sito. I log di invio dipendono dalla configurazione del server SMTP.', 'db-event-manager'),
                 'transfers'      => __('L\'email transita attraverso il server SMTP configurato nel sito WordPress. Nessun servizio email terzo è integrato nel plugin.', 'db-event-manager'),

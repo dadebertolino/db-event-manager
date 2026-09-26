@@ -79,7 +79,9 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Survey post-evento (manuale o automatico)
 - Email annullamento
 - Notifica admin personalizzabile per evento (anche più destinatari)
-- Placeholder dinamici: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}, {survey_link}
+- Segnaposto dinamici: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}, {survey_link}; nel promemoria anche {periodo}, {dettagli}, {scelte}, {attivita}
+- Segnaposto cliccabili sotto ogni editor (conferma, survey, promemoria): un clic li inserisce nel punto del cursore, nell'oggetto o nel messaggio
+- Mittente configurabile in Impostazioni (nome e indirizzo), con ripiego sul nome del sito e sull'email dell'amministratore
 - Compatibile con qualsiasi plugin SMTP
 
 ### 📋 Survey post-evento
@@ -337,6 +339,8 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 **Novità**
 - Colori personalizzabili: sfondo, pulsanti e testo, globali e per evento, con anteprima e avviso di contrasto nell'admin. I colori derivati (testo dei pulsanti, hover, link) vengono calcolati per restare WCAG AA. Gli eventi esistenti non cambiano aspetto, salvo due correzioni di contrasto: il rosso dei messaggi di errore e del badge «Posti esauriti» e il grigio del badge «Concluso» sono più scuri, perché prima erano sotto il minimo AA
 - I campi del form di iscrizione hanno sempre testo scuro su sfondo bianco: prima prendevano il colore del testo del tema, illeggibile con i temi scuri
+- Segnaposto cliccabili negli editor delle email di conferma, del sondaggio e del promemoria, con la descrizione di ciascuno: prima erano un elenco da copiare a mano
+- Mittente delle email configurabile (nome e indirizzo). Prima era sempre l'email dell'amministratore, che spesso non appartiene al dominio del sito e fa finire le email nello spam
 
 **Correzioni di sicurezza e di comportamento**
 - Link Approva/Rifiuta nelle email: prima approvavano o rifiutavano all'apertura, quindi anche i filtri antivirus o le anteprime dei link potevano decidere al posto del responsabile. Ora aprono una pagina di conferma e la decisione parte dal pulsante

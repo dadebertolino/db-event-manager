@@ -319,3 +319,19 @@
     border-left: 4px solid #dba617;
     color: #1d2327;
 }
+
+/* === Segnaposto cliccabili negli editor email === */
+.dbem-placeholders {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+.dbem-placeholders-title {
+    color: #50575e;
+    margin-right: 4px;
+}
+.dbem-placeholders .dbem-placeholder {
+    font-family: Consolas, Monaco, monospace;
+}

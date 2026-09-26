@@ -151,13 +151,6 @@ class DBEM_Email {
     }
 
     /**
-     * Segnaposto disponibili nel promemoria, oltre a quelli della mail di conferma
-     */
-    public static function reminder_placeholder_names() {
-        return array('{nome}', '{email}', '{evento}', '{periodo}', '{data_evento}', '{luogo}', '{orario}', '{scelte}', '{attivita}', '{dettagli}', '{sito}');
-    }
-
-    /**
      * Compone il promemoria senza inviarlo: usato dall'invio e dall'anteprima.
      * $template (oggetto e messaggio) serve all'anteprima di un testo non ancora salvato.
      */
@@ -370,13 +363,64 @@ class DBEM_Email {
      */
     public static function get_headers() {
         $headers = array('Content-Type: text/html; charset=UTF-8');
-        $from_email = sanitize_email(get_option('admin_email'));
+        $from_email = self::from_email();
         if (is_email($from_email)) {
-            $from_name = html_entity_decode(get_bloginfo('name'), ENT_QUOTES, 'UTF-8');
-            $from_name = trim(str_replace(array('"', '<', '>', "\r", "\n"), '', $from_name));
+            $from_name = trim(str_replace(array('"', '<', '>', "\r", "\n"), '', self::from_name()));
             $headers[] = $from_name !== '' ? 'From: "' . $from_name . '" <' . $from_email . '>' : 'From: ' . $from_email;
         }
         return $headers;
+    }
+
+    /**
+     * Indirizzo del mittente: quello delle Impostazioni, altrimenti l'email dell'amministratore.
+     * Un indirizzo di un altro dominio può far finire le email nello spam (SPF/DMARC).
+     */
+    public static function from_email() {
+        $email = sanitize_email(get_option('dbem_from_email', ''));
+        return is_email($email) ? $email : sanitize_email(get_option('admin_email'));
+    }
+
+    /**
+     * Nome del mittente: quello delle Impostazioni, altrimenti il nome del sito
+     */
+    public static function from_name() {
+        $name = trim((string) get_option('dbem_from_name', ''));
+        return $name !== '' ? $name : html_entity_decode(get_bloginfo('name'), ENT_QUOTES, 'UTF-8');
+    }
+
+    /**
+     * Segnaposto di ogni email, con la descrizione mostrata nell'editor.
+     * $context: 'confirmation', 'survey' o 'reminder'.
+     */
+    public static function placeholders_for($context) {
+        $placeholders = array(
+            '{nome}'        => __('Nome dell\'iscritto', 'db-event-manager'),
+            '{email}'       => __('Email dell\'iscritto', 'db-event-manager'),
+            '{evento}'      => __('Nome dell\'evento', 'db-event-manager'),
+            '{data_evento}' => __('Data di inizio (solo la data se l\'evento assegna gli orari)', 'db-event-manager'),
+            '{luogo}'       => __('Luogo dell\'evento', 'db-event-manager'),
+            '{orario}'      => __('Orario assegnato all\'approvazione', 'db-event-manager'),
+        );
+
+        if ($context === 'confirmation') {
+            $placeholders += array(
+                '{riepilogo_dati}' => __('Tutti i campi compilati nel form', 'db-event-manager'),
+                '{qrcode_url}'     => __('Indirizzo dell\'immagine del QR code', 'db-event-manager'),
+                '{token}'          => __('Codice personale dell\'iscrizione', 'db-event-manager'),
+            );
+        } elseif ($context === 'survey') {
+            $placeholders['{survey_link}'] = __('Link al sondaggio', 'db-event-manager');
+        } elseif ($context === 'reminder') {
+            $placeholders += array(
+                '{periodo}'  => __('Date di inizio e fine', 'db-event-manager'),
+                '{dettagli}' => __('Blocco con data, sede, orario e attività, secondo il "Contenuto del promemoria"', 'db-event-manager'),
+                '{scelte}'   => __('Opzioni scelte nei campi a scelta', 'db-event-manager'),
+                '{attivita}' => __('Tutti i campi compilati', 'db-event-manager'),
+            );
+        }
+
+        $placeholders['{sito}'] = __('Indirizzo del sito', 'db-event-manager');
+        return $placeholders;
     }
 
     /**

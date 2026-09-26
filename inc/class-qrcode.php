@@ -98,6 +98,15 @@ class DBEM_QRCode {
     }
 
     /**
+     * Cancella il PNG del QR code. Solo token esadecimali: il percorso resta dentro la cartella dei QR.
+     */
+    public static function delete($token) {
+        if (!is_string($token) || !ctype_xdigit($token)) return false;
+        $path = self::get_path($token);
+        return file_exists($path) ? @unlink($path) : false;
+    }
+
+    /**
      * Ottieni path del QR code
      */
     public static function get_path($token) {

@@ -164,30 +164,16 @@ class DBEM_Privacy_DSAR {
         DBEM_DB::ensure_tables();
         global $wpdb;
         $reg_table = $wpdb->prefix . 'dbem_registrations';
-        $survey_table = $wpdb->prefix . 'dbem_survey_responses';
 
         $regs = $wpdb->get_results($wpdb->prepare(
             "SELECT id, token FROM $reg_table WHERE LOWER(email) = %s ORDER BY id ASC LIMIT %d",
             $email, $per_page
         ));
 
-        $items_removed = 0;
         $messages = array();
 
-        foreach ($regs as $reg) {
-            // Cancella risposte survey associate
-            $wpdb->delete($survey_table, array('registration_id' => $reg->id), array('%d'));
-
-            // Cancella file QR code
-            $qr_path = DBEM_QRCode::get_path($reg->token);
-            if (file_exists($qr_path)) {
-                @unlink($qr_path);
-            }
-
-            // Cancella la registrazione
-            $wpdb->delete($reg_table, array('id' => $reg->id), array('%d'));
-            $items_removed++;
-        }
+        // Iscrizione, risposte ai sondaggi e file del QR code
+        $items_removed = DBEM_DB::delete_registrations(wp_list_pluck($regs, 'id'));
 
         if ($items_removed > 0) {
             $messages[] = sprintf(

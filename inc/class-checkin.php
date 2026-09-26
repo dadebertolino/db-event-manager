@@ -79,7 +79,27 @@ class DBEM_Checkin {
                     'icon'    => '❌',
                 ));
                 break;
+
+            default:
+                self::send_not_admitted($reg, $event_title);
         }
+    }
+
+    /**
+     * Risposta per le iscrizioni che non danno accesso: in attesa di approvazione o rifiutate
+     */
+    private static function send_not_admitted($reg, $event_title) {
+        $messages = array(
+            'pending'  => __('Iscrizione in attesa di approvazione: check-in non consentito', 'db-event-manager'),
+            'rejected' => __('Iscrizione non approvata: check-in non consentito', 'db-event-manager'),
+        );
+        wp_send_json_success(array(
+            'status'  => 'not_admitted',
+            'message' => $messages[$reg->status] ?? __('Check-in non consentito per questa iscrizione', 'db-event-manager'),
+            'name'    => $reg->name,
+            'event'   => $event_title,
+            'icon'    => '⛔',
+        ));
     }
 
     /**
@@ -135,11 +155,14 @@ class DBEM_Checkin {
     public static function handle_public_checkin() {
         DBEM_Security::verify_public_request();
 
+        // Dallo scanner arriva il token del QR, dalla ricerca l'id dell'iscrizione:
+        // la ricerca non restituisce i token, che valgono anche come QR e link al sondaggio
         $token = sanitize_text_field($_POST['token'] ?? '');
-        if (empty($token)) wp_send_json_error(array('message' => __('Token mancante', 'db-event-manager'), 'status' => 'invalid'));
+        $reg_id = absint($_POST['registration_id'] ?? 0);
+        if (empty($token) && !$reg_id) wp_send_json_error(array('message' => __('Token mancante', 'db-event-manager'), 'status' => 'invalid'));
 
         DBEM_DB::ensure_tables();
-        $reg = DBEM_DB::get_registration_by_token($token);
+        $reg = $token ? DBEM_DB::get_registration_by_token($token) : DBEM_DB::get_registration($reg_id);
         if (!$reg) {
             wp_send_json_error(array(
                 'status'  => 'invalid',
@@ -192,6 +215,9 @@ class DBEM_Checkin {
                     'icon'    => '❌',
                 ));
                 break;
+
+            default:
+                self::send_not_admitted($reg, $event_title);
         }
     }
 
@@ -212,9 +238,9 @@ class DBEM_Checkin {
         $items = array();
         foreach ($results as $r) {
             $items[] = array(
+                'id'     => (int) $r->id,
                 'name'   => $r->name,
                 'email'  => $r->email,
-                'token'  => $r->token,
                 'status' => $r->status,
                 'event'  => DBEM_CPT::get_event_name($r->event_id),
                 'time'   => $r->checked_in_at ? wp_date('H:i', strtotime($r->checked_in_at)) : '',
@@ -322,6 +348,12 @@ class DBEM_Checkin {
                 break;
 
             case 'checkin':
+                if ($reg->status === 'checked_in') {
+                    wp_send_json_success(array('message' => sprintf(__('%s è già presente', 'db-event-manager'), $reg->name)));
+                }
+                if ($reg->status !== 'confirmed') {
+                    wp_send_json_error(array('message' => __('Check-in non consentito: l\'iscrizione non è confermata', 'db-event-manager')));
+                }
                 $wpdb->update($table,
                     array('status' => 'checked_in', 'checked_in_at' => current_time('mysql')),
                     array('id' => $reg_id), array('%s', '%s'), array('%d'));

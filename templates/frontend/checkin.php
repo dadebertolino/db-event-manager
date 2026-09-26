@@ -277,9 +277,17 @@ $site_name = get_bloginfo('name');
 
     /* === Check-in === */
     function processToken(token) {
+        sendCheckin('token=' + encodeURIComponent(token));
+    }
+
+    function processRegistration(id) {
+        sendCheckin('registration_id=' + encodeURIComponent(id));
+    }
+
+    function sendCheckin(param) {
         showFeedback('loading', '⏳', '', '', 'Verifica...');
 
-        var body = 'action=dbem_public_checkin&token=' + encodeURIComponent(token);
+        var body = 'action=dbem_public_checkin&' + param;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         fetch(ajaxUrl, {
@@ -372,8 +380,8 @@ $site_name = get_bloginfo('name');
                     + '<span class="ci-result-detail">' + escHtml(r.email) + ' — ' + escHtml(r.event) + escHtml(statusText) + '</span></div>';
 
                 if (r.status === 'confirmed') {
-                    div.addEventListener('click', function() { processToken(r.token); resultsDiv.innerHTML = ''; });
-                    div.addEventListener('keydown', function(e) { if (e.key === 'Enter') { processToken(r.token); resultsDiv.innerHTML = ''; } });
+                    div.addEventListener('click', function() { processRegistration(r.id); resultsDiv.innerHTML = ''; });
+                    div.addEventListener('keydown', function(e) { if (e.key === 'Enter') { processRegistration(r.id); resultsDiv.innerHTML = ''; } });
                 }
                 resultsDiv.appendChild(div);
             });

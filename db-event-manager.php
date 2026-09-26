@@ -3,7 +3,7 @@
  * Plugin Name: DB Event Manager
  * Plugin URI: https://github.com/dadebertolino/db-event-manager
  * Description: Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento. Niente Eventbrite, niente SaaS, niente abbonamenti.
- * Version: 1.6.4
+ * Version: 1.6.5
  * Author: Davide Bertolino
  * Author URI: https://www.davidebertolino.it
  * License: GPL v2 or later
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DBEM_VERSION', '1.6.4');
+define('DBEM_VERSION', '1.6.5');
 define('DBEM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DBEM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DBEM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -135,6 +135,7 @@ final class DB_Event_Manager {
         add_action('dbem_cron_check_events', array('DBEM_Cron', 'check_events'));
         add_action('dbem_send_reminder', array('DBEM_Cron', 'send_reminder'), 10, 1);
         add_action('dbem_send_survey_auto', array('DBEM_Cron', 'send_survey_auto'), 10, 1);
+        add_action('admin_init', array('DBEM_Cron', 'schedule'));
 
         // Query vars per check-in e survey
         add_filter('query_vars', array($this, 'add_query_vars'));
@@ -142,6 +143,9 @@ final class DB_Event_Manager {
 
         // Metabox save
         add_action('save_post_dbem_event', array('DBEM_Admin', 'save_metabox'), 10, 2);
+
+        // Evento eliminato definitivamente: via anche iscrizioni, sondaggi, QR e invii programmati
+        add_action('before_delete_post', array('DBEM_DB', 'delete_event_data'));
 
         // Template automatici per single e archive
         add_filter('template_include', array($this, 'load_templates'));
@@ -225,6 +229,12 @@ final class DB_Event_Manager {
             exit;
         }
 
+        // Conferma della modifica di un'iscrizione (link inviato all'iscritto)
+        if ($action === 'confirm_update') {
+            DBEM_Registration::handle_update_link();
+            exit;
+        }
+
         // Pagina pubblica partecipanti
         $participants_page = get_query_var('dbem_participants_page');
         if ($participants_page) {
@@ -290,58 +300,17 @@ final class DB_Event_Manager {
             );
         }
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'dbem_registrations';
-        $event_title = DBEM_CPT::get_event_name($reg->event_id);
-
-        if ($action === 'approve') {
-            // Se l'evento ha assegnazione orario, mostra form
-            $time_slot_enabled = get_post_meta($reg->event_id, '_dbem_time_slot_enabled', true);
-            if ($time_slot_enabled === '1') {
-                $this->render_approve_with_time_form($reg, $event_title, $token, $key);
-                return;
-            }
-
-            // Approvazione diretta (comportamento originale)
-            $wpdb->update($table, array('status' => 'confirmed'), array('id' => $reg->id), array('%s'), array('%d'));
-            // Rigenera oggetto con status aggiornato
-            $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg->id));
-            // Genera QR e invia email conferma
-            DBEM_QRCode::generate($reg->token);
-            DBEM_Email::send_confirmation($reg->event_id, $reg);
-
-            wp_die(
-                '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
-                . '<h2 style="color:#1d6e3f;">✅</h2>'
-                . '<h3>' . esc_html($reg->name) . '</h3>'
-                . '<p>' . sprintf(esc_html__('Iscrizione a "%s" approvata.', 'db-event-manager'), esc_html($event_title)) . '</p>'
-                . '<p style="color:#666;">' . esc_html__('L\'iscritto riceverà l\'email di conferma con il QR code.', 'db-event-manager') . '</p>'
-                . '</div>',
-                __('Iscrizione approvata', 'db-event-manager'),
-                array('response' => 200)
-            );
-        } else {
-            $wpdb->update($table, array('status' => 'rejected'), array('id' => $reg->id), array('%s'), array('%d'));
-            $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg->id));
-            DBEM_Email::send_rejection($reg->event_id, $reg);
-
-            wp_die(
-                '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
-                . '<h2 style="color:#d63638;">❌</h2>'
-                . '<h3>' . esc_html($reg->name) . '</h3>'
-                . '<p>' . sprintf(esc_html__('Iscrizione a "%s" rifiutata.', 'db-event-manager'), esc_html($event_title)) . '</p>'
-                . '<p style="color:#666;">' . esc_html__('L\'iscritto riceverà una notifica.', 'db-event-manager') . '</p>'
-                . '</div>',
-                __('Iscrizione rifiutata', 'db-event-manager'),
-                array('response' => 200)
-            );
-        }
+        // Il link apre solo la pagina di conferma: approvazione e rifiuto partono dal pulsante (POST).
+        // Così i sistemi che aprono in anticipo i link delle email non decidono al posto del responsabile.
+        $this->render_approval_form($reg, DBEM_CPT::get_event_name($reg->event_id), $token, $key, $action);
     }
 
     /**
-     * Mostra form per inserire orario prima di approvare
+     * Pagina di conferma per approvare o rifiutare, con l'orario se l'evento lo assegna.
+     * $link_action è l'azione del link aperto: la sua chiave accompagna il POST.
      */
-    private function render_approve_with_time_form($reg, $event_title, $token, $key) {
+    private function render_approval_form($reg, $event_title, $token, $key, $link_action) {
+        $time_slot_enabled = get_post_meta($reg->event_id, '_dbem_time_slot_enabled', true) === '1';
         $site_name = get_bloginfo('name');
         $event_start = get_post_meta($reg->event_id, '_dbem_date_start', true);
         $event_end = get_post_meta($reg->event_id, '_dbem_date_end', true);
@@ -406,18 +375,24 @@ final class DB_Event_Manager {
                 <input type="hidden" name="token" value="' . esc_attr($token) . '">
                 <input type="hidden" name="key" value="' . esc_attr($key) . '">
                 <input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">
+                <input type="hidden" name="link_action" value="' . esc_attr($link_action) . '">';
+        if ($time_slot_enabled) {
+            $html .= '
                 <div class="dbem-f">
                     <label for="assigned_time">🕐 ' . esc_html__('Orario assegnato', 'db-event-manager') . '</label>
                     <input type="text" id="assigned_time" name="assigned_time"
                         placeholder="' . esc_attr__('Es. 10:30, 14:00-14:30, Turno A ore 9:00', 'db-event-manager') . '">
                     <p class="dbem-hint">' . esc_html__('Inserisci l\'orario da comunicare al partecipante. Lascia vuoto per approvare senza orario.', 'db-event-manager') . '</p>
-                </div>
+                </div>';
+        }
+        $html .= '
                 <div class="dbem-btns">
                     <button type="submit" name="confirm_action" value="approve" class="dbem-btn dbem-btn-a">✅ ' . esc_html__('Approva', 'db-event-manager') . '</button>
                     <button type="submit" name="confirm_action" value="reject" class="dbem-btn dbem-btn-r">❌ ' . esc_html__('Rifiuta', 'db-event-manager') . '</button>
                 </div>
             </form>
         </div></div></body></html>';
+        nocache_headers();
         echo $html;
         exit;
     }
@@ -429,6 +404,10 @@ final class DB_Event_Manager {
         $token = sanitize_text_field($_POST['token'] ?? '');
         $key = sanitize_text_field($_POST['key'] ?? '');
         $confirm_action = sanitize_key($_POST['confirm_action'] ?? 'approve');
+        $link_action = sanitize_key($_POST['link_action'] ?? 'approve');
+        if (!in_array($confirm_action, array('approve', 'reject'), true) || !in_array($link_action, array('approve', 'reject'), true)) {
+            wp_die(__('Dati mancanti.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+        }
 
         if (!$token || !$key) {
             wp_die(__('Dati mancanti.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
@@ -436,7 +415,7 @@ final class DB_Event_Manager {
         if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'dbem_approve_confirm_' . $token)) {
             wp_die(__('Richiesta scaduta. Riclicca il link dall\'email.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
         }
-        if (!DBEM_Email::verify_action_key($token, 'approve', $key)) {
+        if (!DBEM_Email::verify_action_key($token, $link_action, $key)) {
             wp_die(__('Link non valido o scaduto.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
         }
 

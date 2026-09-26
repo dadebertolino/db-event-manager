@@ -10,10 +10,7 @@ class DBEM_DB {
         DBEM_CPT::ensure_event_capabilities();
         // Genera il PIN delle pagine pubbliche se non esiste
         DBEM_Security::get_pin();
-        // Schedule cron
-        if (!wp_next_scheduled('dbem_cron_check_events')) {
-            wp_schedule_event(time(), 'hourly', 'dbem_cron_check_events');
-        }
+        DBEM_Cron::schedule();
         flush_rewrite_rules();
     }
 
@@ -145,6 +142,18 @@ class DBEM_DB {
         return $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM $table WHERE token = %s",
             $token
+        ));
+    }
+
+    /**
+     * Ottieni iscrizione per id
+     */
+    public static function get_registration($registration_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d",
+            $registration_id
         ));
     }
 
@@ -349,6 +358,47 @@ class DBEM_DB {
         }
 
         return $counts;
+    }
+
+    /**
+     * Cancella le iscrizioni con i dati collegati: risposte ai sondaggi e file del QR code
+     */
+    public static function delete_registrations($registration_ids) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $survey_table = $wpdb->prefix . 'dbem_survey_responses';
+
+        $deleted = 0;
+        foreach (array_unique(array_filter(array_map('absint', (array) $registration_ids))) as $id) {
+            $reg = self::get_registration($id);
+            if (!$reg) continue;
+
+            $wpdb->delete($survey_table, array('registration_id' => $id), array('%d'));
+            DBEM_QRCode::delete($reg->token);
+            if ($wpdb->delete($table, array('id' => $id), array('%d'))) {
+                $deleted++;
+            }
+        }
+        return $deleted;
+    }
+
+    /**
+     * Evento eliminato definitivamente: via iscrizioni, sondaggi, QR code e invii programmati
+     */
+    public static function delete_event_data($post_id) {
+        if (get_post_type($post_id) !== 'dbem_event') return;
+
+        wp_clear_scheduled_hook('dbem_send_reminder', array((int) $post_id));
+        wp_clear_scheduled_hook('dbem_send_survey_auto', array((int) $post_id));
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) return;
+
+        $ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $table WHERE event_id = %d", $post_id));
+        self::delete_registrations($ids);
+        // Risposte rimaste senza iscrizione (iscrizioni cancellate prima della 1.6.5)
+        $wpdb->delete($wpdb->prefix . 'dbem_survey_responses', array('event_id' => (int) $post_id), array('%d'));
     }
 
     /**

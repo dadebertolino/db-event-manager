@@ -28,10 +28,7 @@ class DBEM_Email {
         // URL pubblico per <img> nel corpo (funziona su tutti i client)
         $html = self::build_html_email($message, file_exists($qr_path) ? $qr_url : '');
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
         // Allega anche il PNG per chi non carica immagini esterne
         $attachments = array();
@@ -39,7 +36,7 @@ class DBEM_Email {
             $attachments[] = $qr_path;
         }
 
-        return wp_mail($reg->email, $subject, $html, $headers, $attachments);
+        return wp_mail($reg->email, self::clean_subject($subject), $html, $headers, $attachments);
     }
 
     /**
@@ -72,14 +69,11 @@ class DBEM_Email {
             admin_url('edit.php?post_type=dbem_event&page=dbem-participants&event_id=' . $event_id)
         );
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
         $html = self::build_html_email($message);
 
-        return wp_mail($recipients, $subject, $html, $headers);
+        return wp_mail($recipients, self::clean_subject($subject), $html, $headers);
     }
 
     /**
@@ -98,12 +92,9 @@ class DBEM_Email {
 
         $html = self::build_html_email($message);
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($reg->email, $subject, $html, $headers);
+        return wp_mail($reg->email, self::clean_subject($subject), $html, $headers);
     }
 
     /**
@@ -121,12 +112,9 @@ class DBEM_Email {
 
         $html = self::build_html_email($message);
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($reg->email, $subject, $html, $headers);
+        return wp_mail($reg->email, self::clean_subject($subject), $html, $headers);
     }
 
     /**
@@ -135,12 +123,9 @@ class DBEM_Email {
     public static function send_reminder($event_id, $reg) {
         $email = self::build_reminder($event_id, $reg);
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($reg->email, $email['subject'], $email['html'], $headers, $email['attachments']);
+        return wp_mail($reg->email, self::clean_subject($email['subject']), $email['html'], $headers, $email['attachments']);
     }
 
     /**
@@ -371,8 +356,50 @@ class DBEM_Email {
         );
     }
 
+    /**
+     * Sostituzione in un solo passaggio: un valore inserito dall'utente che contiene
+     * a sua volta un segnaposto (es. un nome "{token}") non viene espanso
+     */
     private static function replace_placeholders($text, $placeholders) {
-        return str_replace(array_keys($placeholders), array_values($placeholders), $text);
+        return strtr((string) $text, array_map('strval', $placeholders));
+    }
+
+    /**
+     * Header comuni: HTML e mittente con il nome del sito, ripulito da caratteri
+     * che romperebbero l'header (virgolette, parentesi angolari, a capo)
+     */
+    public static function get_headers() {
+        $headers = array('Content-Type: text/html; charset=UTF-8');
+        $from_email = sanitize_email(get_option('admin_email'));
+        if (is_email($from_email)) {
+            $from_name = html_entity_decode(get_bloginfo('name'), ENT_QUOTES, 'UTF-8');
+            $from_name = trim(str_replace(array('"', '<', '>', "\r", "\n"), '', $from_name));
+            $headers[] = $from_name !== '' ? 'From: "' . $from_name . '" <' . $from_email . '>' : 'From: ' . $from_email;
+        }
+        return $headers;
+    }
+
+    /**
+     * Oggetto su una riga sola
+     */
+    private static function clean_subject($subject) {
+        return trim(preg_replace('/[\r\n]+/', ' ', (string) $subject));
+    }
+
+    /**
+     * Link di conferma per modificare un'iscrizione esistente, inviato all'indirizzo dell'iscrizione
+     */
+    public static function send_update_confirmation($event_id, $reg, $confirm_url) {
+        $event_title = DBEM_CPT::get_event_name($event_id);
+        $subject = sprintf(__('Conferma la modifica della tua iscrizione: %s', 'db-event-manager'), $event_title);
+        $message = sprintf(
+            __("Ciao %s,\n\nabbiamo ricevuto una richiesta di modifica della tua iscrizione all'evento \"%s\".\n\nPer confermarla apri questo link entro 24 ore:\n%s\n\nSe non hai chiesto tu la modifica, ignora questa email: la tua iscrizione resta com'è.", 'db-event-manager'),
+            $reg->name,
+            $event_title,
+            $confirm_url
+        );
+
+        return wp_mail($reg->email, self::clean_subject($subject), self::build_html_email($message), self::get_headers());
     }
 
     private static function build_html_email($message, $qr_url = '') {
@@ -414,12 +441,9 @@ class DBEM_Email {
         );
 
         $html = self::build_html_email($message);
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($reg->email, $subject, $html, $headers);
+        return wp_mail($reg->email, self::clean_subject($subject), $html, $headers);
     }
 
     /**
@@ -467,12 +491,9 @@ class DBEM_Email {
 
         $html = self::build_html_email_with_buttons($message, $approve_url, $reject_url);
 
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($recipients, $subject, $html, $headers);
+        return wp_mail($recipients, self::clean_subject($subject), $html, $headers);
     }
 
     /**
@@ -489,12 +510,9 @@ class DBEM_Email {
         );
 
         $html = self::build_html_email($message);
-        $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
-        );
+        $headers = self::get_headers();
 
-        return wp_mail($reg->email, $subject, $html, $headers);
+        return wp_mail($reg->email, self::clean_subject($subject), $html, $headers);
     }
 
     /**

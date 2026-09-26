@@ -35,8 +35,9 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Modalità configurabile per evento: automatica o con approvazione
 - **Assegnazione orario**: l'approvatore può assegnare un orario al partecipante al momento dell'approvazione
 - Email approvatore personalizzabile (può essere diverso dal creatore evento)
-- L'approvatore riceve email con bottoni ✅ Approva e ❌ Rifiuta — un clic, niente login
-- Se l'assegnazione orario è attiva, cliccando "Approva" si apre un form con campo orario, riepilogo iscrizione e bottoni Approva/Rifiuta
+- L'approvatore riceve email con bottoni ✅ Approva e ❌ Rifiuta, niente login
+- Il bottone apre una pagina con il riepilogo dell'iscrizione e i pulsanti Approva/Rifiuta: la decisione parte solo dal pulsante, così i filtri antivirus e le anteprime dei link nelle email non approvano né rifiutano da soli
+- Se l'assegnazione orario è attiva, la stessa pagina contiene il campo orario
 - Link protetti con HMAC (non indovinabili, non riusabili)
 - Approvazione → genera QR code → invia email conferma all'iscritto (con orario se assegnato)
 - Rifiuto → invia email notifica all'iscritto
@@ -52,7 +53,8 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - **Pagina pubblica check-in** — aprila sul telefono, niente login WordPress
 - Protetta da PIN obbligatorio (generato automaticamente, modificabile in Impostazioni)
 - Scanner QR integrato (fotocamera smartphone)
-- Ricerca manuale per nome/email su tutti gli eventi
+- Ricerca manuale per nome/email su tutti gli eventi (i risultati non contengono i token dei QR code)
+- Le iscrizioni in attesa di approvazione o rifiutate non passano il check-in
 - Feedback visivo grande e chiaro: ✅ Presente, ⚠️ Già registrato, ❌ Non valido
 - Dopo check-in riuscito, lo scanner si riapre automaticamente
 - Funziona anche dalla pagina admin Event Manager → Check-in
@@ -311,6 +313,24 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ---
 
 ## Changelog
+
+### 1.6.5
+Correzioni di sicurezza e di comportamento. L'aspetto di form ed eventi non cambia.
+- Link Approva/Rifiuta nelle email: prima approvavano o rifiutavano all'apertura, quindi anche i filtri antivirus o le anteprime dei link potevano decidere al posto del responsabile. Ora aprono una pagina di conferma e la decisione parte dal pulsante
+- Reiscrizione con la stessa email: prima chi conosceva l'email di un iscritto poteva sostituirne nome, dati e consenso. Ora i nuovi dati arrivano come link di conferma all'indirizzo già iscritto (valido 24 ore, una sola volta) e l'iscrizione cambia solo dopo il clic
+- Un iscritto rifiutato non può più reiscriversi: prima la reiscrizione faceva ripartire la richiesta di approvazione
+- Check-in: prima la scansione del QR di un'iscrizione in attesa o rifiutata non dava alcuna risposta e lo scanner restava bloccato. Ora compare «check-in non consentito». Anche il pulsante «Segna presente» della pagina pubblica accetta solo iscrizioni confermate
+- La ricerca della pagina pubblica di check-in non restituisce più i token delle iscrizioni, che valgono anche come QR code e link al sondaggio
+- Iscrizioni dai form DB Form Builder: aggiunto il limite di 5 invii al minuto per IP già presente nel form integrato. Prima l'endpoint si poteva chiamare direttamente senza alcun limite
+- I campi personalizzati chiamati «nome» o «email» non sovrascrivono più nome ed email dell'iscritto nei dati salvati
+- Eliminare un'iscrizione cancella anche le risposte al sondaggio e il QR code. Eliminare definitivamente un evento cancella iscrizioni, risposte, QR code, reminder e sondaggio programmati. Prima questi dati restavano orfani
+- Il sondaggio segnala l'errore se le risposte non vengono salvate: prima rispondeva comunque «Grazie»
+- «Invia survey a tutti» esclude le iscrizioni in attesa e rifiutate
+- Azzerando le ore del sondaggio automatico, l'invio già programmato viene annullato
+- Il controllo orario degli eventi viene riprogrammato anche dopo un aggiornamento, non solo all'attivazione
+- Disattivazione e disinstallazione rimuovono anche reminder e sondaggi programmati per singolo evento
+- Disinstallazione: pulisce tutti i siti di un multisite, le categorie evento e funziona anche da WP-CLI
+- Email: segnaposto sostituiti in un solo passaggio (un nome come «{token}» non viene più espanso), oggetto sempre su una riga, mittente con il nome del sito ripulito da virgolette ed entità HTML
 
 ### 1.6.4
 - Testo del reminder modificabile per evento dall'anteprima, con aggiornamento in tempo reale, salvataggio e ripristino del testo predefinito; il testo salvato vale anche per il reminder automatico

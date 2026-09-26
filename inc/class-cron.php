@@ -3,8 +3,28 @@ if (!defined('ABSPATH')) exit;
 
 class DBEM_Cron {
 
+    /**
+     * Hook del plugin: il controllo orario e gli invii singoli, programmati con l'id dell'evento
+     */
+    const HOOKS = array('dbem_cron_check_events', 'dbem_send_reminder', 'dbem_send_survey_auto');
+
+    /**
+     * Programma il controllo orario se manca: activate() non gira con gli aggiornamenti
+     */
+    public static function schedule() {
+        if (!wp_next_scheduled('dbem_cron_check_events')) {
+            wp_schedule_event(time(), 'hourly', 'dbem_cron_check_events');
+        }
+    }
+
+    /**
+     * wp_unschedule_hook rimuove anche gli eventi programmati con argomenti,
+     * che wp_clear_scheduled_hook senza argomenti non trova
+     */
     public static function deactivate() {
-        wp_clear_scheduled_hook('dbem_cron_check_events');
+        foreach (self::HOOKS as $hook) {
+            wp_unschedule_hook($hook);
+        }
     }
 
     /**

@@ -95,7 +95,7 @@
                 var d = resp.data;
                 var fbClass = 'success';
                 if (d.status === 'already') fbClass = 'warning';
-                if (d.status === 'cancelled') fbClass = 'error';
+                if (d.status === 'cancelled' || d.status === 'not_admitted') fbClass = 'error';
                 showFeedback(fbClass, d.icon, d.name || '', d.message);
                 loadParticipants();
             } else {

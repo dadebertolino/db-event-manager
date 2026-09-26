@@ -17,14 +17,8 @@ class DBEM_Registration {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
 
-        // Rate limiting
         $ip = self::get_client_ip();
-        $rate_key = 'dbem_rate_' . md5($ip);
-        $rate_count = (int) get_transient($rate_key);
-        if ($rate_count >= 5) {
-            wp_send_json_error(__('Troppe richieste. Riprova tra qualche minuto.', 'db-event-manager'));
-        }
-        set_transient($rate_key, $rate_count + 1, 60);
+        self::check_rate_limit($ip);
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
@@ -52,9 +46,7 @@ class DBEM_Registration {
         DBEM_DB::ensure_tables();
         $existing = DBEM_DB::get_registration_by_email($event_id, $email);
         $allow_update = get_post_meta($event_id, '_dbem_allow_registration_update', true) === '1';
-        if ($existing && !$allow_update) {
-            wp_send_json_error(__('Questo indirizzo email è già registrato per questo evento.', 'db-event-manager'));
-        }
+        self::reject_duplicate($existing, $allow_update);
         if (!$existing && !DBEM_CPT::are_registrations_open($event_id)) {
             wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
         }
@@ -133,7 +125,7 @@ class DBEM_Registration {
         }
 
         $registration_data = array(
-            'data'          => wp_json_encode(array_merge(array('nome' => $name, 'email' => $email), $custom_data)),
+            'data'          => wp_json_encode(array('nome' => $name, 'email' => $email) + $custom_data),
             'email'         => $email,
             'name'          => $name,
             'gdpr_consent_given'          => $gdpr_consent_given,
@@ -145,10 +137,10 @@ class DBEM_Registration {
         );
 
         if ($existing) {
-            $result = DBEM_DB::replace_registration($existing->id, $registration_data);
-            $reg_id = $existing->id;
-        } else {
-            $result = $wpdb->insert($table, array(
+            self::request_update_confirmation($event_id, $existing, $registration_data);
+        }
+
+        $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
             'data'          => $registration_data['data'],
             'email'         => $registration_data['email'],
@@ -176,36 +168,20 @@ class DBEM_Registration {
             '%s', // gdpr_consent_privacy_url
             '%d', // gdpr_consent_policy_version
             '%s', // ip_address
-            ));
-            $reg_id = $wpdb->insert_id;
-        }
+        ));
+        $reg_id = $wpdb->insert_id;
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione. Riprova.', 'db-event-manager'));
         }
 
-        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
-
-        $effective_status = $reg->status;
-        if (in_array($effective_status, array('confirmed', 'checked_in'), true)) {
-            // Auto: QR + email conferma subito
-            DBEM_QRCode::generate($reg->token);
-            DBEM_Email::send_confirmation($event_id, $reg);
-        } else {
-            // Approvazione: email "in attesa" all'iscritto + email approvazione al responsabile
-            DBEM_Email::send_pending_notification($event_id, $reg);
-            DBEM_Email::send_approval_request($event_id, $reg);
+        $reg = DBEM_DB::get_registration($reg_id);
+        if (!$reg) {
+            wp_send_json_error(__('Errore durante la registrazione. Riprova.', 'db-event-manager'));
         }
+        self::send_registration_emails($event_id, $reg);
 
-        // Notifica admin
-        $notify = get_post_meta($event_id, '_dbem_notify_admin', true);
-        if ($notify === '1') {
-            DBEM_Email::notify_admin($event_id, $reg);
-        }
-
-        if ($existing) {
-            $success_message = __('Iscrizione aggiornata! Controlla la tua email per i dati aggiornati.', 'db-event-manager');
-        } elseif ($initial_status === 'confirmed') {
+        if ($initial_status === 'confirmed') {
             $success_message = __('Iscrizione completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager');
         } else {
             $success_message = __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');
@@ -229,6 +205,133 @@ class DBEM_Registration {
         ));
     }
 
+    /**
+     * Un'iscrizione esistente blocca la nuova se la reiscrizione non è attiva per l'evento,
+     * oppure se era stata rifiutata: reiscriversi non deve riaprire la richiesta di approvazione.
+     */
+    public static function reject_duplicate($existing, $allow_update) {
+        if ($existing && (!$allow_update || $existing->status === 'rejected')) {
+            wp_send_json_error(__('Questo indirizzo email è già registrato per questo evento.', 'db-event-manager'));
+        }
+    }
+
+    /**
+     * Al massimo 5 invii al minuto per indirizzo IP
+     */
+    private static function check_rate_limit($ip) {
+        $rate_key = 'dbem_rate_' . md5($ip);
+        $rate_count = (int) get_transient($rate_key);
+        if ($rate_count >= 5) {
+            wp_send_json_error(__('Troppe richieste. Riprova tra qualche minuto.', 'db-event-manager'));
+        }
+        set_transient($rate_key, $rate_count + 1, 60);
+    }
+
+    /**
+     * Email all'iscritto e ai responsabili dopo il salvataggio dell'iscrizione
+     */
+    public static function send_registration_emails($event_id, $reg) {
+        if (in_array($reg->status, array('confirmed', 'checked_in'), true)) {
+            // Auto: QR + email conferma subito
+            DBEM_QRCode::generate($reg->token);
+            DBEM_Email::send_confirmation($event_id, $reg);
+        } else {
+            // Approvazione: email "in attesa" all'iscritto + email approvazione al responsabile
+            DBEM_Email::send_pending_notification($event_id, $reg);
+            DBEM_Email::send_approval_request($event_id, $reg);
+        }
+
+        if (get_post_meta($event_id, '_dbem_notify_admin', true) === '1') {
+            DBEM_Email::notify_admin($event_id, $reg);
+        }
+    }
+
+    /**
+     * I nuovi dati non sostituiscono subito l'iscrizione esistente: all'indirizzo
+     * dell'iscrizione arriva un link di conferma, così può modificarla solo chi legge
+     * quella casella e non chiunque ne conosca l'indirizzo.
+     */
+    public static function request_update_confirmation($event_id, $existing, $registration_data) {
+        $key = wp_generate_password(32, false);
+        set_transient('dbem_update_' . $key, array(
+            'registration_id' => (int) $existing->id,
+            'email'           => $existing->email,
+            'data'            => $registration_data,
+        ), DAY_IN_SECONDS);
+
+        $url = home_url('/?dbem_action=confirm_update&key=' . $key);
+        if (!DBEM_Email::send_update_confirmation($event_id, $existing, $url)) {
+            delete_transient('dbem_update_' . $key);
+            wp_send_json_error(__('Non è stato possibile inviare l\'email di conferma. Riprova più tardi.', 'db-event-manager'));
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Ti abbiamo inviato un\'email: apri il link che contiene per confermare la modifica. Fino ad allora resta valida la prenotazione precedente.', 'db-event-manager'),
+        ));
+    }
+
+    /**
+     * Link della modifica: con GET mostra il pulsante di conferma, con POST applica i nuovi dati.
+     * Il pulsante evita che i sistemi che aprono in anticipo i link delle email confermino da soli.
+     */
+    public static function handle_update_link() {
+        $key = preg_replace('/[^A-Za-z0-9]/', '', (string) ($_GET['key'] ?? ''));
+        $pending = $key !== '' ? get_transient('dbem_update_' . $key) : false;
+        if (!is_array($pending)) {
+            self::update_page(__('Link non valido o scaduto. Se vuoi modificare l\'iscrizione, compila di nuovo il modulo.', 'db-event-manager'), 404);
+        }
+
+        DBEM_DB::ensure_tables();
+        $reg = DBEM_DB::get_registration($pending['registration_id']);
+        if (!$reg || $reg->email !== $pending['email'] || in_array($reg->status, array('cancelled', 'rejected'), true)) {
+            delete_transient('dbem_update_' . $key);
+            self::update_page(__('Questa iscrizione non si può più modificare.', 'db-event-manager'), 410);
+        }
+
+        $event_title = DBEM_CPT::get_event_name($reg->event_id);
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $form = '<form method="post" action="' . esc_url(home_url('/?dbem_action=confirm_update&key=' . $key)) . '">'
+                . '<input type="hidden" name="_wpnonce" value="' . esc_attr(wp_create_nonce('dbem_confirm_update_' . $key)) . '">'
+                . '<button type="submit" style="padding:14px 32px;background:#1d6e3f;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">'
+                . esc_html__('Conferma la modifica', 'db-event-manager') . '</button></form>';
+            self::update_page(
+                sprintf(__('Vuoi sostituire la tua iscrizione a "%s" con i dati appena inviati?', 'db-event-manager'), $event_title),
+                200,
+                $form
+            );
+        }
+
+        if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'dbem_confirm_update_' . $key)) {
+            self::update_page(__('Richiesta scaduta. Apri di nuovo il link dall\'email.', 'db-event-manager'), 403);
+        }
+
+        // Il link vale una volta sola
+        delete_transient('dbem_update_' . $key);
+        if (DBEM_DB::replace_registration($reg->id, $pending['data']) === false) {
+            self::update_page(__('Errore durante l\'aggiornamento. Riprova.', 'db-event-manager'), 500);
+        }
+
+        $reg = DBEM_DB::get_registration($reg->id);
+        self::send_registration_emails($reg->event_id, $reg);
+
+        self::update_page(sprintf(__('Iscrizione a "%s" aggiornata. Controlla la tua email per i dati aggiornati.', 'db-event-manager'), $event_title));
+    }
+
+    /**
+     * Pagina di esito per il link di modifica
+     */
+    private static function update_page($message, $status = 200, $extra_html = '') {
+        wp_die(
+            '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
+            . '<p>' . esc_html($message) . '</p>'
+            . $extra_html
+            . '</div>',
+            __('Modifica iscrizione', 'db-event-manager'),
+            array('response' => $status)
+        );
+    }
+
     private static function get_client_ip() {
         return DBEM_Security::client_ip();
     }
@@ -242,6 +345,12 @@ class DBEM_Registration {
         if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce($_POST['dbem_nonce'], 'dbem_registration_nonce')) {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
+
+        // L'endpoint si può chiamare anche senza passare dal form DBFB e dal suo antispam
+        if (!empty($_POST['dbem_website_url'])) {
+            wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
+        }
+        self::check_rate_limit(self::get_client_ip());
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
@@ -259,9 +368,7 @@ class DBEM_Registration {
 
         $existing = DBEM_DB::get_registration_by_email($event_id, $email);
         $allow_update = get_post_meta($event_id, '_dbem_allow_registration_update', true) === '1';
-        if ($existing && !$allow_update) {
-            wp_send_json_error(__('Questo indirizzo email è già registrato per questo evento.', 'db-event-manager'));
-        }
+        self::reject_duplicate($existing, $allow_update);
         if (!$existing && !DBEM_CPT::are_registrations_open($event_id)) {
             wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
         }
@@ -330,7 +437,7 @@ class DBEM_Registration {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         $registration_data = array(
-            'data'          => wp_json_encode(array_merge(array('nome' => $name, 'email' => $email), $extra_data)),
+            'data'          => wp_json_encode(array('nome' => $name, 'email' => $email) + $extra_data),
             'email'         => $email,
             'name'          => $name,
             'gdpr_consent_given'          => $gdpr_consent_given,
@@ -342,10 +449,10 @@ class DBEM_Registration {
         );
 
         if ($existing) {
-            $result = DBEM_DB::replace_registration($existing->id, $registration_data);
-            $reg_id = $existing->id;
-        } else {
-            $result = $wpdb->insert($table, array(
+            self::request_update_confirmation($event_id, $existing, $registration_data);
+        }
+
+        $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
             'data'          => $registration_data['data'],
             'email'         => $registration_data['email'],
@@ -373,33 +480,20 @@ class DBEM_Registration {
             '%s', // gdpr_consent_privacy_url
             '%d', // gdpr_consent_policy_version
             '%s', // ip_address
-            ));
-            $reg_id = $wpdb->insert_id;
-        }
+        ));
+        $reg_id = $wpdb->insert_id;
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione.', 'db-event-manager'));
         }
 
-        $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
-
-        $effective_status = $reg->status;
-        if (in_array($effective_status, array('confirmed', 'checked_in'), true)) {
-            DBEM_QRCode::generate($reg->token);
-            DBEM_Email::send_confirmation($event_id, $reg);
-        } else {
-            DBEM_Email::send_pending_notification($event_id, $reg);
-            DBEM_Email::send_approval_request($event_id, $reg);
+        $reg = DBEM_DB::get_registration($reg_id);
+        if (!$reg) {
+            wp_send_json_error(__('Errore durante la registrazione.', 'db-event-manager'));
         }
+        self::send_registration_emails($event_id, $reg);
 
-        $notify = get_post_meta($event_id, '_dbem_notify_admin', true);
-        if ($notify === '1') {
-            DBEM_Email::notify_admin($event_id, $reg);
-        }
-
-        if ($existing) {
-            $success_message = __('Iscrizione aggiornata! Controlla la tua email per i dati aggiornati.', 'db-event-manager');
-        } elseif ($initial_status === 'confirmed') {
+        if ($initial_status === 'confirmed') {
             $success_message = __('Iscrizione all\'evento completata! Controlla la tua email per la conferma e il QR code.', 'db-event-manager');
         } else {
             $success_message = __('Iscrizione ricevuta! Riceverai una email quando sarà approvata.', 'db-event-manager');

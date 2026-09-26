@@ -97,12 +97,16 @@ class DBEM_Survey {
 
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_survey_responses';
-        $wpdb->insert($table, array(
+        $inserted = $wpdb->insert($table, array(
             'event_id'        => $event_id,
             'registration_id' => $reg->id,
             'data'            => wp_json_encode($responses),
             'submitted_at'    => current_time('mysql'),
         ), array('%d', '%d', '%s', '%s'));
+
+        if ($inserted === false) {
+            wp_send_json_error(__('Errore durante il salvataggio delle risposte. Riprova.', 'db-event-manager'));
+        }
 
         wp_send_json_success(array(
             'message' => __('Grazie per il tuo feedback!', 'db-event-manager'),
@@ -119,13 +123,13 @@ class DBEM_Survey {
         $event_id = absint($_POST['event_id'] ?? 0);
         $target = sanitize_key($_POST['target'] ?? 'checked_in'); // checked_in | all
 
-        if (!$event_id) wp_send_json_error(__('Evento mancante', 'db-event-manager'));
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event') wp_send_json_error(__('Evento mancante', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
 
         if ($target === 'all') {
-            $regs = DBEM_DB::get_registrations($event_id);
-            $regs = array_filter($regs, function($r) { return $r->status !== 'cancelled'; });
+            // Solo chi ha un'iscrizione valida: niente sondaggio a chi è in attesa, rifiutato o annullato
+            $regs = DBEM_DB::get_reminder_registrations($event_id);
         } else {
             $regs = DBEM_DB::get_registrations($event_id, 'checked_in');
         }

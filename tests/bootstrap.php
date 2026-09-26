@@ -211,7 +211,33 @@ if (!function_exists('wp_send_json_error')) {
 
 if (!function_exists('wp_send_json_success')) {
     function wp_send_json_success($data = null, $status_code = null) {
+        $GLOBALS['__dbem_json_success'] = $data;
         throw new RuntimeException('wp_send_json_success called in test bootstrap');
+    }
+}
+
+if (!function_exists('sanitize_email')) {
+    function sanitize_email($email) {
+        return trim((string) $email);
+    }
+}
+
+if (!defined('DAY_IN_SECONDS')) {
+    define('DAY_IN_SECONDS', 86400);
+}
+
+if (!function_exists('wp_generate_password')) {
+    function wp_generate_password($length = 12, $special_chars = true) {
+        return substr(str_repeat(bin2hex(random_bytes(16)), 2), 0, $length);
+    }
+}
+
+$GLOBALS['__dbem_cleared_hooks'] = array();
+
+if (!function_exists('wp_clear_scheduled_hook')) {
+    function wp_clear_scheduled_hook($hook, $args = array()) {
+        $GLOBALS['__dbem_cleared_hooks'][] = array($hook, $args);
+        return 0;
     }
 }
 
@@ -407,6 +433,34 @@ if (!class_exists('wpdb')) {
             return null;
         }
 
+        public $deleted = array();
+
+        public function delete($table, $where, $where_format = null) {
+            $this->deleted[] = array($table, $where);
+            if (!isset($this->tables[$table])) {
+                return 0;
+            }
+            $before = count($this->tables[$table]);
+            $this->tables[$table] = array_values(array_filter($this->tables[$table], function ($row) use ($where) {
+                foreach ($where as $key => $value) {
+                    if (!isset($row[$key]) || (string) $row[$key] !== (string) $value) return true;
+                }
+                return false;
+            }));
+            return $before - count($this->tables[$table]);
+        }
+
+        public function get_col($query) {
+            if (preg_match('/event_id = (\d+)/', $query, $m)) {
+                $ids = array();
+                foreach ($this->tables[$this->prefix . 'dbem_registrations'] as $row) {
+                    if ((int) $row['event_id'] === (int) $m[1]) $ids[] = $row['id'];
+                }
+                return $ids;
+            }
+            return array();
+        }
+
         public function insert($table, $data, $format = null) {
             $this->insert_id = isset($this->tables[$table]) ? count($this->tables[$table]) + 1 : 1;
             $row = $data;
@@ -439,3 +493,5 @@ require_once dirname(__DIR__) . '/inc/class-email.php';
 require_once dirname(__DIR__) . '/inc/class-cpt.php';
 require_once dirname(__DIR__) . '/inc/class-admin.php';
 require_once dirname(__DIR__) . '/inc/class-registration.php';
+require_once dirname(__DIR__) . '/inc/class-qrcode.php';
+require_once dirname(__DIR__) . '/inc/class-checkin.php';

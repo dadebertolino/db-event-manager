@@ -310,7 +310,7 @@ class DBEM_Admin {
                         <input type="checkbox" id="dbem_allow_registration_update" name="_dbem_allow_registration_update" value="1" <?php checked($allow_registration_update, '1'); ?>>
                         <?php _e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('Prima di sostituire, il form chiede conferma all\'utente. La nuova richiesta aggiorna nome, email, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php _e('Prima di sostituire, il form chiede conferma all\'utente e poi invia un link di conferma all\'indirizzo già iscritto: la modifica vale solo dopo il clic. La nuova richiesta aggiorna nome, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione. Chi è stato rifiutato non può reiscriversi.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
 
@@ -799,9 +799,9 @@ class DBEM_Admin {
         // Schedule survey automatico
         $survey_auto = absint(get_post_meta($post_id, '_dbem_survey_auto_hours', true));
         $end = get_post_meta($post_id, '_dbem_date_end', true);
+        wp_clear_scheduled_hook('dbem_send_survey_auto', array($post_id));
         if ($survey_auto > 0 && $end) {
             $send_time = strtotime($end) + ($survey_auto * 3600);
-            wp_clear_scheduled_hook('dbem_send_survey_auto', array($post_id));
             if ($send_time > time()) {
                 wp_schedule_single_event($send_time, 'dbem_send_survey_auto', array($post_id));
             }
@@ -1170,7 +1170,7 @@ class DBEM_Admin {
                 $wpdb->query($wpdb->prepare("UPDATE $table SET status = 'checked_in', checked_in_at = %s WHERE id IN ($placeholders)", current_time('mysql'), ...$ids));
                 break;
             case 'delete':
-                $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE id IN ($placeholders)", ...$ids));
+                DBEM_DB::delete_registrations($ids);
                 break;
             default:
                 wp_send_json_error(__('Azione non valida', 'db-event-manager'));

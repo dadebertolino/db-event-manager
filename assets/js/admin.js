@@ -423,9 +423,87 @@
         });
     }
 
+    /* === Colori: anteprima e avviso di contrasto (stessa logica di DBEM_Appearance) === */
+    var Appearance = {
+        DEFAULT_PRIMARY: '#2271b1',
+
+        init: function() {
+            if (!$.fn.wpColorPicker) return;
+            $('.dbem-appearance').each(function() {
+                var $box = $(this);
+                var update = function() { Appearance.update($box); };
+                // Il valore dell'input si aggiorna dopo i callback del color picker
+                $box.find('.dbem-color-input').wpColorPicker({
+                    change: function() { setTimeout(update, 0); },
+                    clear: function() { setTimeout(update, 0); }
+                });
+                $box.on('input change', '.dbem-color-input', update);
+                update();
+            });
+        },
+
+        normalize: function(c) {
+            c = String(c || '').trim().toLowerCase();
+            if (/^#[0-9a-f]{3}$/.test(c)) c = '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3];
+            return /^#[0-9a-f]{6}$/.test(c) ? c : '';
+        },
+
+        value: function($box, key) {
+            return this.normalize($box.find('[data-color-key="' + key + '"]').val())
+                || this.normalize($box.attr('data-inherit-' + key));
+        },
+
+        luminance: function(hex) {
+            var rgb = [1, 3, 5].map(function(i) { return parseInt(hex.substr(i, 2), 16) / 255; })
+                .map(function(c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+            return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+        },
+
+        contrast: function(a, b) {
+            var la = this.luminance(a), lb = this.luminance(b);
+            return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+        },
+
+        bestText: function(bg) {
+            return this.contrast(bg, '#ffffff') >= this.contrast(bg, '#000000') ? '#ffffff' : '#000000';
+        },
+
+        effective: function($box) {
+            var bg = this.value($box, 'bg');
+            var pageBg = bg || '#ffffff';
+            var primary = this.value($box, 'primary') || this.DEFAULT_PRIMARY;
+            // Senza sfondo né testo vale il colore del tema: per l'anteprima si assume un testo scuro
+            var text = this.value($box, 'text') || (bg ? this.bestText(bg) : '');
+            var shownText = text || '#1d2327';
+            var link = this.contrast(primary, pageBg) >= 4.5 ? primary : shownText;
+            return { bg: bg, pageBg: pageBg, primary: primary, text: text, shownText: shownText, buttonText: this.bestText(primary), link: link };
+        },
+
+        update: function($box) {
+            var c = this.effective($box);
+            var $preview = $box.find('.dbem-appearance-preview');
+            $preview.css({ background: c.pageBg, color: c.shownText });
+            $preview.find('.dbem-appearance-preview-link').css('color', c.link);
+            $preview.find('.dbem-appearance-preview-button, .dbem-appearance-preview-date').css({ background: c.primary, color: c.buttonText });
+
+            var msg = '';
+            if (c.text) {
+                var ratio = this.contrast(c.text, c.pageBg);
+                if (ratio < 4.5) {
+                    var tpl = c.bg ? dbem_admin.i18n.contrast_low : dbem_admin.i18n.contrast_low_white;
+                    msg = tpl.replace('%s', ratio.toFixed(1).replace('.', ','));
+                }
+            }
+            $box.find('.dbem-appearance-warning').text(msg).toggle(msg !== '');
+        }
+    };
+
     /* === Helpers === */
     function escHtml(s) { return $('<span>').text(s || '').html(); }
-    function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function escAttr(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
 
     /* === Init === */
     $(document).ready(function() {
@@ -434,6 +512,7 @@
         initParticipants();
         initSurvey();
         initOptionRenamesNotice();
+        Appearance.init();
     });
 
 })(jQuery);

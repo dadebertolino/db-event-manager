@@ -101,9 +101,9 @@ class DBEM_Admin {
         if (!$is_plugin_page) return;
 
         wp_enqueue_style('db-admin-ui', DBEM_PLUGIN_URL . 'assets/css/db-admin-ui.css', array(), DBEM_VERSION);
-        wp_enqueue_style('dbem-admin', DBEM_PLUGIN_URL . 'assets/css/admin.css', array('db-admin-ui'), DBEM_VERSION);
+        wp_enqueue_style('dbem-admin', DBEM_PLUGIN_URL . 'assets/css/admin.css', array('db-admin-ui', 'wp-color-picker'), DBEM_VERSION);
         wp_enqueue_script('dbem-sortable', DBEM_PLUGIN_URL . 'assets/js/vendor/Sortable.min.js', array(), '1.15.0', true);
-        wp_enqueue_script('dbem-admin', DBEM_PLUGIN_URL . 'assets/js/admin.js', array('jquery', 'dbem-sortable'), DBEM_VERSION, true);
+        wp_enqueue_script('dbem-admin', DBEM_PLUGIN_URL . 'assets/js/admin.js', array('jquery', 'dbem-sortable', 'wp-color-picker'), DBEM_VERSION, true);
 
         wp_localize_script('dbem-admin', 'dbem_admin', array(
             'ajax_url' => admin_url('admin-ajax.php'),
@@ -124,11 +124,15 @@ class DBEM_Admin {
                 'invalid_token'    => __('QR code non valido', 'db-event-manager'),
                 'no_results'       => __('Nessun risultato', 'db-event-manager'),
                 'email_sent'       => __('Email inviata', 'db-event-manager'),
-                                'reminder_sent'    => __('Promemoria inviati', 'db-event-manager'),
+                'reminder_sent'    => __('Promemoria inviati', 'db-event-manager'),
                 'error'            => __('Errore', 'db-event-manager'),
                 'loading'          => __('Caricamento...', 'db-event-manager'),
                 'add_field'        => __('Aggiungi campo', 'db-event-manager'),
                 'remove_field'     => __('Rimuovi campo', 'db-event-manager'),
+                /* translators: %s: rapporto di contrasto, es. 3,2 */
+                'contrast_low'       => __('Contrasto testo/sfondo %s:1, sotto il minimo WCAG AA (4,5:1): il testo sarà difficile da leggere.', 'db-event-manager'),
+                /* translators: %s: rapporto di contrasto, es. 3,2 */
+                'contrast_low_white' => __('Su sfondo bianco il contrasto del testo è %s:1, sotto il minimo WCAG AA (4,5:1). Se il tema ha uno sfondo scuro può andare bene, ma conviene impostare anche il colore di sfondo.', 'db-event-manager'),
             ),
         ));
 
@@ -219,6 +223,19 @@ class DBEM_Admin {
                         <?php esc_html_e('Non mostrare il giorno nel riquadro della card', 'db-event-manager'); ?>
                     </label>
                     <p class="description"><?php esc_html_e('Nell\'elenco eventi il riquadro colorato mostrerà solo mese e anno. Utile per gli eventi distribuiti su più giornate, dove il giorno di inizio da solo fa sembrare l\'evento di un giorno. La data completa resta visibile nella riga di dettaglio e nella pagina evento.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th><?php esc_html_e('Colori', 'db-event-manager'); ?></th>
+                <td>
+                    <?php
+                    $appearance_name = DBEM_Appearance::META;
+                    $appearance_prefix = 'dbem-event-';
+                    $appearance_values = DBEM_Appearance::sanitize_colors(get_post_meta($post->ID, DBEM_Appearance::META, true));
+                    $appearance_inherit = DBEM_Appearance::get_global_colors();
+                    $appearance_empty = __('Lascia vuoto un campo per usare il colore impostato in Impostazioni → Colori.', 'db-event-manager');
+                    include DBEM_PLUGIN_DIR . 'templates/admin/partials/appearance-fields.php';
+                    ?>
                 </td>
             </tr>
             <tr>
@@ -675,6 +692,10 @@ class DBEM_Admin {
             }
         }
 
+        if (isset($_POST[DBEM_Appearance::META])) {
+            update_post_meta($post_id, DBEM_Appearance::META, DBEM_Appearance::sanitize_colors(wp_unslash($_POST[DBEM_Appearance::META]))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
+        }
+
         // Checkbox
         update_post_meta($post_id, '_dbem_hide_card_day', isset($_POST['_dbem_hide_card_day']) ? '1' : '0');
         update_post_meta($post_id, '_dbem_registration_open', isset($_POST['_dbem_registration_open']) ? '1' : '0');
@@ -989,6 +1010,7 @@ class DBEM_Admin {
             }
             update_option('dbem_checkin_pin', $new_pin);
             update_option('dbem_delete_data_on_uninstall', isset($_POST['dbem_delete_data_on_uninstall']) ? '1' : '0');
+            update_option(DBEM_Appearance::OPTION, DBEM_Appearance::sanitize_colors(wp_unslash($_POST['dbem_appearance'] ?? array()))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
         }
@@ -1060,6 +1082,19 @@ class DBEM_Admin {
                         </td>
                     </tr>
                 </table>
+
+                <hr>
+
+                <h2><?php esc_html_e('Colori', 'db-event-manager'); ?></h2>
+                <p class="description"><?php esc_html_e('Valgono per la pagina degli eventi, gli elenchi e il form di iscrizione integrato. Ogni evento può impostare colori propri nei Dettagli Evento.', 'db-event-manager'); ?></p>
+                <?php
+                $appearance_name = 'dbem_appearance';
+                $appearance_prefix = 'dbem-global-';
+                $appearance_values = DBEM_Appearance::get_global_colors();
+                $appearance_inherit = array();
+                $appearance_empty = __('Lascia vuoto un campo per mantenere i colori attuali (per il testo, quello del tema).', 'db-event-manager');
+                include DBEM_PLUGIN_DIR . 'templates/admin/partials/appearance-fields.php';
+                ?>
 
                 <hr>
 

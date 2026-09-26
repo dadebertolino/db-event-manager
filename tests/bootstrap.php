@@ -228,6 +228,18 @@ if (!function_exists('sanitize_textarea_field')) {
     }
 }
 
+if (!function_exists('sanitize_hex_color')) {
+    function sanitize_hex_color($color) {
+        return preg_match('/^#([A-Fa-f0-9]{3}){1,2}$/', (string) $color) ? $color : null;
+    }
+}
+
+if (!function_exists('esc_attr')) {
+    function esc_attr($text) {
+        return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+    }
+}
+
 if (!function_exists('sanitize_email')) {
     function sanitize_email($email) {
         return trim((string) $email);
@@ -503,6 +515,7 @@ require_once dirname(__DIR__) . '/inc/class-security.php';
 require_once dirname(__DIR__) . '/inc/class-db.php';
 require_once dirname(__DIR__) . '/inc/class-email.php';
 require_once dirname(__DIR__) . '/inc/class-cpt.php';
+require_once dirname(__DIR__) . '/inc/class-appearance.php';
 require_once dirname(__DIR__) . '/inc/class-admin.php';
 require_once dirname(__DIR__) . '/inc/class-registration.php';
 require_once dirname(__DIR__) . '/inc/class-qrcode.php';

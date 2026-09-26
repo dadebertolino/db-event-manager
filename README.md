@@ -128,6 +128,17 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Opzione "Elimina tutti i dati alla disinstallazione" (disattivata di default)
 - Riepilogo shortcode disponibili
 
+### 🎨 Colori
+- Tre colori: sfondo, pulsanti e testo, impostabili in Impostazioni → Colori e, per il singolo evento, nei Dettagli Evento
+- Precedenza: colore dell'evento → colore globale → colore predefinito. Un campo vuoto eredita
+- I colori valgono per la pagina evento, lo shortcode `[dbem_event]`, gli elenchi (il contenitore usa i colori globali, ogni card quelli del suo evento) e il form di iscrizione integrato. Le pagine di check-in, partecipanti e sondaggio mantengono il loro aspetto
+- Gli altri colori sono calcolati per restare WCAG 2.1 AA: testo dei pulsanti bianco o nero secondo il contrasto, hover più scuro o più chiaro, link nel colore dei pulsanti solo se leggibili sullo sfondo, testo nero o bianco se si imposta solo lo sfondo
+- Campi di input, avvisi, badge e messaggi hanno colori fissi, leggibili su qualunque sfondo
+- Anteprima nell'admin e avviso quando il contrasto tra testo e sfondo è sotto 4,5:1
+- Senza colori impostati l'aspetto resta quello di sempre
+
+Variabili CSS pubbliche, impostabili anche dal tema su un contenitore della pagina: `--dbem-bg`, `--dbem-surface` (sfondo delle card), `--dbem-border`, `--dbem-text`, `--dbem-text-muted`, `--dbem-primary`, `--dbem-primary-hover`, `--dbem-button-text`, `--dbem-link`.
+
 ### 👤 Gestori degli eventi
 - Un amministratore può abilitare la gestione completa degli eventi dal profilo dell'utente, in **Utenti → Modifica utente → DB Event Manager**
 - L'utente autorizzato può creare, modificare, pubblicare ed eliminare eventi e categorie
@@ -322,8 +333,12 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 
 ## Changelog
 
-### 1.6.5
-Correzioni di sicurezza e di comportamento. L'aspetto di form ed eventi non cambia.
+### 1.7.0
+**Novità**
+- Colori personalizzabili: sfondo, pulsanti e testo, globali e per evento, con anteprima e avviso di contrasto nell'admin. I colori derivati (testo dei pulsanti, hover, link) vengono calcolati per restare WCAG AA. Gli eventi esistenti non cambiano aspetto, salvo due correzioni di contrasto: il rosso dei messaggi di errore e del badge «Posti esauriti» e il grigio del badge «Concluso» sono più scuri, perché prima erano sotto il minimo AA
+- I campi del form di iscrizione hanno sempre testo scuro su sfondo bianco: prima prendevano il colore del testo del tema, illeggibile con i temi scuri
+
+**Correzioni di sicurezza e di comportamento**
 - Link Approva/Rifiuta nelle email: prima approvavano o rifiutavano all'apertura, quindi anche i filtri antivirus o le anteprime dei link potevano decidere al posto del responsabile. Ora aprono una pagina di conferma e la decisione parte dal pulsante
 - Reiscrizione con la stessa email: prima chi conosceva l'email di un iscritto poteva sostituirne nome, dati e consenso. Ora i nuovi dati arrivano come link di conferma all'indirizzo già iscritto (valido 24 ore, una sola volta) e l'iscrizione cambia solo dopo il clic
 - Un iscritto rifiutato non può più reiscriversi: prima la reiscrizione faceva ripartire la richiesta di approvazione

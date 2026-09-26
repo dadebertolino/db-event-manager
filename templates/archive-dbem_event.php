@@ -17,7 +17,7 @@ wp_enqueue_script('dbem-header-fix');
 
     <?php if (have_posts()): ?>
 
-        <div class="dbem-events-list" role="list">
+        <div<?php echo DBEM_Appearance::wrapper_attributes('dbem-events-list'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?> role="list">
         <?php while (have_posts()) : the_post();
             $eid = get_the_ID();
             $event_name = DBEM_CPT::get_event_name($eid);
@@ -30,7 +30,7 @@ wp_enqueue_script('dbem-header-fix');
             $event_status = DBEM_CPT::get_event_status($eid);
             $card_date = DBEM_CPT::get_card_date($eid);
         ?>
-            <article class="dbem-event-card dbem-status-<?php echo esc_attr($event_status); ?>" role="listitem">
+            <article<?php echo DBEM_Appearance::card_attributes('dbem-event-card dbem-status-' . $event_status, $eid); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?> role="listitem">
                 <?php
                 $date_classes = 'dbem-card-date';
                 if ($card_date && $card_date['multiday']) $date_classes .= ' dbem-card-date-multi';

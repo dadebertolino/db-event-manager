@@ -18,7 +18,7 @@ while (have_posts()) : the_post();
 
 <main class="dbem-single-wrap">
 
-    <article class="dbem-single-event">
+    <article<?php echo DBEM_Appearance::wrapper_attributes('dbem-single-event', $event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?>>
         <h1 class="dbem-event-title" style="margin-bottom:16px;"><?php echo esc_html($event_name); ?></h1>
 
         <?php if (has_post_thumbnail()): ?>

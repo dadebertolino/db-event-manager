@@ -35,7 +35,7 @@ class DBEM_Shortcodes {
 
         ob_start();
         ?>
-        <div class="dbem-event-wrapper">
+        <div<?php echo DBEM_Appearance::wrapper_attributes('dbem-event-wrapper', $event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?>>
             <h2 class="dbem-event-title"><?php echo esc_html($event_name); ?></h2>
 
             <?php if ($event_desc): ?>
@@ -127,7 +127,7 @@ class DBEM_Shortcodes {
 
         ob_start();
         ?>
-        <div class="dbem-events-list dbem-cols-<?php echo esc_attr($cols); ?>" role="list">
+        <div<?php echo DBEM_Appearance::wrapper_attributes('dbem-events-list dbem-cols-' . $cols); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?> role="list">
             <?php while ($query->have_posts()): $query->the_post();
                 $eid = get_the_ID();
                 $start = get_post_meta($eid, '_dbem_date_start', true);
@@ -139,7 +139,7 @@ class DBEM_Shortcodes {
                 $event_status = DBEM_CPT::get_event_status($eid);
                 $card_date = DBEM_CPT::get_card_date($eid);
             ?>
-            <article class="dbem-event-card dbem-status-<?php echo esc_attr($event_status); ?>" role="listitem">
+            <article<?php echo DBEM_Appearance::card_attributes('dbem-event-card dbem-status-' . $event_status, $eid); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?> role="listitem">
                 <?php
                 $date_classes = 'dbem-card-date';
                 if ($card_date && $card_date['multiday']) $date_classes .= ' dbem-card-date-multi';

@@ -24,6 +24,7 @@ function dbem_uninstall_site() {
         'dbem_checkin_pin',
         'dbem_delete_data_on_uninstall',
         'dbem_caps_version',
+        'dbem_appearance',
     );
 
     $delete_data = get_option('dbem_delete_data_on_uninstall', '0') === '1';

@@ -140,15 +140,15 @@ class DBEM_Frontend {
                         <span aria-hidden="true">⚡</span>
                         <?php printf(
                             esc_html(_n('%d posto disponibile', '%d posti disponibili', $remaining, 'db-event-manager')),
-                            $remaining
+                            (int) $remaining
                         ); ?>
                     </div>
                 <?php endif;
                 $form_source = get_post_meta($event_id, '_dbem_form_source', true) ?: 'builtin';
                 if ($form_source === 'dbfb' && class_exists('DB_Form_Builder')) {
-                    echo self::render_dbfb_registration_form($event_id);
+                    echo self::render_dbfb_registration_form($event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato in costruzione
                 } else {
-                    echo self::render_registration_form($event_id);
+                    echo self::render_registration_form($event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato in costruzione
                 }
             endif;
             ?>
@@ -199,7 +199,7 @@ class DBEM_Frontend {
             </div>
 
             <?php foreach ($custom_fields as $i => $field): ?>
-                <?php echo self::render_form_field($field, $i, $event_id); ?>
+                <?php echo self::render_form_field($field, $i, $event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato dal renderer ?>
             <?php endforeach; ?>
 
             <?php
@@ -418,27 +418,27 @@ class DBEM_Frontend {
             case 'date':
                 ?>
                 <label for="<?php echo esc_attr($field_id); ?>" class="dbem-label">
-                    <?php echo esc_html($field['label']); ?><?php echo $req_star; ?>
+                    <?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?>
                 </label>
-                <input type="<?php echo esc_attr($field['type']); ?>" id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-input" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; ?>>
+                <input type="<?php echo esc_attr($field['type']); ?>" id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-input" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
                 <?php
                 break;
 
             case 'textarea':
                 ?>
                 <label for="<?php echo esc_attr($field_id); ?>" class="dbem-label">
-                    <?php echo esc_html($field['label']); ?><?php echo $req_star; ?>
+                    <?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?>
                 </label>
-                <textarea id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-textarea" rows="4" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; ?>></textarea>
+                <textarea id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-textarea" rows="4" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>></textarea>
                 <?php
                 break;
 
             case 'select':
                 ?>
                 <label for="<?php echo esc_attr($field_id); ?>" class="dbem-label">
-                    <?php echo esc_html($field['label']); ?><?php echo $req_star; ?>
+                    <?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?>
                 </label>
-                <select id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-select"<?php echo $req_attr; ?>>
+                <select id="<?php echo esc_attr($field_id); ?>" name="<?php echo esc_attr($field_name); ?>" class="dbem-select"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
                     <option value=""><?php esc_html_e('— Seleziona —', 'db-event-manager'); ?></option>
                     <?php foreach (($field['options'] ?? array()) as $opt): ?>
                         <option value="<?php echo esc_attr($opt); ?>"><?php echo esc_html($opt); ?></option>
@@ -450,10 +450,10 @@ class DBEM_Frontend {
             case 'radio':
                 ?>
                 <fieldset>
-                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></legend>
+                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                     <?php foreach (($field['options'] ?? array()) as $j => $opt): ?>
                         <label class="dbem-radio-label">
-                            <input type="radio" name="<?php echo esc_attr($field_name); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $req_attr; ?>>
+                            <input type="radio" name="<?php echo esc_attr($field_name); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
                             <span><?php echo esc_html($opt); ?></span>
                         </label>
                     <?php endforeach; ?>
@@ -464,7 +464,7 @@ class DBEM_Frontend {
             case 'checkbox':
                 ?>
                 <fieldset>
-                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></legend>
+                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                     <?php foreach (($field['options'] ?? array()) as $j => $opt): ?>
                         <label class="dbem-checkbox-label">
                             <input type="checkbox" name="<?php echo esc_attr($field_name); ?>[]" value="<?php echo esc_attr($opt); ?>">

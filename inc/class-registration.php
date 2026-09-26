@@ -8,7 +8,7 @@ class DBEM_Registration {
      */
     public static function handle_registration() {
         // Verifica nonce
-        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce($_POST['dbem_nonce'], 'dbem_registration_nonce')) {
+        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_nonce'])), 'dbem_registration_nonce')) {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
 
@@ -26,8 +26,8 @@ class DBEM_Registration {
         }
 
         // Valida campi obbligatori
-        $name = sanitize_text_field($_POST['dbem_name'] ?? '');
-        $email = strtolower(sanitize_email($_POST['dbem_email'] ?? ''));
+        $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
+        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
 
         if (empty($name)) {
             wp_send_json_error(__('Il nome è obbligatorio.', 'db-event-manager'));
@@ -59,9 +59,9 @@ class DBEM_Registration {
                 $field_key = 'dbem_custom_' . $i;
                 $value = '';
                 if ($field['type'] === 'checkbox') {
-                    $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)$_POST[$field_key]) : array();
+                    $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)wp_unslash($_POST[$field_key])) : array();
                 } else {
-                    $value = sanitize_text_field($_POST[$field_key] ?? '');
+                    $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
                 }
                 if ($field['required'] && empty($value)) {
                     wp_send_json_error(sprintf(
@@ -197,7 +197,7 @@ class DBEM_Registration {
      * dopo che l'utente l'ha confermato: il form reinvia con dbem_confirm_replace
      */
     public static function require_replace_confirmation($existing) {
-        if (!$existing || !empty($_POST['dbem_confirm_replace'])) return;
+        if (!$existing || !empty($_POST['dbem_confirm_replace'])) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato dall'handler chiamante
 
         wp_send_json_error(array(
             'code'    => 'confirm_replace',
@@ -275,7 +275,7 @@ class DBEM_Registration {
      * Il pulsante evita che i sistemi che aprono in anticipo i link delle email confermino da soli.
      */
     public static function handle_update_link() {
-        $key = preg_replace('/[^A-Za-z0-9]/', '', (string) ($_GET['key'] ?? ''));
+        $key = preg_replace('/[^A-Za-z0-9]/', '', sanitize_text_field(wp_unslash($_GET['key'] ?? '')));
         $pending = $key !== '' ? get_transient('dbem_update_' . $key) : false;
         if (!is_array($pending)) {
             self::update_page(__('Link non valido o scaduto. Se vuoi modificare l\'iscrizione, compila di nuovo il modulo.', 'db-event-manager'), 404);
@@ -290,7 +290,7 @@ class DBEM_Registration {
 
         $event_title = DBEM_CPT::get_event_name($reg->event_id);
 
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+        if (sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             $form = '<form method="post" action="' . esc_url(home_url('/?dbem_action=confirm_update&key=' . $key)) . '">'
                 . '<input type="hidden" name="_wpnonce" value="' . esc_attr(wp_create_nonce('dbem_confirm_update_' . $key)) . '">'
                 . '<button type="submit" style="padding:14px 32px;background:#1d6e3f;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">'
@@ -302,7 +302,7 @@ class DBEM_Registration {
             );
         }
 
-        if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'dbem_confirm_update_' . $key)) {
+        if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), 'dbem_confirm_update_' . $key)) {
             self::update_page(__('Richiesta scaduta. Apri di nuovo il link dall\'email.', 'db-event-manager'), 403);
         }
 
@@ -325,10 +325,10 @@ class DBEM_Registration {
         wp_die(
             '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
             . '<p>' . esc_html($message) . '</p>'
-            . $extra_html
+            . $extra_html // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con valori escapati
             . '</div>',
-            __('Modifica iscrizione', 'db-event-manager'),
-            array('response' => $status)
+            esc_html__('Modifica iscrizione', 'db-event-manager'),
+            array('response' => (int) $status)
         );
     }
 
@@ -342,7 +342,7 @@ class DBEM_Registration {
      * Questo handler crea l'iscrizione evento (registrations, QR code, email conferma).
      */
     public static function handle_dbfb_registration() {
-        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce($_POST['dbem_nonce'], 'dbem_registration_nonce')) {
+        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_nonce'])), 'dbem_registration_nonce')) {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
 
@@ -357,8 +357,8 @@ class DBEM_Registration {
             wp_send_json_error(__('Evento non valido.', 'db-event-manager'));
         }
 
-        $name = sanitize_text_field($_POST['dbem_name'] ?? '');
-        $email = strtolower(sanitize_email($_POST['dbem_email'] ?? ''));
+        $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
+        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
 
         if (empty($name) || !is_email($email)) {
             wp_send_json_error(__('Nome e email sono obbligatori.', 'db-event-manager'));
@@ -383,8 +383,8 @@ class DBEM_Registration {
 
         // Dati extra dal form DBFB
         $extra_data = array();
-        $raw_data = $_POST['dbem_data'] ?? '{}';
-        $decoded = json_decode(stripslashes($raw_data), true);
+        $raw_data = wp_unslash($_POST['dbem_data'] ?? '{}'); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON: ogni chiave e valore viene sanitizzato sotto
+        $decoded = json_decode($raw_data, true);
         if (is_array($decoded)) {
             foreach ($decoded as $k => $v) {
                 $extra_data[sanitize_text_field($k)] = sanitize_text_field($v);

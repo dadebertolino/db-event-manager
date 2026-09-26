@@ -38,7 +38,7 @@ class DBEM_Security {
      * IP del client (solo REMOTE_ADDR: gli header proxy sono falsificabili)
      */
     public static function client_ip() {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 
@@ -64,7 +64,7 @@ class DBEM_Security {
             ), 429);
         }
 
-        $pin_sent = (string) sanitize_text_field($_POST['pin'] ?? '');
+        $pin_sent = (string) sanitize_text_field(wp_unslash($_POST['pin'] ?? ''));
 
         if (!hash_equals(self::get_pin(), $pin_sent)) {
             set_transient($fail_key, $fails + 1, self::PIN_LOCK_WINDOW);

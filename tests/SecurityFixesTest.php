@@ -143,4 +143,15 @@ final class SecurityFixesTest extends TestCase {
     public function testQrDeleteRefusesPathsOutsideQrFolder(): void {
         $this->assertFalse(DBEM_QRCode::delete('../../wp-config'));
     }
+
+    public function testRequestTextLosesWordPressSlashes(): void {
+        // WordPress aggiunge le barre alle virgolette in $_POST
+        $_POST['template_subject'] = "Promemoria per l\\'evento";
+        $_POST['template_message'] = "Ciao {nome}, ci vediamo all\\'ingresso";
+
+        $template = $this->call_private('DBEM_Admin', 'reminder_template_from_request');
+
+        $this->assertSame("Promemoria per l'evento", $template['subject']);
+        $this->assertSame("Ciao {nome}, ci vediamo all'ingresso", $template['message']);
+    }
 }

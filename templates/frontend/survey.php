@@ -67,16 +67,16 @@ if (!is_array($survey_fields)) $survey_fields = array();
                 <div class="dbem-field">
                     <?php switch ($field['type']):
                         case 'text': case 'email': case 'number': case 'date': ?>
-                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></label>
-                            <input type="<?php echo esc_attr($field['type']); ?>" id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-input" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; ?>>
+                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></label>
+                            <input type="<?php echo esc_attr($field['type']); ?>" id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-input" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
                         <?php break;
                         case 'textarea': ?>
-                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></label>
-                            <textarea id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-textarea" rows="4" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; ?>></textarea>
+                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></label>
+                            <textarea id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-textarea" rows="4" placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>></textarea>
                         <?php break;
                         case 'select': ?>
-                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></label>
-                            <select id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-select"<?php echo $req_attr; ?>>
+                            <label for="<?php echo esc_attr($fid); ?>" class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></label>
+                            <select id="<?php echo esc_attr($fid); ?>" name="<?php echo esc_attr($fid); ?>" class="dbem-select"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
                                 <option value=""><?php esc_html_e('— Seleziona —', 'db-event-manager'); ?></option>
                                 <?php foreach (($field['options'] ?? array()) as $opt): ?>
                                     <option value="<?php echo esc_attr($opt); ?>"><?php echo esc_html($opt); ?></option>
@@ -85,15 +85,15 @@ if (!is_array($survey_fields)) $survey_fields = array();
                         <?php break;
                         case 'radio': ?>
                             <fieldset>
-                                <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></legend>
+                                <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                                 <?php foreach (($field['options'] ?? array()) as $opt): ?>
-                                    <label class="dbem-radio-label"><input type="radio" name="<?php echo esc_attr($fid); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $req_attr; ?>><span><?php echo esc_html($opt); ?></span></label>
+                                    <label class="dbem-radio-label"><input type="radio" name="<?php echo esc_attr($fid); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>><span><?php echo esc_html($opt); ?></span></label>
                                 <?php endforeach; ?>
                             </fieldset>
                         <?php break;
                         case 'checkbox': ?>
                             <fieldset>
-                                <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; ?></legend>
+                                <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                                 <?php foreach (($field['options'] ?? array()) as $opt): ?>
                                     <label class="dbem-checkbox-label"><input type="checkbox" name="<?php echo esc_attr($fid); ?>[]" value="<?php echo esc_attr($opt); ?>"><span><?php echo esc_html($opt); ?></span></label>
                                 <?php endforeach; ?>

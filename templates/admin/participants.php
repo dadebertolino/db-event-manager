@@ -9,12 +9,12 @@ $events = get_posts(array(
     'order'          => 'DESC',
 ));
 
-$selected_event = absint($_GET['event_id'] ?? 0);
+$selected_event = absint($_GET['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
 $registrations = array();
 $event_title = '';
 $custom_fields = array();
-$filter_field = isset($_GET['filter_field']) ? absint($_GET['filter_field']) : -1;
-$filter_value = isset($_GET['filter_value']) ? sanitize_text_field(wp_unslash($_GET['filter_value'])) : '';
+$filter_field = isset($_GET['filter_field']) ? absint($_GET['filter_field']) : -1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
+$filter_value = isset($_GET['filter_value']) ? sanitize_text_field(wp_unslash($_GET['filter_value'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
 
 if ($selected_event) {
     DBEM_DB::ensure_tables();

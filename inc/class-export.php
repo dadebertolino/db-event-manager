@@ -22,15 +22,15 @@ class DBEM_Export {
      */
     public static function handle_export() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!DBEM_Admin::can_manage_events()) wp_die(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_die(esc_html__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_GET['event_id'] ?? $_POST['event_id'] ?? 0);
-        if (!$event_id) wp_die(__('Evento mancante', 'db-event-manager'));
+        if (!$event_id) wp_die(esc_html__('Evento mancante', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
         $registration_ids = isset($_GET['registration_ids'])
-            ? (array) $_GET['registration_ids']
-            : (isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : null);
+            ? array_map('absint', (array) wp_unslash($_GET['registration_ids']))
+            : (isset($_POST['registration_ids']) ? array_map('absint', (array) wp_unslash($_POST['registration_ids'])) : null);
         $regs = DBEM_DB::get_registrations_filtered($event_id, null, 'registered_at', 'ASC', $registration_ids);
         $event_title = sanitize_file_name(DBEM_CPT::get_event_name($event_id));
 
@@ -96,10 +96,10 @@ class DBEM_Export {
      */
     public static function handle_survey_export() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!DBEM_Admin::can_manage_events()) wp_die(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_die(esc_html__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_GET['event_id'] ?? $_POST['event_id'] ?? 0);
-        if (!$event_id) wp_die(__('Evento mancante', 'db-event-manager'));
+        if (!$event_id) wp_die(esc_html__('Evento mancante', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
         $responses = DBEM_DB::get_survey_responses($event_id);

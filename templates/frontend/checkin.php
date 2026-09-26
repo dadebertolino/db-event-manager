@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 // Il PIN è sempre obbligatorio: DBEM_Security lo genera se non configurato
 $pin_required = true;
 $public_nonce = DBEM_Security::public_nonce();
-$preloaded_token = sanitize_text_field($_GET['token'] ?? '');
+$preloaded_token = sanitize_text_field(wp_unslash($_GET['token'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- token dal QR code, pagina protetta da PIN
 $site_name = get_bloginfo('name');
 ?>
 <!DOCTYPE html>

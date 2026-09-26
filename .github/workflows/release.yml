@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: "Build ZIP e pubblica Release"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # L'updater ricava la versione dal tag: se non coincide con quella del plugin,
+      # WordPress continuerebbe a proporre l'aggiornamento anche dopo averlo installato
+      - name: Verifica coerenza versione tag / plugin
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          HEADER=$(grep -oP '^\s*\*\s*Version:\s*\K[0-9.]+' db-event-manager.php)
+          CONST=$(grep -oP "define\('DBEM_VERSION',\s*'\K[0-9.]+" db-event-manager.php)
+          echo "tag=$TAG header=$HEADER const=$CONST"
+          if [ "$TAG" != "$HEADER" ] || [ "$TAG" != "$CONST" ]; then
+            echo "::error::La versione del tag ($TAG) non coincide con quella del plugin (header: $HEADER, DBEM_VERSION: $CONST)."
+            exit 1
+          fi
+
+      - name: Verifica voce di changelog
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! grep -q "^### $TAG\$" README.md; then
+            echo "::error::Nel README manca la voce di changelog '### $TAG'."
+            exit 1
+          fi
+
+      # git archive rispetta gli export-ignore di .gitattributes e crea la cartella
+      # radice 'db-event-manager/', quella che WordPress si aspetta (lo zipball di
+      # GitHub avrebbe 'dadebertolino-db-event-manager-<hash>/')
+      - name: Build ZIP
+        run: |
+          git archive --format=zip --prefix=db-event-manager/ \
+            -o "db-event-manager-${GITHUB_REF_NAME#v}.zip" "$GITHUB_REF_NAME"
+          unzip -l "db-event-manager-${GITHUB_REF_NAME#v}.zip" | head -30
+
+      - name: Crea/aggiorna Release con lo ZIP
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DB Event Manager ${{ github.ref_name }}"
+          files: db-event-manager-*.zip
+          generate_release_notes: true

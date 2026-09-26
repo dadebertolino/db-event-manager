@@ -298,6 +298,14 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 - **Template**: sovrascrivibili dal tema
 - **Timezone**: le date degli eventi sono salvate in ora locale e visualizzate senza conversione timezone
 
+### Sviluppo
+Dopo `composer install`:
+- `composer test` — test PHPUnit, senza WordPress
+- `composer phpcs` — regole `WordPress.Security` su tutto il PHP del plugin, template compresi; ogni violazione è un errore
+- `composer check-js` — sintassi dei file in `assets/js` e degli script inline nei file PHP
+
+La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
+
 ---
 
 ## Accessibilità (WCAG 2.1 AA)
@@ -331,6 +339,10 @@ Correzioni di sicurezza e di comportamento. L'aspetto di form ed eventi non camb
 - Disattivazione e disinstallazione rimuovono anche reminder e sondaggi programmati per singolo evento
 - Disinstallazione: pulisce tutti i siti di un multisite, le categorie evento e funziona anche da WP-CLI
 - Email: segnaposto sostituiti in un solo passaggio (un nome come «{token}» non viene più espanso), oggetto sempre su una riga, mittente con il nome del sito ripulito da virgolette ed entità HTML
+- Apostrofi e virgolette nei dati inviati: prima venivano salvati con una barra davanti (es. «D\\'Angelo» nel nome dell'iscritto o nel titolo della pagina eventi). Ora vengono salvati come scritti. I dati già salvati non vengono modificati
+- Tutti i testi fissi dell'interfaccia passano dall'escape HTML
+- Le release allegano uno ZIP con la cartella `db-event-manager/`: prima l'aggiornamento scaricava lo zipball di GitHub, con una cartella dal nome diverso
+- CI: controlli di sicurezza PHPCS anche sui template, controllo della sintassi JavaScript (script inline compresi), `php -l` con PHP 7.4 e 8.3, verifica della versione al rilascio
 
 ### 1.6.4
 - Testo del reminder modificabile per evento dall'anteprima, con aggiornamento in tempo reale, salvataggio e ripristino del testo predefinito; il testo salvato vale anche per il reminder automatico

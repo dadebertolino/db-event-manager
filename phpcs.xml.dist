@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<ruleset name="DB Event Manager">
+    <description>Controlli di sicurezza WordPress su tutto il codice PHP del plugin, template compresi.</description>
+
+    <file>inc/</file>
+    <file>templates/</file>
+    <file>db-event-manager.php</file>
+    <file>uninstall.php</file>
+    <exclude-pattern>*/inc/lib/*</exclude-pattern>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+
+    <arg value="sp"/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="4"/>
+
+    <config name="minimum_wp_version" value="5.8"/>
+
+    <rule ref="WordPress.Security"/>
+</ruleset>

@@ -7,7 +7,7 @@ class DBEM_Survey {
      * Pagina admin survey
      */
     public static function render_admin_page() {
-        if (!DBEM_Admin::can_manage_events()) wp_die(__('Accesso negato', 'db-event-manager'));
+        if (!DBEM_Admin::can_manage_events()) wp_die(esc_html__('Accesso negato', 'db-event-manager'));
         include DBEM_PLUGIN_DIR . 'templates/admin/survey.php';
     }
 
@@ -22,7 +22,7 @@ class DBEM_Survey {
             wp_die(
                 '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
                 . '<h2>❌</h2><p>' . esc_html__('Link non valido.', 'db-event-manager') . '</p></div>',
-                __('Survey', 'db-event-manager'), array('response' => 404)
+                esc_html__('Survey', 'db-event-manager'), array('response' => 404)
             );
         }
 
@@ -33,7 +33,7 @@ class DBEM_Survey {
             wp_die(
                 '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
                 . '<h2>📋</h2><p>' . esc_html__('Il survey per questo evento non è attivo.', 'db-event-manager') . '</p></div>',
-                __('Survey', 'db-event-manager'), array('response' => 200)
+                esc_html__('Survey', 'db-event-manager'), array('response' => 200)
             );
         }
 
@@ -42,7 +42,7 @@ class DBEM_Survey {
             wp_die(
                 '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
                 . '<h2>✅</h2><p>' . esc_html__('Grazie, hai già risposto al questionario!', 'db-event-manager') . '</p></div>',
-                __('Survey', 'db-event-manager'), array('response' => 200)
+                esc_html__('Survey', 'db-event-manager'), array('response' => 200)
             );
         }
 
@@ -54,11 +54,11 @@ class DBEM_Survey {
      * Submit survey via AJAX
      */
     public static function handle_submit() {
-        if (!isset($_POST['dbem_survey_nonce']) || !wp_verify_nonce($_POST['dbem_survey_nonce'], 'dbem_survey_submit')) {
+        if (!isset($_POST['dbem_survey_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_survey_nonce'])), 'dbem_survey_submit')) {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
 
-        $token = sanitize_text_field($_POST['token'] ?? '');
+        $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
         if (empty($token)) wp_send_json_error(__('Token mancante.', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
@@ -78,11 +78,11 @@ class DBEM_Survey {
             $field_key = 'dbem_survey_' . $i;
             $value = '';
             if ($field['type'] === 'checkbox') {
-                $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)$_POST[$field_key]) : array();
+                $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)wp_unslash($_POST[$field_key])) : array();
             } elseif ($field['type'] === 'textarea') {
-                $value = sanitize_textarea_field($_POST[$field_key] ?? '');
+                $value = sanitize_textarea_field(wp_unslash($_POST[$field_key] ?? ''));
             } else {
-                $value = sanitize_text_field($_POST[$field_key] ?? '');
+                $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
             }
 
             if ($field['required'] && empty($value)) {

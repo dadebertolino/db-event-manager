@@ -33,7 +33,7 @@ while (have_posts()) : the_post();
             </div>
         <?php endif; ?>
 
-        <?php echo DBEM_Frontend::render_event_details($event_id); ?>
+        <?php echo DBEM_Frontend::render_event_details($event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato dal renderer ?>
     </article>
 
 </main>

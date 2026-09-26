@@ -9,7 +9,7 @@ $events = get_posts(array(
     'order'          => 'DESC',
 ));
 
-$selected_event = absint($_GET['event_id'] ?? 0);
+$selected_event = absint($_GET['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
 $event_title = '';
 $responses = array();
 $survey_fields = array();
@@ -60,7 +60,7 @@ if ($selected_event) {
             <p>
                 <?php printf(
                     esc_html__('Risposte: %d | Presenti (checked-in): %d | Iscritti totali: %d', 'db-event-manager'),
-                    count($responses), $total_checked_in, $total_regs
+                    (int) count($responses), (int) $total_checked_in, (int) $total_regs
                 ); ?>
             </p>
             <button type="button" class="button button-primary" id="dbem-send-survey" data-event="<?php echo esc_attr($selected_event); ?>" data-target="checked_in">

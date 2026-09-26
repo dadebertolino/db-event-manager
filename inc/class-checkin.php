@@ -8,7 +8,7 @@ class DBEM_Checkin {
      */
     public static function render_page() {
         if (!DBEM_Admin::can_manage_events()) {
-            wp_die(__('Accesso negato', 'db-event-manager'));
+            wp_die(esc_html__('Accesso negato', 'db-event-manager'));
         }
         include DBEM_PLUGIN_DIR . 'templates/admin/checkin.php';
     }
@@ -20,7 +20,7 @@ class DBEM_Checkin {
         check_ajax_referer('dbem_checkin_nonce', 'nonce');
         if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
-        $token = sanitize_text_field($_POST['token'] ?? '');
+        $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
         if (empty($token)) wp_send_json_error(__('Token mancante', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
@@ -110,7 +110,7 @@ class DBEM_Checkin {
         if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
-        $search = sanitize_text_field($_POST['search'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
         if (!$event_id || empty($search)) wp_send_json_error(__('Parametri mancanti', 'db-event-manager'));
 
         DBEM_DB::ensure_tables();
@@ -136,7 +136,7 @@ class DBEM_Checkin {
      */
     public static function handle_frontend_checkin($token) {
         // Redirect alla pagina check-in pubblica con token
-        wp_redirect(home_url('/?dbem_checkin_page=1&token=' . urlencode($token)));
+        wp_safe_redirect(home_url('/?dbem_checkin_page=1&token=' . urlencode($token)));
         exit;
     }
 
@@ -157,8 +157,8 @@ class DBEM_Checkin {
 
         // Dallo scanner arriva il token del QR, dalla ricerca l'id dell'iscrizione:
         // la ricerca non restituisce i token, che valgono anche come QR e link al sondaggio
-        $token = sanitize_text_field($_POST['token'] ?? '');
-        $reg_id = absint($_POST['registration_id'] ?? 0);
+        $token = sanitize_text_field(wp_unslash($_POST['token'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $reg_id = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (empty($token) && !$reg_id) wp_send_json_error(array('message' => __('Token mancante', 'db-event-manager'), 'status' => 'invalid'));
 
         DBEM_DB::ensure_tables();
@@ -227,7 +227,7 @@ class DBEM_Checkin {
     public static function handle_public_search() {
         DBEM_Security::verify_public_request();
 
-        $search = sanitize_text_field($_POST['search'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_POST['search'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (strlen($search) < 2) {
             wp_send_json_error(array('message' => __('Inserisci almeno 2 caratteri', 'db-event-manager')));
         }
@@ -266,7 +266,7 @@ class DBEM_Checkin {
     public static function handle_public_participants() {
         DBEM_Security::verify_public_request();
 
-        $event_id = absint($_POST['event_id'] ?? 0);
+        $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (!$event_id) wp_send_json_error(array('message' => __('Evento mancante', 'db-event-manager')));
 
         DBEM_DB::ensure_tables();
@@ -314,9 +314,9 @@ class DBEM_Checkin {
     public static function handle_public_participant_action() {
         DBEM_Security::verify_public_request();
 
-        $action   = sanitize_key($_POST['participant_action'] ?? '');
-        $reg_id   = absint($_POST['registration_id'] ?? 0);
-        $event_id = absint($_POST['event_id'] ?? 0);
+        $action   = sanitize_key($_POST['participant_action'] ?? ''); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $reg_id   = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (!$action || !$reg_id || !$event_id) wp_send_json_error(array('message' => __('Parametri mancanti', 'db-event-manager')));
 
         DBEM_DB::ensure_tables();
@@ -387,10 +387,10 @@ class DBEM_Checkin {
     public static function handle_public_add_participant() {
         DBEM_Security::verify_public_request();
 
-        $event_id = absint($_POST['event_id'] ?? 0);
-        $name = sanitize_text_field($_POST['name'] ?? '');
-        $email = sanitize_email($_POST['email'] ?? '');
-        $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
+        $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $name = sanitize_text_field(wp_unslash($_POST['name'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $email = sanitize_email(wp_unslash($_POST['email'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
 
         if (!$event_id || !$name || !$email) {
             wp_send_json_error(array('message' => __('Nome, email e evento sono obbligatori', 'db-event-manager')));
@@ -454,9 +454,9 @@ class DBEM_Checkin {
     public static function handle_public_update_time() {
         DBEM_Security::verify_public_request();
 
-        $reg_id = absint($_POST['registration_id'] ?? 0);
-        $event_id = absint($_POST['event_id'] ?? 0);
-        $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
+        $reg_id = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
 
         if (!$reg_id || !$event_id) {
             wp_send_json_error(array('message' => __('ID iscrizione mancante', 'db-event-manager')));

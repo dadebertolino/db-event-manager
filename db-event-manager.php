@@ -171,7 +171,7 @@ final class DB_Event_Manager {
             // Se c'è una pagina eventi custom configurata, redirect lì
             $page_id = (int) get_option('dbem_events_page_id', 0);
             if ($page_id && get_post_status($page_id) === 'publish') {
-                wp_redirect(get_permalink($page_id), 301);
+                wp_safe_redirect(get_permalink($page_id), 301);
                 exit;
             }
             $theme_template = locate_template('archive-dbem_event.php');
@@ -217,7 +217,7 @@ final class DB_Event_Manager {
 
     public function handle_endpoints() {
         // Approvazione/rifiuto via link email
-        $action = isset($_GET['dbem_action']) ? sanitize_key($_GET['dbem_action']) : '';
+        $action = isset($_GET['dbem_action']) ? sanitize_key($_GET['dbem_action']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
         if ($action && in_array($action, array('approve', 'reject'))) {
             $this->handle_approval_action($action);
             exit;
@@ -264,22 +264,22 @@ final class DB_Event_Manager {
      * Gestisci approvazione/rifiuto da link email
      */
     private function handle_approval_action($action) {
-        $token = sanitize_text_field($_GET['token'] ?? '');
-        $key = sanitize_text_field($_GET['key'] ?? '');
+        $token = sanitize_text_field(wp_unslash($_GET['token'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
+        $key = sanitize_text_field(wp_unslash($_GET['key'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
 
         if (!$token || !$key) {
-            wp_die(__('Link non valido.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+            wp_die(esc_html__('Link non valido.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
 
         if (!DBEM_Email::verify_action_key($token, $action, $key)) {
-            wp_die(__('Link non valido o scaduto.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+            wp_die(esc_html__('Link non valido o scaduto.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
 
         DBEM_DB::ensure_tables();
         $reg = DBEM_DB::get_registration_by_token($token);
 
         if (!$reg) {
-            wp_die(__('Iscrizione non trovata.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 404));
+            wp_die(esc_html__('Iscrizione non trovata.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 404));
         }
 
         if ($reg->status !== 'pending') {
@@ -295,7 +295,7 @@ final class DB_Event_Manager {
                 . '<h2>ℹ️</h2>'
                 . '<p>' . sprintf(esc_html__('Questa iscrizione è %s.', 'db-event-manager'), esc_html($label)) . '</p>'
                 . '</div>',
-                __('Iscrizione', 'db-event-manager'),
+                esc_html__('Iscrizione', 'db-event-manager'),
                 array('response' => 200)
             );
         }
@@ -393,7 +393,7 @@ final class DB_Event_Manager {
             </form>
         </div></div></body></html>';
         nocache_headers();
-        echo $html;
+        echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato in costruzione
         exit;
     }
 
@@ -401,34 +401,34 @@ final class DB_Event_Manager {
      * Gestisci conferma approvazione con orario (POST dal form)
      */
     private function handle_approve_confirm() {
-        $token = sanitize_text_field($_POST['token'] ?? '');
-        $key = sanitize_text_field($_POST['key'] ?? '');
+        $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
+        $key = sanitize_text_field(wp_unslash($_POST['key'] ?? ''));
         $confirm_action = sanitize_key($_POST['confirm_action'] ?? 'approve');
         $link_action = sanitize_key($_POST['link_action'] ?? 'approve');
         if (!in_array($confirm_action, array('approve', 'reject'), true) || !in_array($link_action, array('approve', 'reject'), true)) {
-            wp_die(__('Dati mancanti.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+            wp_die(esc_html__('Dati mancanti.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
 
         if (!$token || !$key) {
-            wp_die(__('Dati mancanti.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+            wp_die(esc_html__('Dati mancanti.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
-        if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'dbem_approve_confirm_' . $token)) {
-            wp_die(__('Richiesta scaduta. Riclicca il link dall\'email.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+        if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), 'dbem_approve_confirm_' . $token)) {
+            wp_die(esc_html__('Richiesta scaduta. Riclicca il link dall\'email.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
         if (!DBEM_Email::verify_action_key($token, $link_action, $key)) {
-            wp_die(__('Link non valido o scaduto.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 403));
+            wp_die(esc_html__('Link non valido o scaduto.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
 
         DBEM_DB::ensure_tables();
         $reg = DBEM_DB::get_registration_by_token($token);
         if (!$reg) {
-            wp_die(__('Iscrizione non trovata.', 'db-event-manager'), __('Errore', 'db-event-manager'), array('response' => 404));
+            wp_die(esc_html__('Iscrizione non trovata.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 404));
         }
         if ($reg->status !== 'pending') {
             wp_die(
                 '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
                 . '<h2>ℹ️</h2><p>' . esc_html__('Questa iscrizione è già stata gestita.', 'db-event-manager') . '</p></div>',
-                __('Iscrizione', 'db-event-manager'), array('response' => 200)
+                esc_html__('Iscrizione', 'db-event-manager'), array('response' => 200)
             );
         }
 
@@ -446,12 +446,12 @@ final class DB_Event_Manager {
                 . '<h3>' . esc_html($reg->name) . '</h3>'
                 . '<p>' . sprintf(esc_html__('Iscrizione a "%s" rifiutata.', 'db-event-manager'), esc_html($event_title)) . '</p>'
                 . '</div>',
-                __('Iscrizione rifiutata', 'db-event-manager'), array('response' => 200)
+                esc_html__('Iscrizione rifiutata', 'db-event-manager'), array('response' => 200)
             );
         }
 
         // Approvazione con orario
-        $assigned_time = sanitize_text_field($_POST['assigned_time'] ?? '');
+        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''));
         $update_data = array('status' => 'confirmed');
         $update_format = array('%s');
         if (!empty($assigned_time)) {
@@ -473,10 +473,10 @@ final class DB_Event_Manager {
             . '<h2 style="color:#1d6e3f;">✅</h2>'
             . '<h3>' . esc_html($reg->name) . '</h3>'
             . '<p>' . sprintf(esc_html__('Iscrizione a "%s" approvata.', 'db-event-manager'), esc_html($event_title)) . '</p>'
-            . $time_msg
+            . $time_msg // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con valori escapati
             . '<p style="color:#666;">' . esc_html__('L\'iscritto riceverà l\'email di conferma con il QR code.', 'db-event-manager') . '</p>'
             . '</div>',
-            __('Iscrizione approvata', 'db-event-manager'), array('response' => 200)
+            esc_html__('Iscrizione approvata', 'db-event-manager'), array('response' => 200)
         );
     }
 }

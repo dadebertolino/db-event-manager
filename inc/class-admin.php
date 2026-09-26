@@ -30,7 +30,7 @@ class DBEM_Admin {
         if (!current_user_can('edit_user', $user_id) || !current_user_can('manage_options')) return;
 
         $user = new WP_User($user_id);
-        $enabled = !empty($_POST['dbem_manage_events']);
+        $enabled = !empty($_POST['dbem_manage_events']); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da WordPress al salvataggio del profilo
         foreach (DBEM_CPT::get_event_capabilities() as $capability) {
             if ($enabled) {
                 $user->add_cap($capability);
@@ -95,7 +95,7 @@ class DBEM_Admin {
         // Solo nelle pagine del plugin
         $is_plugin_page = (
             $screen->post_type === 'dbem_event' ||
-            (isset($_GET['page']) && strpos($_GET['page'], 'dbem') !== false)
+            (isset($_GET['page']) && strpos(sanitize_key(wp_unslash($_GET['page'])), 'dbem') !== false) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
         );
 
         if (!$is_plugin_page) return;
@@ -133,7 +133,7 @@ class DBEM_Admin {
         ));
 
         // Pagina check-in: scanner QR
-        if (isset($_GET['page']) && $_GET['page'] === 'dbem-checkin') {
+        if (isset($_GET['page']) && $_GET['page'] === 'dbem-checkin') { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
             wp_enqueue_script('dbem-html5-qrcode', DBEM_PLUGIN_URL . 'assets/js/vendor/html5-qrcode.min.js', array(), '2.3.8', true);
             wp_enqueue_script('dbem-checkin', DBEM_PLUGIN_URL . 'assets/js/checkin.js', array('jquery', 'dbem-html5-qrcode'), DBEM_VERSION, true);
             wp_localize_script('dbem-checkin', 'dbem_checkin', array(
@@ -200,36 +200,36 @@ class DBEM_Admin {
         ?>
         <table class="form-table dbem-metabox-table">
             <tr>
-                <th><label for="dbem_event_name"><?php _e('Nome evento', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_event_name"><?php esc_html_e('Nome evento', 'db-event-manager'); ?></label></th>
                 <td><input type="text" id="dbem_event_name" name="_dbem_event_name" value="<?php echo esc_attr($event_name); ?>" class="large-text" required placeholder="<?php esc_attr_e('Es. Workshop di fotografia digitale', 'db-event-manager'); ?>"></td>
             </tr>
             <tr>
-                <th><label for="dbem_date_start"><?php _e('Data/ora inizio', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_date_start"><?php esc_html_e('Data/ora inizio', 'db-event-manager'); ?></label></th>
                 <td><input type="datetime-local" id="dbem_date_start" name="_dbem_date_start" value="<?php echo esc_attr($start); ?>" class="regular-text" required></td>
             </tr>
             <tr>
-                <th><label for="dbem_date_end"><?php _e('Data/ora fine', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_date_end"><?php esc_html_e('Data/ora fine', 'db-event-manager'); ?></label></th>
                 <td><input type="datetime-local" id="dbem_date_end" name="_dbem_date_end" value="<?php echo esc_attr($end); ?>" class="regular-text" required></td>
             </tr>
             <tr>
-                <th><label for="dbem_hide_card_day"><?php _e('Riquadro data', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_hide_card_day"><?php esc_html_e('Riquadro data', 'db-event-manager'); ?></label></th>
                 <td>
                     <label>
                         <input type="checkbox" id="dbem_hide_card_day" name="_dbem_hide_card_day" value="1" <?php checked(get_post_meta($post->ID, '_dbem_hide_card_day', true), '1'); ?>>
-                        <?php _e('Non mostrare il giorno nel riquadro della card', 'db-event-manager'); ?>
+                        <?php esc_html_e('Non mostrare il giorno nel riquadro della card', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('Nell\'elenco eventi il riquadro colorato mostrerà solo mese e anno. Utile per gli eventi distribuiti su più giornate, dove il giorno di inizio da solo fa sembrare l\'evento di un giorno. La data completa resta visibile nella riga di dettaglio e nella pagina evento.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Nell\'elenco eventi il riquadro colorato mostrerà solo mese e anno. Utile per gli eventi distribuiti su più giornate, dove il giorno di inizio da solo fa sembrare l\'evento di un giorno. La data completa resta visibile nella riga di dettaglio e nella pagina evento.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_location"><?php _e('Luogo', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_location"><?php esc_html_e('Luogo', 'db-event-manager'); ?></label></th>
                 <td><input type="text" id="dbem_location" name="_dbem_location" value="<?php echo esc_attr($location); ?>" class="large-text"></td>
             </tr>
             <tr>
-                <th><label for="dbem_max_participants"><?php _e('Posti disponibili', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_max_participants"><?php esc_html_e('Posti disponibili', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="number" id="dbem_max_participants" name="_dbem_max_participants" value="<?php echo esc_attr($max); ?>" class="small-text" min="0">
-                    <p class="description"><?php _e('0 = illimitati', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('0 = illimitati', 'db-event-manager'); ?></p>
                 </td>
             </tr>
         </table>
@@ -260,72 +260,72 @@ class DBEM_Admin {
         ?>
         <table class="form-table dbem-metabox-table">
             <tr>
-                <th><label for="dbem_registration_open"><?php _e('Iscrizioni aperte', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_registration_open"><?php esc_html_e('Iscrizioni aperte', 'db-event-manager'); ?></label></th>
                 <td>
-                    <label><input type="checkbox" id="dbem_registration_open" name="_dbem_registration_open" value="1" <?php checked($open, '1'); ?>> <?php _e('Sì', 'db-event-manager'); ?></label>
+                    <label><input type="checkbox" id="dbem_registration_open" name="_dbem_registration_open" value="1" <?php checked($open, '1'); ?>> <?php esc_html_e('Sì', 'db-event-manager'); ?></label>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_registration_deadline"><?php _e('Scadenza iscrizioni', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_registration_deadline"><?php esc_html_e('Scadenza iscrizioni', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="datetime-local" id="dbem_registration_deadline" name="_dbem_registration_deadline" value="<?php echo esc_attr($deadline); ?>" class="regular-text">
-                    <p class="description"><?php _e('Opzionale. Dopo questa data le iscrizioni si chiudono automaticamente.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Opzionale. Dopo questa data le iscrizioni si chiudono automaticamente.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><label><?php _e('Modalità iscrizione', 'db-event-manager'); ?></label></th>
+                <th><label><?php esc_html_e('Modalità iscrizione', 'db-event-manager'); ?></label></th>
                 <td>
                     <label style="margin-right:16px;">
                         <input type="radio" name="_dbem_approval_mode" value="auto" <?php checked($approval_mode, 'auto'); ?>>
-                        <?php _e('Accettazione automatica', 'db-event-manager'); ?>
+                        <?php esc_html_e('Accettazione automatica', 'db-event-manager'); ?>
                     </label>
                     <label>
                         <input type="radio" name="_dbem_approval_mode" value="approval" <?php checked($approval_mode, 'approval'); ?>>
-                        <?php _e('Richiede approvazione', 'db-event-manager'); ?>
+                        <?php esc_html_e('Richiede approvazione', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('Con approvazione: l\'iscritto riceve una conferma solo dopo l\'approvazione manuale.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Con approvazione: l\'iscritto riceve una conferma solo dopo l\'approvazione manuale.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr class="dbem-approval-row" style="<?php echo $approval_mode !== 'approval' ? 'display:none;' : ''; ?>">
-                <th><label for="dbem_approver_email"><?php _e('Email approvatore', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_approver_email"><?php esc_html_e('Email approvatore', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="text" id="dbem_approver_email" name="_dbem_approver_email" value="<?php echo esc_attr($approver_email); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
-                    <p class="description"><?php _e('Chi riceve la richiesta di approvazione. Più indirizzi separati da virgola. Se vuoto, usa l\'email notifica admin.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Chi riceve la richiesta di approvazione. Più indirizzi separati da virgola. Se vuoto, usa l\'email notifica admin.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr class="dbem-approval-row" style="<?php echo $approval_mode !== 'approval' ? 'display:none;' : ''; ?>">
-                <th><label for="dbem_time_slot_enabled"><?php _e('Assegnazione orario', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_time_slot_enabled"><?php esc_html_e('Assegnazione orario', 'db-event-manager'); ?></label></th>
                 <td>
                     <label>
                         <input type="checkbox" id="dbem_time_slot_enabled" name="_dbem_time_slot_enabled" value="1" <?php checked(get_post_meta($post->ID, '_dbem_time_slot_enabled', true), '1'); ?>>
-                        <?php _e('Consenti di assegnare un orario al momento dell\'approvazione', 'db-event-manager'); ?>
+                        <?php esc_html_e('Consenti di assegnare un orario al momento dell\'approvazione', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('L\'approvatore vedrà un campo per inserire l\'orario prima di confermare.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('L\'approvatore vedrà un campo per inserire l\'orario prima di confermare.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_allow_registration_update"><?php _e('Reiscrizione con stessa email', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_allow_registration_update"><?php esc_html_e('Reiscrizione con stessa email', 'db-event-manager'); ?></label></th>
                 <td>
                     <label>
                         <input type="checkbox" id="dbem_allow_registration_update" name="_dbem_allow_registration_update" value="1" <?php checked($allow_registration_update, '1'); ?>>
-                        <?php _e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
+                        <?php esc_html_e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php _e('Prima di sostituire, il form chiede conferma all\'utente e poi invia un link di conferma all\'indirizzo già iscritto: la modifica vale solo dopo il clic. La nuova richiesta aggiorna nome, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione. Chi è stato rifiutato non può reiscriversi.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Prima di sostituire, il form chiede conferma all\'utente e poi invia un link di conferma all\'indirizzo già iscritto: la modifica vale solo dopo il clic. La nuova richiesta aggiorna nome, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione. Chi è stato rifiutato non può reiscriversi.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
 
 
             <?php if ($dbfb_active): ?>
             <tr>
-                <th><label><?php _e('Tipo form', 'db-event-manager'); ?></label></th>
+                <th><label><?php esc_html_e('Tipo form', 'db-event-manager'); ?></label></th>
                 <td>
                     <label style="margin-right:16px;">
                         <input type="radio" name="_dbem_form_source" value="builtin" <?php checked($form_source, 'builtin'); ?> class="dbem-form-source-radio">
-                        <?php _e('Form integrato', 'db-event-manager'); ?>
+                        <?php esc_html_e('Form integrato', 'db-event-manager'); ?>
                     </label>
                     <label>
                         <input type="radio" name="_dbem_form_source" value="dbfb" <?php checked($form_source, 'dbfb'); ?> class="dbem-form-source-radio">
-                        <?php _e('DB Form Builder', 'db-event-manager'); ?>
+                        <?php esc_html_e('DB Form Builder', 'db-event-manager'); ?>
                     </label>
                 </td>
             </tr>
@@ -334,26 +334,26 @@ class DBEM_Admin {
             <?php endif; ?>
 
             <tr>
-                <th colspan="2"><h3 style="margin:0;padding-top:12px;border-top:1px solid #ddd"><?php _e('Privacy / GDPR', 'db-event-manager'); ?></h3></th>
+                <th colspan="2"><h3 style="margin:0;padding-top:12px;border-top:1px solid #ddd"><?php esc_html_e('Privacy / GDPR', 'db-event-manager'); ?></h3></th>
             </tr>
             <tr>
-                <th><label for="dbem_gdpr_enabled"><?php _e('Checkbox GDPR', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_gdpr_enabled"><?php esc_html_e('Checkbox GDPR', 'db-event-manager'); ?></label></th>
                 <td>
-                    <label><input type="checkbox" id="dbem_gdpr_enabled" name="_dbem_gdpr_enabled" value="1" <?php checked(get_post_meta($post->ID, '_dbem_gdpr_enabled', true), '1'); ?>> <?php _e('Mostra checkbox consenso privacy nel form', 'db-event-manager'); ?></label>
+                    <label><input type="checkbox" id="dbem_gdpr_enabled" name="_dbem_gdpr_enabled" value="1" <?php checked(get_post_meta($post->ID, '_dbem_gdpr_enabled', true), '1'); ?>> <?php esc_html_e('Mostra checkbox consenso privacy nel form', 'db-event-manager'); ?></label>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_gdpr_text"><?php _e('Testo consenso', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_gdpr_text"><?php esc_html_e('Testo consenso', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="text" id="dbem_gdpr_text" name="_dbem_gdpr_text" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_gdpr_text', true)); ?>" class="large-text" placeholder="<?php esc_attr_e('Acconsento al trattamento dei dati personali secondo la Privacy Policy', 'db-event-manager'); ?>">
-                    <p class="description"><?php _e('Se vuoto, usa il testo predefinito.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Se vuoto, usa il testo predefinito.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_gdpr_link"><?php _e('Link privacy policy', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_gdpr_link"><?php esc_html_e('Link privacy policy', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="url" id="dbem_gdpr_link" name="_dbem_gdpr_link" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_gdpr_link', true)); ?>" class="large-text" placeholder="<?php echo esc_attr(function_exists('get_privacy_policy_url') ? get_privacy_policy_url() : ''); ?>">
-                    <p class="description"><?php _e('Se vuoto, usa la pagina Privacy Policy di WordPress (Impostazioni → Privacy).', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Se vuoto, usa la pagina Privacy Policy di WordPress (Impostazioni → Privacy).', 'db-event-manager'); ?></p>
                 </td>
             </tr>
         </table>
@@ -372,14 +372,14 @@ class DBEM_Admin {
 
         <!-- Form integrato -->
         <div id="dbem-form-builtin" style="<?php echo ($dbfb_active && $form_source === 'dbfb') ? 'display:none;' : ''; ?>">
-            <h4><?php _e('Campi personalizzati del form iscrizione', 'db-event-manager'); ?></h4>
-            <p class="description"><?php _e('Nome e Email sono sempre presenti. Aggiungi qui eventuali campi aggiuntivi.', 'db-event-manager'); ?></p>
+            <h4><?php esc_html_e('Campi personalizzati del form iscrizione', 'db-event-manager'); ?></h4>
+            <p class="description"><?php esc_html_e('Nome e Email sono sempre presenti. Aggiungi qui eventuali campi aggiuntivi.', 'db-event-manager'); ?></p>
 
             <div id="dbem-custom-fields" data-fields="<?php echo esc_attr(wp_json_encode($custom_fields)); ?>">
                 <div id="dbem-fields-list"></div>
                 <button type="button" class="button" id="dbem-add-field">
                     <span class="dashicons dashicons-plus-alt2" style="vertical-align:middle;"></span>
-                    <?php _e('Aggiungi campo', 'db-event-manager'); ?>
+                    <?php esc_html_e('Aggiungi campo', 'db-event-manager'); ?>
                 </button>
             </div>
             <input type="hidden" name="_dbem_custom_fields" id="dbem_custom_fields_json" value="<?php echo esc_attr(wp_json_encode($custom_fields)); ?>">
@@ -388,14 +388,14 @@ class DBEM_Admin {
         <!-- DB Form Builder -->
         <?php if ($dbfb_active): ?>
         <div id="dbem-form-dbfb" style="<?php echo $form_source !== 'dbfb' ? 'display:none;' : ''; ?>">
-            <h4><?php _e('Seleziona un form di DB Form Builder', 'db-event-manager'); ?></h4>
-            <p class="description"><?php _e('I campi Nome e Email devono essere presenti nel form selezionato. I dati compilati verranno salvati come iscrizione all\'evento.', 'db-event-manager'); ?></p>
+            <h4><?php esc_html_e('Seleziona un form di DB Form Builder', 'db-event-manager'); ?></h4>
+            <p class="description"><?php esc_html_e('I campi Nome e Email devono essere presenti nel form selezionato. I dati compilati verranno salvati come iscrizione all\'evento.', 'db-event-manager'); ?></p>
             <table class="form-table dbem-metabox-table">
                 <tr>
-                    <th><label for="dbem_dbfb_form_id"><?php _e('Form', 'db-event-manager'); ?></label></th>
+                    <th><label for="dbem_dbfb_form_id"><?php esc_html_e('Form', 'db-event-manager'); ?></label></th>
                     <td>
                         <select id="dbem_dbfb_form_id" name="_dbem_dbfb_form_id">
-                            <option value=""><?php _e('— Seleziona form —', 'db-event-manager'); ?></option>
+                            <option value=""><?php esc_html_e('— Seleziona form —', 'db-event-manager'); ?></option>
                             <?php foreach ($dbfb_forms as $f): ?>
                                 <option value="<?php echo esc_attr($f->ID); ?>" <?php selected($dbfb_form_id, $f->ID); ?>>
                                     <?php echo esc_html($f->post_title); ?> (ID: <?php echo esc_html($f->ID); ?>)
@@ -404,30 +404,30 @@ class DBEM_Admin {
                         </select>
                         <?php if ($dbfb_form_id): ?>
                             <a href="<?php echo esc_url(admin_url('admin.php?page=dbfb-forms&action=edit&form_id=' . $dbfb_form_id)); ?>" class="button button-small" style="margin-left:8px;">
-                                <?php _e('Modifica form', 'db-event-manager'); ?>
+                                <?php esc_html_e('Modifica form', 'db-event-manager'); ?>
                             </a>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="dbem_dbfb_name_field"><?php _e('Campo Nome', 'db-event-manager'); ?></label></th>
+                    <th><label for="dbem_dbfb_name_field"><?php esc_html_e('Campo Nome', 'db-event-manager'); ?></label></th>
                     <td>
                         <input type="text" id="dbem_dbfb_name_field" name="_dbem_dbfb_name_field" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_dbfb_name_field', true) ?: 'nome'); ?>" class="regular-text" placeholder="nome">
-                        <p class="description"><?php _e('ID del campo nel form DBFB che contiene il nome (es. "nome", "name", "field_1")', 'db-event-manager'); ?></p>
+                        <p class="description"><?php esc_html_e('ID del campo nel form DBFB che contiene il nome (es. "nome", "name", "field_1")', 'db-event-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="dbem_dbfb_email_field"><?php _e('Campo Email', 'db-event-manager'); ?></label></th>
+                    <th><label for="dbem_dbfb_email_field"><?php esc_html_e('Campo Email', 'db-event-manager'); ?></label></th>
                     <td>
                         <input type="text" id="dbem_dbfb_email_field" name="_dbem_dbfb_email_field" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_dbfb_email_field', true) ?: 'email'); ?>" class="regular-text" placeholder="email">
-                        <p class="description"><?php _e('ID del campo nel form DBFB che contiene l\'email (es. "email", "e-mail", "field_2")', 'db-event-manager'); ?></p>
+                        <p class="description"><?php esc_html_e('ID del campo nel form DBFB che contiene l\'email (es. "email", "e-mail", "field_2")', 'db-event-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="dbem_dbfb_privacy_field"><?php _e('Campo Privacy', 'db-event-manager'); ?></label></th>
+                    <th><label for="dbem_dbfb_privacy_field"><?php esc_html_e('Campo Privacy', 'db-event-manager'); ?></label></th>
                     <td>
                         <input type="text" id="dbem_dbfb_privacy_field" name="_dbem_dbfb_privacy_field" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_dbfb_privacy_field', true)); ?>" class="regular-text" placeholder="privacy">
-                        <p class="description"><?php _e('ID della checkbox di consenso privacy nel form DBFB. Necessario per registrare la prova del consenso (art. 7.1 GDPR): se lasciato vuoto, l\'iscrizione viene salvata senza prova di consenso.', 'db-event-manager'); ?></p>
+                        <p class="description"><?php esc_html_e('ID della checkbox di consenso privacy nel form DBFB. Necessario per registrare la prova del consenso (art. 7.1 GDPR): se lasciato vuoto, l\'iscrizione viene salvata senza prova di consenso.', 'db-event-manager'); ?></p>
                     </td>
                 </tr>
             </table>
@@ -464,55 +464,55 @@ class DBEM_Admin {
         ?>
         <table class="form-table dbem-metabox-table">
             <tr>
-                <th><label for="dbem_email_subject"><?php _e('Oggetto email', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_email_subject"><?php esc_html_e('Oggetto email', 'db-event-manager'); ?></label></th>
                 <td><input type="text" id="dbem_email_subject" name="_dbem_confirmation_email[subject]" value="<?php echo esc_attr($email_data['subject']); ?>" class="large-text"></td>
             </tr>
             <tr>
-                <th><label for="dbem_email_message"><?php _e('Messaggio email', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_email_message"><?php esc_html_e('Messaggio email', 'db-event-manager'); ?></label></th>
                 <td>
                     <textarea id="dbem_email_message" name="_dbem_confirmation_email[message]" rows="10" class="large-text"><?php echo esc_textarea($email_data['message']); ?></textarea>
                     <p class="description">
-                        <?php _e('Placeholder disponibili: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}', 'db-event-manager'); ?>
+                        <?php esc_html_e('Placeholder disponibili: {nome}, {email}, {evento}, {data_evento}, {luogo}, {orario}, {riepilogo_dati}, {qrcode_url}, {token}, {sito}', 'db-event-manager'); ?>
                     </p>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_reminder_hours"><?php _e('Promemoria evento', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_reminder_hours"><?php esc_html_e('Promemoria evento', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="number" id="dbem_reminder_hours" name="_dbem_reminder_hours" value="<?php echo esc_attr(get_post_meta($post->ID, '_dbem_reminder_hours', true)); ?>" class="small-text" min="0">
-                    <span><?php _e('ore prima dell\'inizio evento (0 = nessun promemoria)', 'db-event-manager'); ?></span>
-                    <p class="description"><?php _e('Invia agli iscritti confermati e presenti un promemoria con data, luogo, orario assegnato, attività prenotate e QR code.', 'db-event-manager'); ?></p>
+                    <span><?php esc_html_e('ore prima dell\'inizio evento (0 = nessun promemoria)', 'db-event-manager'); ?></span>
+                    <p class="description"><?php esc_html_e('Invia agli iscritti confermati e presenti un promemoria con data, luogo, orario assegnato, attività prenotate e QR code.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><?php _e('Contenuto del promemoria', 'db-event-manager'); ?></th>
+                <th><?php esc_html_e('Contenuto del promemoria', 'db-event-manager'); ?></th>
                 <td>
                     <?php $reminder_content = get_post_meta($post->ID, '_dbem_reminder_content', true) ?: 'date'; ?>
                     <fieldset>
-                        <legend class="screen-reader-text"><?php _e('Contenuto del promemoria', 'db-event-manager'); ?></legend>
+                        <legend class="screen-reader-text"><?php esc_html_e('Contenuto del promemoria', 'db-event-manager'); ?></legend>
                         <label>
                             <input type="radio" name="_dbem_reminder_content" value="date" <?php checked($reminder_content, 'date'); ?>>
-                            <?php _e('Data e sede dell\'evento, con le attività prenotate', 'db-event-manager'); ?>
+                            <?php esc_html_e('Data e sede dell\'evento, con le attività prenotate', 'db-event-manager'); ?>
                         </label><br>
                         <label>
                             <input type="radio" name="_dbem_reminder_content" value="options" <?php checked($reminder_content, 'options'); ?>>
-                            <?php _e('Solo le opzioni scelte dal partecipante, al posto di data e sede', 'db-event-manager'); ?>
+                            <?php esc_html_e('Solo le opzioni scelte dal partecipante, al posto di data e sede', 'db-event-manager'); ?>
                         </label>
                     </fieldset>
-                    <p class="description"><?php _e('La seconda scelta serve quando ogni opzione del form indica già giorno e orario, per esempio laboratori in date diverse. Vengono usati i campi Selezione, Scelta singola e Scelta multipla; se il partecipante non ne ha compilato nessuno, il promemoria mostra data e sede.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('La seconda scelta serve quando ogni opzione del form indica già giorno e orario, per esempio laboratori in date diverse. Vengono usati i campi Selezione, Scelta singola e Scelta multipla; se il partecipante non ne ha compilato nessuno, il promemoria mostra data e sede.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_notify_admin"><?php _e('Notifica admin', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_notify_admin"><?php esc_html_e('Notifica admin', 'db-event-manager'); ?></label></th>
                 <td>
-                    <label><input type="checkbox" id="dbem_notify_admin" name="_dbem_notify_admin" value="1" <?php checked($notify_admin, '1'); ?>> <?php _e('Invia notifica email ad ogni iscrizione', 'db-event-manager'); ?></label>
+                    <label><input type="checkbox" id="dbem_notify_admin" name="_dbem_notify_admin" value="1" <?php checked($notify_admin, '1'); ?>> <?php esc_html_e('Invia notifica email ad ogni iscrizione', 'db-event-manager'); ?></label>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_admin_email"><?php _e('Email destinatario', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_admin_email"><?php esc_html_e('Email destinatario', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="email" id="dbem_admin_email" name="_dbem_admin_email" value="<?php echo esc_attr($admin_email); ?>" class="regular-text">
-                    <p class="description"><?php _e('Chi riceve la notifica per questo evento. Puoi inserire più indirizzi separati da virgola.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Chi riceve la notifica per questo evento. Puoi inserire più indirizzi separati da virgola.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
         </table>
@@ -534,41 +534,41 @@ class DBEM_Admin {
         ?>
         <table class="form-table dbem-metabox-table">
             <tr>
-                <th><label for="dbem_survey_enabled"><?php _e('Survey attivo', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_survey_enabled"><?php esc_html_e('Survey attivo', 'db-event-manager'); ?></label></th>
                 <td>
-                    <label><input type="checkbox" id="dbem_survey_enabled" name="_dbem_survey_enabled" value="1" <?php checked($survey_enabled, '1'); ?>> <?php _e('Sì', 'db-event-manager'); ?></label>
+                    <label><input type="checkbox" id="dbem_survey_enabled" name="_dbem_survey_enabled" value="1" <?php checked($survey_enabled, '1'); ?>> <?php esc_html_e('Sì', 'db-event-manager'); ?></label>
                 </td>
             </tr>
             <tr>
-                <th><label for="dbem_survey_auto_hours"><?php _e('Invio automatico', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_survey_auto_hours"><?php esc_html_e('Invio automatico', 'db-event-manager'); ?></label></th>
                 <td>
                     <input type="number" id="dbem_survey_auto_hours" name="_dbem_survey_auto_hours" value="<?php echo esc_attr($survey_auto); ?>" class="small-text" min="0">
-                    <span><?php _e('ore dopo la fine evento (0 = invio manuale)', 'db-event-manager'); ?></span>
+                    <span><?php esc_html_e('ore dopo la fine evento (0 = invio manuale)', 'db-event-manager'); ?></span>
                 </td>
             </tr>
         </table>
 
-        <h4><?php _e('Campi del survey', 'db-event-manager'); ?></h4>
+        <h4><?php esc_html_e('Campi del survey', 'db-event-manager'); ?></h4>
         <div id="dbem-survey-fields" data-fields="<?php echo esc_attr(wp_json_encode($survey_fields)); ?>">
             <div id="dbem-survey-fields-list"></div>
             <button type="button" class="button" id="dbem-add-survey-field">
                 <span class="dashicons dashicons-plus-alt2" style="vertical-align:middle;"></span>
-                <?php _e('Aggiungi campo survey', 'db-event-manager'); ?>
+                <?php esc_html_e('Aggiungi campo survey', 'db-event-manager'); ?>
             </button>
         </div>
         <input type="hidden" name="_dbem_survey_fields" id="dbem_survey_fields_json" value="<?php echo esc_attr(wp_json_encode($survey_fields)); ?>">
 
-        <h4><?php _e('Email survey', 'db-event-manager'); ?></h4>
+        <h4><?php esc_html_e('Email survey', 'db-event-manager'); ?></h4>
         <table class="form-table dbem-metabox-table">
             <tr>
-                <th><label for="dbem_survey_email_subject"><?php _e('Oggetto', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_survey_email_subject"><?php esc_html_e('Oggetto', 'db-event-manager'); ?></label></th>
                 <td><input type="text" id="dbem_survey_email_subject" name="_dbem_survey_email[subject]" value="<?php echo esc_attr($survey_email['subject']); ?>" class="large-text"></td>
             </tr>
             <tr>
-                <th><label for="dbem_survey_email_message"><?php _e('Messaggio', 'db-event-manager'); ?></label></th>
+                <th><label for="dbem_survey_email_message"><?php esc_html_e('Messaggio', 'db-event-manager'); ?></label></th>
                 <td>
                     <textarea id="dbem_survey_email_message" name="_dbem_survey_email[message]" rows="6" class="large-text"><?php echo esc_textarea($survey_email['message']); ?></textarea>
-                    <p class="description"><?php _e('Placeholder: {nome}, {email}, {evento}, {survey_link}, {sito}', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('Placeholder: {nome}, {email}, {evento}, {survey_link}, {sito}', 'db-event-manager'); ?></p>
                 </td>
             </tr>
         </table>
@@ -590,49 +590,49 @@ class DBEM_Admin {
         );
         ?>
         <div class="dbem-stats-box">
-            <p><strong><?php _e('Stato:', 'db-event-manager'); ?></strong> <?php echo esc_html($status_labels[$status] ?? $status); ?></p>
-            <p><strong><?php _e('Iscritti:', 'db-event-manager'); ?></strong> <?php echo esc_html($count); ?><?php if ($max > 0) echo ' / ' . esc_html($max); ?></p>
+            <p><strong><?php esc_html_e('Stato:', 'db-event-manager'); ?></strong> <?php echo esc_html($status_labels[$status] ?? $status); ?></p>
+            <p><strong><?php esc_html_e('Iscritti:', 'db-event-manager'); ?></strong> <?php echo esc_html($count); ?><?php if ($max > 0) echo ' / ' . esc_html($max); ?></p>
             <?php if ($max > 0): ?>
             <div class="dbem-progress-bar">
                 <div class="dbem-progress-fill" style="width: <?php echo esc_attr(min(100, ($count / $max) * 100)); ?>%"></div>
             </div>
             <?php endif; ?>
-            <p><strong><?php _e('Check-in:', 'db-event-manager'); ?></strong> <?php echo esc_html($checked_in); ?></p>
-            <p><strong><?php _e('Annullati:', 'db-event-manager'); ?></strong> <?php echo esc_html($cancelled); ?></p>
+            <p><strong><?php esc_html_e('Check-in:', 'db-event-manager'); ?></strong> <?php echo esc_html($checked_in); ?></p>
+            <p><strong><?php esc_html_e('Annullati:', 'db-event-manager'); ?></strong> <?php echo esc_html($cancelled); ?></p>
 
             <hr>
             <p>
                 <a href="<?php echo esc_url(admin_url('edit.php?post_type=dbem_event&page=dbem-participants&event_id=' . $post->ID)); ?>" class="button">
-                    <?php _e('Gestisci partecipanti', 'db-event-manager'); ?>
+                    <?php esc_html_e('Gestisci partecipanti', 'db-event-manager'); ?>
                 </a>
             </p>
             <p>
                 <a href="<?php echo esc_url(admin_url('edit.php?post_type=dbem_event&page=dbem-checkin&event_id=' . $post->ID)); ?>" class="button">
-                    <?php _e('Pagina check-in', 'db-event-manager'); ?>
+                    <?php esc_html_e('Pagina check-in', 'db-event-manager'); ?>
                 </a>
             </p>
-            <p><strong><?php _e('Shortcode:', 'db-event-manager'); ?></strong><br><code>[dbem_event id="<?php echo esc_html($post->ID); ?>"]</code></p>
+            <p><strong><?php esc_html_e('Shortcode:', 'db-event-manager'); ?></strong><br><code>[dbem_event id="<?php echo esc_html($post->ID); ?>"]</code></p>
 
             <hr>
-            <p><strong><?php _e('Link diretti:', 'db-event-manager'); ?></strong></p>
+            <p><strong><?php esc_html_e('Link diretti:', 'db-event-manager'); ?></strong></p>
             <p>
                 <a href="<?php echo esc_url(get_permalink($post->ID)); ?>" target="_blank" class="button button-primary" style="width:100%;text-align:center;">
-                    🔗 <?php _e('Vedi evento', 'db-event-manager'); ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
+                    🔗 <?php esc_html_e('Vedi evento', 'db-event-manager'); ?> <span class="screen-reader-text"><?php esc_html_e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
                 </a>
             </p>
             <p>
                 <a href="<?php echo esc_url(get_post_type_archive_link('dbem_event')); ?>" target="_blank" class="button" style="width:100%;text-align:center;">
-                    📋 <?php _e('Lista eventi', 'db-event-manager'); ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
+                    📋 <?php esc_html_e('Lista eventi', 'db-event-manager'); ?> <span class="screen-reader-text"><?php esc_html_e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
                 </a>
             </p>
             <p>
                 <a href="<?php echo esc_url(home_url('/?dbem_checkin_page=1')); ?>" target="_blank" class="button" style="width:100%;text-align:center;">
-                    📱 <?php _e('Check-in da telefono', 'db-event-manager'); ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
+                    📱 <?php esc_html_e('Check-in da telefono', 'db-event-manager'); ?> <span class="screen-reader-text"><?php esc_html_e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
                 </a>
             </p>
             <p>
                 <a href="<?php echo esc_url(home_url('/?dbem_participants_page=1')); ?>" target="_blank" class="button" style="width:100%;text-align:center;">
-                    👥 <?php _e('Partecipanti da telefono', 'db-event-manager') ?> <span class="screen-reader-text"><?php _e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
+                    👥 <?php esc_html_e('Partecipanti da telefono', 'db-event-manager') ?> <span class="screen-reader-text"><?php esc_html_e('(si apre in una nuova finestra)', 'db-event-manager'); ?></span>
                 </a>
             </p>
         </div>
@@ -643,13 +643,13 @@ class DBEM_Admin {
      * Salva metabox
      */
     public static function save_metabox($post_id, $post) {
-        if (!isset($_POST['dbem_event_nonce']) || !wp_verify_nonce($_POST['dbem_event_nonce'], 'dbem_save_event')) return;
+        if (!isset($_POST['dbem_event_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_event_nonce'])), 'dbem_save_event')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
         // Nome evento e descrizione
         if (isset($_POST['_dbem_event_name'])) {
-            $event_name = sanitize_text_field($_POST['_dbem_event_name']);
+            $event_name = sanitize_text_field(wp_unslash($_POST['_dbem_event_name']));
             update_post_meta($post_id, '_dbem_event_name', $event_name);
 
             // Auto-genera titolo WP dal nome evento (per lista admin leggibile)
@@ -664,7 +664,7 @@ class DBEM_Admin {
         $text_fields = array('_dbem_date_start', '_dbem_date_end', '_dbem_location');
         foreach ($text_fields as $field) {
             if (isset($_POST[$field])) {
-                update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
+                update_post_meta($post_id, $field, sanitize_text_field(wp_unslash($_POST[$field])));
             }
         }
 
@@ -683,7 +683,7 @@ class DBEM_Admin {
 
         // Email admin personalizzata
         if (isset($_POST['_dbem_admin_email'])) {
-            $emails_raw = sanitize_text_field($_POST['_dbem_admin_email']);
+            $emails_raw = sanitize_text_field(wp_unslash($_POST['_dbem_admin_email']));
             $emails = array_map('trim', explode(',', $emails_raw));
             $emails = array_filter($emails, 'is_email');
             update_post_meta($post_id, '_dbem_admin_email', implode(', ', $emails));
@@ -699,7 +699,7 @@ class DBEM_Admin {
             update_post_meta($post_id, '_dbem_approval_mode', sanitize_key($_POST['_dbem_approval_mode']));
         }
         if (isset($_POST['_dbem_approver_email'])) {
-            $emails_raw = sanitize_text_field($_POST['_dbem_approver_email']);
+            $emails_raw = sanitize_text_field(wp_unslash($_POST['_dbem_approver_email']));
             $emails = array_map('trim', explode(',', $emails_raw));
             $emails = array_filter($emails, 'is_email');
             update_post_meta($post_id, '_dbem_approver_email', implode(', ', $emails));
@@ -712,10 +712,10 @@ class DBEM_Admin {
         // GDPR
         update_post_meta($post_id, '_dbem_gdpr_enabled', isset($_POST['_dbem_gdpr_enabled']) ? '1' : '0');
         if (isset($_POST['_dbem_gdpr_text'])) {
-            update_post_meta($post_id, '_dbem_gdpr_text', sanitize_text_field($_POST['_dbem_gdpr_text']));
+            update_post_meta($post_id, '_dbem_gdpr_text', sanitize_text_field(wp_unslash($_POST['_dbem_gdpr_text'])));
         }
         if (isset($_POST['_dbem_gdpr_link'])) {
-            update_post_meta($post_id, '_dbem_gdpr_link', esc_url_raw($_POST['_dbem_gdpr_link']));
+            update_post_meta($post_id, '_dbem_gdpr_link', esc_url_raw(wp_unslash($_POST['_dbem_gdpr_link'])));
         }
         if (isset($_POST['_dbem_dbfb_form_id'])) {
             update_post_meta($post_id, '_dbem_dbfb_form_id', absint($_POST['_dbem_dbfb_form_id']));
@@ -732,12 +732,12 @@ class DBEM_Admin {
 
         // Deadline
         if (isset($_POST['_dbem_registration_deadline'])) {
-            update_post_meta($post_id, '_dbem_registration_deadline', sanitize_text_field($_POST['_dbem_registration_deadline']));
+            update_post_meta($post_id, '_dbem_registration_deadline', sanitize_text_field(wp_unslash($_POST['_dbem_registration_deadline'])));
         }
 
         // Campi custom (JSON)
         if (isset($_POST['_dbem_custom_fields'])) {
-            $fields = json_decode(stripslashes($_POST['_dbem_custom_fields']), true);
+            $fields = json_decode(wp_unslash($_POST['_dbem_custom_fields']), true); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitizzato da sanitize_fields_array()
             if (is_array($fields)) {
                 $fields = self::sanitize_fields_array($fields);
                 $old_fields = get_post_meta($post_id, '_dbem_custom_fields', true);
@@ -749,15 +749,15 @@ class DBEM_Admin {
         // Email conferma
         if (isset($_POST['_dbem_confirmation_email'])) {
             $email_data = array(
-                'subject' => sanitize_text_field($_POST['_dbem_confirmation_email']['subject'] ?? ''),
-                'message' => wp_kses_post($_POST['_dbem_confirmation_email']['message'] ?? ''),
+                'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_confirmation_email']['subject'] ?? '')),
+                'message' => wp_kses_post(wp_unslash($_POST['_dbem_confirmation_email']['message'] ?? '')),
             );
             update_post_meta($post_id, '_dbem_confirmation_email', $email_data);
         }
 
         // Survey
         if (isset($_POST['_dbem_survey_fields'])) {
-            $fields = json_decode(stripslashes($_POST['_dbem_survey_fields']), true);
+            $fields = json_decode(wp_unslash($_POST['_dbem_survey_fields']), true); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitizzato da sanitize_fields_array()
             if (is_array($fields)) {
                 $fields = self::sanitize_fields_array($fields);
                 update_post_meta($post_id, '_dbem_survey_fields', $fields);
@@ -766,8 +766,8 @@ class DBEM_Admin {
 
         if (isset($_POST['_dbem_survey_email'])) {
             $email_data = array(
-                'subject' => sanitize_text_field($_POST['_dbem_survey_email']['subject'] ?? ''),
-                'message' => wp_kses_post($_POST['_dbem_survey_email']['message'] ?? ''),
+                'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_survey_email']['subject'] ?? '')),
+                'message' => wp_kses_post(wp_unslash($_POST['_dbem_survey_email']['message'] ?? '')),
             );
             update_post_meta($post_id, '_dbem_survey_email', $email_data);
         }
@@ -976,14 +976,14 @@ class DBEM_Admin {
      * Pagina impostazioni
      */
     public static function render_settings_page() {
-        if (!current_user_can('manage_options')) wp_die(__('Accesso negato', 'db-event-manager'));
+        if (!current_user_can('manage_options')) wp_die(esc_html__('Accesso negato', 'db-event-manager'));
 
         // Salvataggio
-        if (isset($_POST['dbem_settings_nonce']) && wp_verify_nonce($_POST['dbem_settings_nonce'], 'dbem_save_settings')) {
+        if (isset($_POST['dbem_settings_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_settings_nonce'])), 'dbem_save_settings')) {
             update_option('dbem_events_page_id', absint($_POST['dbem_events_page_id'] ?? 0));
-            update_option('dbem_events_page_title', sanitize_text_field($_POST['dbem_events_page_title'] ?? __('Eventi', 'db-event-manager')));
+            update_option('dbem_events_page_title', sanitize_text_field(wp_unslash($_POST['dbem_events_page_title'] ?? __('Eventi', 'db-event-manager'))));
             // Il PIN non può essere vuoto: se svuotato, ne viene rigenerato uno
-            $new_pin = sanitize_text_field($_POST['dbem_checkin_pin'] ?? '');
+            $new_pin = sanitize_text_field(wp_unslash($_POST['dbem_checkin_pin'] ?? ''));
             if (!empty($_POST['dbem_regenerate_pin']) || $new_pin === '') {
                 $new_pin = DBEM_Security::generate_pin();
             }
@@ -1007,27 +1007,27 @@ class DBEM_Admin {
 
                 <table class="form-table">
                     <tr>
-                        <th><label for="dbem_events_page_id"><?php _e('Pagina elenco eventi', 'db-event-manager'); ?></label></th>
+                        <th><label for="dbem_events_page_id"><?php esc_html_e('Pagina elenco eventi', 'db-event-manager'); ?></label></th>
                         <td>
                             <?php
                             wp_dropdown_pages(array(
                                 'name'             => 'dbem_events_page_id',
                                 'id'               => 'dbem_events_page_id',
-                                'selected'         => $events_page_id,
-                                'show_option_none' => __('— Usa archivio automatico (/eventi/) —', 'db-event-manager'),
+                                'selected'         => (int) $events_page_id,
+                                'show_option_none' => esc_html__('— Usa archivio automatico (/eventi/) —', 'db-event-manager'),
                                 'option_none_value' => 0,
                             ));
                             ?>
                             <p class="description">
-                                <?php _e('Seleziona una pagina che contiene lo shortcode <code>[dbem_events]</code>, oppure lascia "archivio automatico" per usare la pagina generata dal plugin.', 'db-event-manager'); ?>
+                                <?php echo wp_kses_post(__('Seleziona una pagina che contiene lo shortcode <code>[dbem_events]</code>, oppure lascia "archivio automatico" per usare la pagina generata dal plugin.', 'db-event-manager')); ?>
                             </p>
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="dbem_events_page_title"><?php _e('Titolo pagina archivio', 'db-event-manager'); ?></label></th>
+                        <th><label for="dbem_events_page_title"><?php esc_html_e('Titolo pagina archivio', 'db-event-manager'); ?></label></th>
                         <td>
                             <input type="text" id="dbem_events_page_title" name="dbem_events_page_title" value="<?php echo esc_attr($events_page_title); ?>" class="regular-text">
-                            <p class="description"><?php _e('Titolo mostrato nella pagina archivio automatica.', 'db-event-manager'); ?></p>
+                            <p class="description"><?php esc_html_e('Titolo mostrato nella pagina archivio automatica.', 'db-event-manager'); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -1037,26 +1037,26 @@ class DBEM_Admin {
                 <h2><?php esc_html_e('Check-in', 'db-event-manager'); ?></h2>
                 <table class="form-table">
                     <tr>
-                        <th><label for="dbem_checkin_pin"><?php _e('PIN accesso check-in', 'db-event-manager'); ?></label></th>
+                        <th><label for="dbem_checkin_pin"><?php esc_html_e('PIN accesso check-in', 'db-event-manager'); ?></label></th>
                         <td>
                             <input type="text" id="dbem_checkin_pin" name="dbem_checkin_pin" value="<?php echo esc_attr($checkin_pin); ?>" class="regular-text" autocomplete="off">
                             <p class="description">
-                                <?php _e('PIN richiesto per le pagine pubbliche di check-in e partecipanti. <strong>È obbligatorio</strong>: senza PIN quelle pagine esporrebbero i dati personali degli iscritti a chiunque conosca l\'indirizzo. Se lasci il campo vuoto ne viene generato uno nuovo automaticamente.', 'db-event-manager'); ?>
+                                <?php echo wp_kses_post(__('PIN richiesto per le pagine pubbliche di check-in e partecipanti. <strong>È obbligatorio</strong>: senza PIN quelle pagine esporrebbero i dati personali degli iscritti a chiunque conosca l\'indirizzo. Se lasci il campo vuoto ne viene generato uno nuovo automaticamente.', 'db-event-manager')); ?>
                             </p>
                             <p>
                                 <label>
                                     <input type="checkbox" name="dbem_regenerate_pin" value="1">
-                                    <?php _e('Genera un nuovo PIN al salvataggio', 'db-event-manager'); ?>
+                                    <?php esc_html_e('Genera un nuovo PIN al salvataggio', 'db-event-manager'); ?>
                                 </label>
                             </p>
-                            <p class="description"><?php _e('Condividilo solo con lo staff all\'ingresso. Dopo 10 tentativi errati l\'indirizzo IP viene bloccato per 15 minuti.', 'db-event-manager'); ?></p>
+                            <p class="description"><?php esc_html_e('Condividilo solo con lo staff all\'ingresso. Dopo 10 tentativi errati l\'indirizzo IP viene bloccato per 15 minuti.', 'db-event-manager'); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th><?php _e('Link check-in', 'db-event-manager'); ?></th>
+                        <th><?php esc_html_e('Link check-in', 'db-event-manager'); ?></th>
                         <td>
                             <code><?php echo esc_html($checkin_url); ?></code>
-                            <p class="description"><?php _e('Apri questo link sul telefono per scansionare i QR code all\'ingresso. Non serve login WordPress.', 'db-event-manager'); ?></p>
+                            <p class="description"><?php esc_html_e('Apri questo link sul telefono per scansionare i QR code all\'ingresso. Non serve login WordPress.', 'db-event-manager'); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -1066,14 +1066,14 @@ class DBEM_Admin {
                 <h2><?php esc_html_e('Dati e privacy', 'db-event-manager'); ?></h2>
                 <table class="form-table">
                     <tr>
-                        <th><?php _e('Disinstallazione', 'db-event-manager'); ?></th>
+                        <th><?php esc_html_e('Disinstallazione', 'db-event-manager'); ?></th>
                         <td>
                             <label>
                                 <input type="checkbox" name="dbem_delete_data_on_uninstall" value="1" <?php checked(get_option('dbem_delete_data_on_uninstall', '0'), '1'); ?>>
-                                <?php _e('Elimina tutti i dati quando il plugin viene disinstallato', 'db-event-manager'); ?>
+                                <?php esc_html_e('Elimina tutti i dati quando il plugin viene disinstallato', 'db-event-manager'); ?>
                             </label>
                             <p class="description">
-                                <?php _e('Iscrizioni, risposte survey, file QR code e impostazioni. Con l\'opzione disattivata i dati restano nel database anche dopo la rimozione del plugin: attivala se non intendi reinstallarlo, per non conservare dati personali senza motivo.', 'db-event-manager'); ?>
+                                <?php esc_html_e('Iscrizioni, risposte survey, file QR code e impostazioni. Con l\'opzione disattivata i dati restano nel database anche dopo la rimozione del plugin: attivala se non intendi reinstallarlo, per non conservare dati personali senza motivo.', 'db-event-manager'); ?>
                             </p>
                         </td>
                     </tr>
@@ -1084,7 +1084,7 @@ class DBEM_Admin {
                 <h2><?php esc_html_e('Link utili', 'db-event-manager'); ?></h2>
                 <table class="form-table">
                     <tr>
-                        <th><?php _e('Pagina archivio eventi', 'db-event-manager'); ?></th>
+                        <th><?php esc_html_e('Pagina archivio eventi', 'db-event-manager'); ?></th>
                         <td>
                             <?php if ($events_page_id): ?>
                                 <a href="<?php echo esc_url(get_permalink($events_page_id)); ?>" target="_blank"><?php echo esc_html(get_the_title($events_page_id)); ?> ↗</a>
@@ -1094,15 +1094,15 @@ class DBEM_Admin {
                         </td>
                     </tr>
                     <tr>
-                        <th><?php _e('Shortcode disponibili', 'db-event-manager'); ?></th>
+                        <th><?php esc_html_e('Shortcode disponibili', 'db-event-manager'); ?></th>
                         <td>
-                            <code>[dbem_events]</code> — <?php _e('Lista eventi futuri', 'db-event-manager'); ?><br>
-                            <code>[dbem_events past="1"]</code> — <?php _e('Lista eventi passati', 'db-event-manager'); ?><br>
-                            <code>[dbem_events limit="5"]</code> — <?php _e('Limita il numero', 'db-event-manager'); ?><br>
-                            <code>[dbem_events cols="2"]</code> — <?php _e('Layout a 2 colonne', 'db-event-manager'); ?><br>
-                            <code>[dbem_events category="workshop"]</code> — <?php _e('Filtra per categoria (slug)', 'db-event-manager'); ?><br>
-                            <code>[dbem_events category="workshop,seminario"]</code> — <?php _e('Più categorie separate da virgola', 'db-event-manager'); ?><br>
-                            <code>[dbem_event id="X"]</code> — <?php _e('Evento singolo con form iscrizione', 'db-event-manager'); ?>
+                            <code>[dbem_events]</code> — <?php esc_html_e('Lista eventi futuri', 'db-event-manager'); ?><br>
+                            <code>[dbem_events past="1"]</code> — <?php esc_html_e('Lista eventi passati', 'db-event-manager'); ?><br>
+                            <code>[dbem_events limit="5"]</code> — <?php esc_html_e('Limita il numero', 'db-event-manager'); ?><br>
+                            <code>[dbem_events cols="2"]</code> — <?php esc_html_e('Layout a 2 colonne', 'db-event-manager'); ?><br>
+                            <code>[dbem_events category="workshop"]</code> — <?php esc_html_e('Filtra per categoria (slug)', 'db-event-manager'); ?><br>
+                            <code>[dbem_events category="workshop,seminario"]</code> — <?php esc_html_e('Più categorie separate da virgola', 'db-event-manager'); ?><br>
+                            <code>[dbem_event id="X"]</code> — <?php esc_html_e('Evento singolo con form iscrizione', 'db-event-manager'); ?>
                         </td>
                     </tr>
                 </table>
@@ -1118,7 +1118,7 @@ class DBEM_Admin {
      */
     public static function render_participants_page() {
         if (!self::can_manage_events()) {
-            wp_die(__('Accesso negato', 'db-event-manager'));
+            wp_die(esc_html__('Accesso negato', 'db-event-manager'));
         }
         include DBEM_PLUGIN_DIR . 'templates/admin/participants.php';
     }
@@ -1215,7 +1215,7 @@ class DBEM_Admin {
         }
 
         DBEM_DB::ensure_tables();
-        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : null;
+        $registration_ids = isset($_POST['registration_ids']) ? array_map('absint', (array) wp_unslash($_POST['registration_ids'])) : null;
         $recipients = DBEM_DB::get_reminder_registrations($event_id, $registration_ids);
         if (!$recipients) {
             wp_send_json_error(__('Nessun partecipante confermato o presente a cui inviare il reminder.', 'db-event-manager'));
@@ -1242,8 +1242,8 @@ class DBEM_Admin {
      * Oggetto e messaggio inviati dall'editor dell'anteprima, se presenti e non vuoti
      */
     private static function reminder_template_from_request() {
-        $subject = sanitize_text_field(wp_unslash($_POST['template_subject'] ?? ''));
-        $message = sanitize_textarea_field(wp_unslash($_POST['template_message'] ?? ''));
+        $subject = sanitize_text_field(wp_unslash($_POST['template_subject'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato dai chiamanti con check_ajax_referer()
+        $message = sanitize_textarea_field(wp_unslash($_POST['template_message'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato dai chiamanti con check_ajax_referer()
         if ($subject === '' || $message === '') return null;
 
         return array('subject' => $subject, 'message' => $message);
@@ -1296,7 +1296,7 @@ class DBEM_Admin {
         DBEM_DB::ensure_tables();
         $sent = 0;
         $failed = 0;
-        $registration_ids = isset($_POST['registration_ids']) ? (array) $_POST['registration_ids'] : null;
+        $registration_ids = isset($_POST['registration_ids']) ? array_map('absint', (array) wp_unslash($_POST['registration_ids'])) : null;
         foreach (DBEM_DB::get_reminder_registrations($event_id, $registration_ids) as $reg) {
             if (DBEM_Email::send_reminder($event_id, $reg)) {
                 $sent++;

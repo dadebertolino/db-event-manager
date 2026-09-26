@@ -9,8 +9,8 @@ $events = get_posts(array(
     'order'          => 'DESC',
 ));
 
-$selected_event = absint($_GET['event_id'] ?? 0);
-$preloaded_token = sanitize_text_field($_GET['token'] ?? '');
+$selected_event = absint($_GET['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
+$preloaded_token = sanitize_text_field(wp_unslash($_GET['token'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
 ?>
 <div class="wrap dbem-checkin-wrap">
     <h1><?php esc_html_e('Check-in Evento', 'db-event-manager'); ?></h1>

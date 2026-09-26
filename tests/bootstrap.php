@@ -216,6 +216,18 @@ if (!function_exists('wp_send_json_success')) {
     }
 }
 
+if (!function_exists('wp_unslash')) {
+    function wp_unslash($value) {
+        return is_array($value) ? array_map('wp_unslash', $value) : (is_string($value) ? stripslashes($value) : $value);
+    }
+}
+
+if (!function_exists('sanitize_textarea_field')) {
+    function sanitize_textarea_field($value) {
+        return is_scalar($value) ? trim((string) $value) : '';
+    }
+}
+
 if (!function_exists('sanitize_email')) {
     function sanitize_email($email) {
         return trim((string) $email);

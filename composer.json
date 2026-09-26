@@ -3,9 +3,19 @@
   "description": "DB Event Manager plugin for WordPress",
   "type": "wordpress-plugin",
   "require-dev": {
-    "phpunit/phpunit": "^11.5"
+    "phpunit/phpunit": "^11.5",
+    "squizlabs/php_codesniffer": "^3.13",
+    "wp-coding-standards/wpcs": "^3.1",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
   },
   "scripts": {
-    "test": "phpunit --configuration phpunit.xml"
+    "test": "phpunit --configuration phpunit.xml",
+    "phpcs": "phpcs",
+    "check-js": "node bin/check-js.js"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
   }
 }

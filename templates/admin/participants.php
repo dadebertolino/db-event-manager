@@ -182,7 +182,7 @@ $status_labels = array(
                 <input type="text" id="dbem-template-subject" class="large-text">
                 <label for="dbem-template-message"><?php esc_html_e('Messaggio', 'db-event-manager'); ?></label>
                 <textarea id="dbem-template-message" rows="10" class="large-text"></textarea>
-                <?php DBEM_Admin::render_placeholder_buttons('reminder', 'dbem-template-subject', 'dbem-template-message'); ?>
+                <?php DBEM_Admin::render_placeholder_buttons('reminder', 'dbem-template-subject', 'dbem-template-message', $selected_event); ?>
                 <p class="description">
                     <?php esc_html_e('Il testo salvato vale per tutti i reminder di questo evento, anche per quello automatico.', 'db-event-manager'); ?>
                 </p>

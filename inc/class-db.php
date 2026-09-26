@@ -402,6 +402,34 @@ class DBEM_DB {
     }
 
     /**
+     * Rinomina le chiavi dei dati delle iscrizioni di un evento ($map: vecchia => nuova),
+     * tutte insieme: due etichette scambiate tra loro restano corrette. Una chiave nuova
+     * già presente e non rinominata non viene sovrascritta. Restituisce le iscrizioni aggiornate.
+     */
+    public static function rename_data_keys($event_id, $map) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $updated = 0;
+
+        foreach (self::get_registrations($event_id) as $reg) {
+            $data = json_decode($reg->data, true);
+            if (!is_array($data) || !array_intersect_key($map, $data)) continue;
+
+            $renamed = array();
+            foreach ($data as $key => $value) {
+                $new_key = $map[$key] ?? $key;
+                $target_taken = $new_key !== $key && array_key_exists($new_key, $data) && !isset($map[$new_key]);
+                $renamed[$target_taken ? $key : $new_key] = $value;
+            }
+            if ($renamed === $data) continue;
+
+            $wpdb->update($table, array('data' => wp_json_encode($renamed)), array('id' => $reg->id), array('%s'), array('%d'));
+            $updated++;
+        }
+        return $updated;
+    }
+
+    /**
      * Aggiorna orario assegnato a una registrazione
      */
     public static function update_assigned_time($registration_id, $time) {

@@ -321,17 +321,19 @@
 }
 
 /* === Segnaposto cliccabili negli editor email === */
-.dbem-placeholders {
+.dbem-placeholders { margin-top: 8px; }
+.dbem-placeholders-row,
+.dbem-placeholder-fields {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    margin-top: 8px;
 }
+.dbem-placeholders-row + .dbem-placeholders-row { margin-top: 6px; }
 .dbem-placeholders-title {
     color: #50575e;
     margin-right: 4px;
 }
-.dbem-placeholders .dbem-placeholder {
+.dbem-placeholders-row:first-child .dbem-placeholder {
     font-family: Consolas, Monaco, monospace;
 }

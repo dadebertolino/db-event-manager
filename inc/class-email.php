@@ -335,7 +335,7 @@ class DBEM_Email {
         // Orario assegnato (vuoto se non impostato)
         $assigned_time = isset($reg->assigned_time) ? $reg->assigned_time : '';
 
-        return array(
+        return self::field_placeholders($event_id, $reg) + array(
             '{nome}'           => $reg->name,
             '{email}'          => $reg->email,
             '{evento}'         => $event_title,
@@ -350,11 +350,36 @@ class DBEM_Email {
     }
 
     /**
+     * Un segnaposto {campo:id} per ogni campo del form integrato, con il valore compilato.
+     * L'id non cambia se si rinomina l'etichetta: il segnaposto continua a funzionare.
+     */
+    private static function field_placeholders($event_id, $reg) {
+        $data = json_decode($reg->data ?? '', true);
+        $data = is_array($data) ? $data : array();
+
+        $placeholders = array();
+        foreach (DBEM_CPT::get_custom_fields($event_id) as $field) {
+            $value = $data[$field['label'] ?? ''] ?? '';
+            if (is_array($value)) {
+                $value = implode(', ', array_filter(array_map('strval', $value), 'strlen'));
+            } else {
+                $value = self::format_field_date((string) $value);
+            }
+            $placeholders['{campo:' . $field['id'] . '}'] = $value;
+        }
+        return $placeholders;
+    }
+
+    /**
      * Sostituzione in un solo passaggio: un valore inserito dall'utente che contiene
-     * a sua volta un segnaposto (es. un nome "{token}") non viene espanso
+     * a sua volta un segnaposto (es. un nome "{token}") non viene espanso.
+     * I {campo:id} di campi eliminati spariscono invece di restare nel testo.
      */
     private static function replace_placeholders($text, $placeholders) {
-        return strtr((string) $text, array_map('strval', $placeholders));
+        $text = preg_replace_callback('/\{campo:[a-z0-9_-]+\}/', function ($m) use ($placeholders) {
+            return isset($placeholders[$m[0]]) ? $m[0] : '';
+        }, (string) $text);
+        return strtr($text, array_map('strval', $placeholders));
     }
 
     /**

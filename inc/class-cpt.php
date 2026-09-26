@@ -120,6 +120,39 @@ class DBEM_CPT {
     /**
      * Ottieni nome evento (meta o fallback a post_title)
      */
+    /**
+     * Campi del form integrato, ciascuno con un id stabile usato dai segnaposto {campo:id}.
+     * I campi salvati prima della 1.7.0 non hanno id: lo ricevono qui e vengono salvati.
+     */
+    public static function get_custom_fields($event_id) {
+        $fields = get_post_meta($event_id, '_dbem_custom_fields', true);
+        if (!is_array($fields)) return array();
+
+        $with_ids = self::assign_field_ids($fields);
+        if ($with_ids !== $fields) {
+            update_post_meta($event_id, '_dbem_custom_fields', wp_slash($with_ids));
+        }
+        return $with_ids;
+    }
+
+    /**
+     * Mantiene gli id validi e unici, genera quelli mancanti
+     */
+    public static function assign_field_ids($fields) {
+        $used = array();
+        foreach ($fields as $i => $field) {
+            $id = strtolower((string) ($field['id'] ?? ''));
+            if (!preg_match('/^[a-z0-9_-]{1,40}$/', $id) || isset($used[$id])) {
+                do {
+                    $id = 'f_' . strtolower(wp_generate_password(8, false));
+                } while (isset($used[$id]));
+            }
+            $used[$id] = true;
+            $fields[$i] = array_merge(array('id' => $id), $field, array('id' => $id));
+        }
+        return array_values($fields);
+    }
+
     public static function get_event_name($event_id) {
         $name = get_post_meta($event_id, '_dbem_event_name', true);
         return $name ? $name : get_the_title($event_id);

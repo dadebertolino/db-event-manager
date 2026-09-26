@@ -67,6 +67,20 @@ if (!function_exists('get_post_meta')) {
     }
 }
 
+if (!function_exists('update_post_meta')) {
+    function update_post_meta($post_id, $key, $value) {
+        // Come WordPress: il valore arriva con le barre e viene salvato senza
+        $GLOBALS['__dbem_post_meta'][$post_id][$key] = wp_unslash($value);
+        return true;
+    }
+}
+
+if (!function_exists('wp_slash')) {
+    function wp_slash($value) {
+        return is_array($value) ? array_map('wp_slash', $value) : (is_string($value) ? addslashes($value) : $value);
+    }
+}
+
 if (!function_exists('get_the_title')) {
     function get_the_title($post_id = 0) {
         return 'Evento ' . $post_id;

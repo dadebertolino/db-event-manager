@@ -62,6 +62,8 @@
 
         function updateJSON() {
             $input.val(JSON.stringify(fields));
+            // I segnaposto {campo:id} sotto gli editor email seguono i campi del form
+            if (containerId === '#dbem-custom-fields') $(document).trigger('dbem:fields-changed', [fields]);
         }
 
         function initSortable() {
@@ -102,10 +104,20 @@
         });
 
         $container.find('[id$="-field"]').on('click', function() {
-            fields.push({ type: 'text', label: '', required: false, options: [], placeholder: '' });
+            fields.push({ id: newFieldId(), type: 'text', label: '', required: false, options: [], placeholder: '' });
             renderFields();
             $list.find('.dbem-field-item:last .dbem-f-label').focus();
         });
+
+        // Id stabile: i segnaposto {campo:id} non dipendono dall'etichetta
+        function newFieldId() {
+            var id;
+            do {
+                id = 'f_' + Math.random().toString(36).slice(2, 10);
+            } while (fields.some(function(f) { return f.id === id; }));
+            return id;
+        }
+        fields.forEach(function(f) { if (!f.id) f.id = newFieldId(); });
 
         renderFields();
     }
@@ -500,7 +512,39 @@
 
     /* === Segnaposto cliccabili negli editor email === */
     var Placeholders = {
+        signature: null,
+
+        // Pulsanti dei campi del form, ridisegnati solo se id o etichette cambiano:
+        // ricrearli durante un clic farebbe perdere il clic stesso
+        renderFields: function(fields) {
+            var signature = JSON.stringify(fields.map(function(f) { return [f.id, f.label]; }));
+            if (signature === this.signature) return;
+            this.signature = signature;
+
+            $('.dbem-placeholder-fields[data-source="builder"]').each(function() {
+                var $group = $(this).empty();
+                fields.forEach(function(f, i) {
+                    var label = f.label || dbem_admin.i18n.unnamed_field.replace('%d', i + 1);
+                    $('<button type="button" class="button button-small dbem-placeholder"></button>')
+                        .attr('data-token', '{campo:' + f.id + '}')
+                        .attr('title', '{campo:' + f.id + '}')
+                        .attr('aria-label', dbem_admin.i18n.insert_field.replace('%s', label))
+                        .text(label)
+                        .appendTo($group);
+                });
+                $group.closest('.dbem-placeholder-fields-row').toggle(fields.length > 0);
+            });
+        },
+
         init: function() {
+            $(document).on('dbem:fields-changed', function(e, fields) { Placeholders.renderFields(fields); });
+            // Il builder parte prima di questo modulo: lo stato iniziale si legge dal suo JSON
+            if ($('.dbem-placeholder-fields[data-source="builder"]').length) {
+                var initial = [];
+                try { initial = JSON.parse($('#dbem_custom_fields_json').val() || '[]') || []; } catch (e) { initial = []; }
+                this.renderFields(initial);
+            }
+
             // Ultimo campo usato (oggetto o messaggio) per ogni elenco di segnaposto
             $(document).on('focusin', 'input, textarea', function() {
                 var id = this.id;

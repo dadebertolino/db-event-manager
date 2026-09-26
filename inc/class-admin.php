@@ -11,15 +11,33 @@ class DBEM_Admin {
      * Segnaposto cliccabili sotto un editor email: un clic inserisce il segnaposto nel punto
      * del cursore dell'ultimo campo usato tra oggetto e messaggio, altrimenti nel messaggio
      */
-    public static function render_placeholder_buttons($context, $subject_id, $message_id) {
+    public static function render_placeholder_buttons($context, $subject_id, $message_id, $event_id = 0) {
         ?>
         <div class="dbem-placeholders" data-subject="<?php echo esc_attr($subject_id); ?>" data-message="<?php echo esc_attr($message_id); ?>">
-            <span class="dbem-placeholders-title"><?php esc_html_e('Segnaposto, clic per inserire:', 'db-event-manager'); ?></span>
-            <?php foreach (DBEM_Email::placeholders_for($context) as $token => $description): ?>
-                <button type="button" class="button button-small dbem-placeholder" data-token="<?php echo esc_attr($token); ?>"
-                        title="<?php echo esc_attr($description); ?>"
-                        aria-label="<?php echo esc_attr(sprintf(/* translators: 1: segnaposto, 2: descrizione */ __('Inserisci %1$s: %2$s', 'db-event-manager'), $token, $description)); ?>"><?php echo esc_html($token); ?></button>
-            <?php endforeach; ?>
+            <div class="dbem-placeholders-row">
+                <span class="dbem-placeholders-title"><?php esc_html_e('Segnaposto, clic per inserire:', 'db-event-manager'); ?></span>
+                <?php foreach (DBEM_Email::placeholders_for($context) as $token => $description): ?>
+                    <button type="button" class="button button-small dbem-placeholder" data-token="<?php echo esc_attr($token); ?>"
+                            title="<?php echo esc_attr($description); ?>"
+                            aria-label="<?php echo esc_attr(sprintf(/* translators: 1: segnaposto, 2: descrizione */ __('Inserisci %1$s: %2$s', 'db-event-manager'), $token, $description)); ?>"><?php echo esc_html($token); ?></button>
+                <?php endforeach; ?>
+            </div>
+            <?php
+            // Nell'editor dell'evento i campi arrivano dal builder e si aggiornano mentre lo si modifica;
+            // altrove si usano quelli salvati
+            $fields = $event_id ? DBEM_CPT::get_custom_fields($event_id) : array();
+            ?>
+            <div class="dbem-placeholders-row dbem-placeholder-fields-row"<?php echo ($event_id && !$fields) ? ' hidden' : ''; ?>>
+                <span class="dbem-placeholders-title"><?php esc_html_e('Campi del form:', 'db-event-manager'); ?></span>
+                <span class="dbem-placeholder-fields"<?php echo $event_id ? '' : ' data-source="builder"'; ?>>
+                    <?php foreach ($fields as $i => $field):
+                        $label = $field['label'] !== '' ? $field['label'] : sprintf(__('Campo %d', 'db-event-manager'), $i + 1); ?>
+                        <button type="button" class="button button-small dbem-placeholder" data-token="<?php echo esc_attr('{campo:' . $field['id'] . '}'); ?>"
+                                title="<?php echo esc_attr('{campo:' . $field['id'] . '}'); ?>"
+                                aria-label="<?php echo esc_attr(sprintf(__('Inserisci il valore del campo %s', 'db-event-manager'), $label)); ?>"><?php echo esc_html($label); ?></button>
+                    <?php endforeach; ?>
+                </span>
+            </div>
         </div>
         <?php
     }
@@ -147,6 +165,10 @@ class DBEM_Admin {
                 'add_field'        => __('Aggiungi campo', 'db-event-manager'),
                 'remove_field'     => __('Rimuovi campo', 'db-event-manager'),
                 /* translators: %s: rapporto di contrasto, es. 3,2 */
+                /* translators: %s: etichetta del campo */
+                'insert_field'       => __('Inserisci il valore del campo %s', 'db-event-manager'),
+                /* translators: %d: posizione del campo nel form */
+                'unnamed_field'      => __('Campo %d', 'db-event-manager'),
                 'contrast_low'       => __('Contrasto testo/sfondo %s:1, sotto il minimo WCAG AA (4,5:1): il testo sarà difficile da leggere.', 'db-event-manager'),
                 /* translators: %s: rapporto di contrasto, es. 3,2 */
                 'contrast_low_white' => __('Su sfondo bianco il contrasto del testo è %s:1, sotto il minimo WCAG AA (4,5:1). Se il tema ha uno sfondo scuro può andare bene, ma conviene impostare anche il colore di sfondo.', 'db-event-manager'),
@@ -276,8 +298,7 @@ class DBEM_Admin {
         $approval_mode = get_post_meta($post->ID, '_dbem_approval_mode', true) ?: 'auto';
         $approver_email = get_post_meta($post->ID, '_dbem_approver_email', true);
         $allow_registration_update = get_post_meta($post->ID, '_dbem_allow_registration_update', true);
-        $custom_fields = get_post_meta($post->ID, '_dbem_custom_fields', true);
-        if (!$custom_fields) $custom_fields = array();
+        $custom_fields = DBEM_CPT::get_custom_fields($post->ID);
         $form_source = get_post_meta($post->ID, '_dbem_form_source', true) ?: 'builtin';
         $dbfb_form_id = get_post_meta($post->ID, '_dbem_dbfb_form_id', true);
 
@@ -777,8 +798,11 @@ class DBEM_Admin {
             if (is_array($fields)) {
                 $fields = self::sanitize_fields_array($fields);
                 $old_fields = get_post_meta($post_id, '_dbem_custom_fields', true);
-                update_post_meta($post_id, '_dbem_custom_fields', $fields);
-                self::apply_option_renames($post_id, is_array($old_fields) ? $old_fields : array(), $fields);
+                $old_fields = is_array($old_fields) ? $old_fields : array();
+                update_post_meta($post_id, '_dbem_custom_fields', wp_slash($fields));
+                // Prima le etichette, così le opzioni rinominate si cercano già sotto l'etichetta nuova
+                self::apply_label_renames($post_id, $old_fields, $fields);
+                self::apply_option_renames($post_id, $old_fields, $fields);
             }
         }
 
@@ -853,19 +877,32 @@ class DBEM_Admin {
      */
     public static function find_renamed_options($old_fields, $new_fields) {
         $choice_types = array('select', 'radio', 'checkbox');
+        $old_by_id = array();
         $old_by_label = array();
         foreach ($old_fields as $field) {
             if (in_array($field['type'] ?? '', $choice_types, true)) {
-                $old_by_label[$field['label'] ?? ''] = array_values((array) ($field['options'] ?? array()));
+                $options = array_values((array) ($field['options'] ?? array()));
+                $old_by_label[$field['label'] ?? ''] = $options;
+                if (!empty($field['id'])) $old_by_id[$field['id']] = $options;
             }
         }
 
         $renames = array();
         foreach ($new_fields as $field) {
             $label = $field['label'] ?? '';
-            if (!in_array($field['type'] ?? '', $choice_types, true) || !isset($old_by_label[$label])) continue;
+            if (!in_array($field['type'] ?? '', $choice_types, true)) continue;
 
-            $map = self::pair_changed_lines($old_by_label[$label], array_values((array) ($field['options'] ?? array())));
+            // Stesso id: stesso campo anche se l'etichetta è cambiata. Senza id si abbina per etichetta.
+            $id = $field['id'] ?? '';
+            if ($id !== '' && isset($old_by_id[$id])) {
+                $old_options = $old_by_id[$id];
+            } elseif (isset($old_by_label[$label])) {
+                $old_options = $old_by_label[$label];
+            } else {
+                continue;
+            }
+
+            $map = self::pair_changed_lines($old_options, array_values((array) ($field['options'] ?? array())));
             if ($map) {
                 $renames[$label] = $map;
             }
@@ -919,6 +956,43 @@ class DBEM_Admin {
         $flush();
 
         return $map;
+    }
+
+    /**
+     * Etichette cambiate a parità di id: etichetta vecchia => nuova.
+     * Si ignorano le etichette vuote, riservate (nome, email) o usate da più campi.
+     */
+    public static function find_renamed_labels($old_fields, $new_fields) {
+        $old_labels = array();
+        foreach ($old_fields as $field) {
+            if (!empty($field['id'])) $old_labels[$field['id']] = $field['label'] ?? '';
+        }
+        $label_counts = array_count_values(array_map(function ($f) { return (string) ($f['label'] ?? ''); }, $new_fields));
+
+        $renames = array();
+        foreach ($new_fields as $field) {
+            $id = $field['id'] ?? '';
+            $new = (string) ($field['label'] ?? '');
+            if ($id === '' || !isset($old_labels[$id])) continue;
+
+            $old = $old_labels[$id];
+            if ($old === '' || $new === '' || $old === $new) continue;
+            if (in_array($new, array('nome', 'email'), true) || $label_counts[$new] > 1) continue;
+            $renames[$old] = $new;
+        }
+        return $renames;
+    }
+
+    /**
+     * Porta le etichette rinominate nei dati delle iscrizioni esistenti: senza questo
+     * i dati raccolti con l'etichetta vecchia sparirebbero da export, filtri e segnaposto
+     */
+    private static function apply_label_renames($event_id, $old_fields, $new_fields) {
+        $renames = self::find_renamed_labels($old_fields, $new_fields);
+        if (!$renames) return;
+
+        DBEM_DB::ensure_tables();
+        DBEM_DB::rename_data_keys($event_id, $renames);
     }
 
     /**
@@ -997,7 +1071,9 @@ class DBEM_Admin {
     private static function sanitize_fields_array($fields) {
         $clean = array();
         foreach ($fields as $field) {
+            if (!is_array($field)) continue;
             $clean[] = array(
+                'id'       => sanitize_key($field['id'] ?? ''),
                 'type'     => sanitize_key($field['type'] ?? 'text'),
                 'label'    => sanitize_text_field($field['label'] ?? ''),
                 'required' => !empty($field['required']),
@@ -1005,7 +1081,7 @@ class DBEM_Admin {
                 'placeholder' => sanitize_text_field($field['placeholder'] ?? ''),
             );
         }
-        return $clean;
+        return DBEM_CPT::assign_field_ids($clean);
     }
 
     /**

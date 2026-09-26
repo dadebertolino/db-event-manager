@@ -2,6 +2,41 @@
 (function($) {
     'use strict';
 
+    // Testi da wp_localize_script; i valori qui sotto servono solo se una cache separa JS e HTML
+    var i18n = $.extend({
+        confirm_delete: 'Sei sicuro di voler eliminare?',
+        confirm_cancel: 'Sei sicuro di voler annullare questa iscrizione?',
+        confirm_reminder: 'Inviare il reminder a tutti i partecipanti confermati e presenti?',
+        confirm_reminder_visible: 'Inviare il reminder solo ai partecipanti visualizzati?',
+        confirm_reset: 'Tornare al testo predefinito del reminder?',
+        preview_of: '%1$d di %2$d',
+        send_to: 'Invia a %d partecipanti',
+        template_unsaved: 'Modifiche non salvate: l\'invio le salverà per questo evento.',
+        template_custom: '(personalizzato)',
+        template_default: '(predefinito)',
+        qr_attachment: 'QR code (PNG)',
+        reminder_all: 'Invia reminder a tutti',
+        reminder_visible: 'Invia reminder ai visualizzati',
+        sending: 'Invio...',
+        no_results: 'Nessun risultato',
+        error: 'Errore',
+        loading: 'Caricamento...',
+        field_types: {
+            text: 'Testo', email: 'Email', tel: 'Telefono', number: 'Numero', date: 'Data',
+            textarea: 'Area di testo', select: 'Selezione', radio: 'Scelta singola', checkbox: 'Scelta multipla'
+        },
+        field_type: 'Tipo',
+        field_label: 'Etichetta',
+        field_required: 'Obbligatorio',
+        field_placeholder: 'Placeholder',
+        field_options: 'Opzioni (una per riga)',
+        remove_field: 'Rimuovi campo',
+        unnamed_field: 'Campo %d',
+        insert_field: 'Inserisci il valore del campo %s',
+        contrast_low: 'Contrasto testo/sfondo %s:1, sotto il minimo WCAG AA (4,5:1): il testo sarà difficile da leggere.',
+        contrast_low_white: 'Su sfondo bianco il contrasto del testo è %s:1, sotto il minimo WCAG AA (4,5:1). Se il tema ha uno sfondo scuro può andare bene, ma conviene impostare anche il colore di sfondo.'
+    }, (window.dbem_admin && dbem_admin.i18n) || {});
+
     /* === Custom Fields Builder === */
     function initFieldsBuilder(containerId, jsonInputId) {
         var $container = $(containerId);
@@ -13,17 +48,9 @@
 
         try { fields = JSON.parse($container.attr('data-fields')) || []; } catch(e) { fields = []; }
 
-        var fieldTypes = [
-            { value: 'text', label: 'Testo' },
-            { value: 'email', label: 'Email' },
-            { value: 'tel', label: 'Telefono' },
-            { value: 'number', label: 'Numero' },
-            { value: 'date', label: 'Data' },
-            { value: 'textarea', label: 'Area di testo' },
-            { value: 'select', label: 'Selezione' },
-            { value: 'radio', label: 'Scelta singola' },
-            { value: 'checkbox', label: 'Scelta multipla' }
-        ];
+        var fieldTypes = ['text', 'email', 'tel', 'number', 'date', 'textarea', 'select', 'radio', 'checkbox'].map(function(type) {
+            return { value: type, label: i18n.field_types[type] || type };
+        });
 
         function renderFields() {
             $list.empty();
@@ -33,23 +60,23 @@
 
                 var html = '<div class="dbem-field-item" data-index="' + i + '">'
                     + '<div class="dbem-field-header"><span class="dbem-drag-handle">☰</span>'
-                    + '<strong>' + escHtml(f.label || 'Campo ' + (i+1)) + '</strong></div>'
-                    + '<button type="button" class="dbem-field-remove" data-index="' + i + '" title="Rimuovi">✕</button>'
+                    + '<strong>' + escHtml(f.label || i18n.unnamed_field.replace('%d', i + 1)) + '</strong></div>'
+                    + '<button type="button" class="dbem-field-remove" data-index="' + i + '" title="' + escAttr(i18n.remove_field) + '" aria-label="' + escAttr(i18n.remove_field) + '">✕</button>'
                     + '<div class="dbem-field-row">'
-                    + '<label>Tipo</label><select class="dbem-f-type" data-index="' + i + '">';
+                    + '<label>' + escHtml(i18n.field_type) + '</label><select class="dbem-f-type" data-index="' + i + '">';
                 fieldTypes.forEach(function(t) {
-                    html += '<option value="' + t.value + '"' + (t.value === f.type ? ' selected' : '') + '>' + t.label + '</option>';
+                    html += '<option value="' + t.value + '"' + (t.value === f.type ? ' selected' : '') + '>' + escHtml(t.label) + '</option>';
                 });
                 html += '</select>'
-                    + '<label>Etichetta</label><input type="text" class="dbem-f-label" data-index="' + i + '" value="' + escAttr(f.label) + '">'
-                    + '<label><input type="checkbox" class="dbem-f-required" data-index="' + i + '"' + (f.required ? ' checked' : '') + '> Obbligatorio</label>'
+                    + '<label>' + escHtml(i18n.field_label) + '</label><input type="text" class="dbem-f-label" data-index="' + i + '" value="' + escAttr(f.label) + '">'
+                    + '<label><input type="checkbox" class="dbem-f-required" data-index="' + i + '"' + (f.required ? ' checked' : '') + '> ' + escHtml(i18n.field_required) + '</label>'
                     + '</div>'
                     + '<div class="dbem-field-row">'
-                    + '<label>Placeholder</label><input type="text" class="dbem-f-placeholder" data-index="' + i + '" value="' + escAttr(f.placeholder || '') + '">'
+                    + '<label>' + escHtml(i18n.field_placeholder) + '</label><input type="text" class="dbem-f-placeholder" data-index="' + i + '" value="' + escAttr(f.placeholder || '') + '">'
                     + '</div>';
                 if (hasOptions) {
                     html += '<div class="dbem-field-options">'
-                        + '<label>Opzioni (una per riga)</label>'
+                        + '<label>' + escHtml(i18n.field_options) + '</label>'
                         + '<textarea class="dbem-f-options" data-index="' + i + '" rows="3">' + escHtml(optionsText) + '</textarea>'
                         + '</div>';
                 }
@@ -135,8 +162,8 @@
             var ids = [];
             $('.dbem-row-check:checked').each(function() { ids.push($(this).val()); });
             if (!action || !ids.length) return;
-            if (action === 'delete' && !confirm(dbem_admin.i18n.confirm_delete)) return;
-            if (action === 'cancel' && !confirm(dbem_admin.i18n.confirm_cancel)) return;
+            if (action === 'delete' && !confirm(i18n.confirm_delete)) return;
+            if (action === 'cancel' && !confirm(i18n.confirm_cancel)) return;
 
             $.post(dbem_admin.ajax_url, {
                 action: 'dbem_bulk_action',
@@ -145,7 +172,7 @@
                 ids: ids
             }, function(resp) {
                 if (resp.success) location.reload();
-                else alert(resp.data || dbem_admin.i18n.error);
+                else alert(resp.data || i18n.error);
             });
         });
 
@@ -154,8 +181,8 @@
             var btn = $(this);
             var act = btn.data('action');
             var id = btn.data('id');
-            if (act === 'delete' && !confirm(dbem_admin.i18n.confirm_delete)) return;
-            if (act === 'cancel' && !confirm(dbem_admin.i18n.confirm_cancel)) return;
+            if (act === 'delete' && !confirm(i18n.confirm_delete)) return;
+            if (act === 'cancel' && !confirm(i18n.confirm_cancel)) return;
 
             $.post(dbem_admin.ajax_url, {
                 action: 'dbem_bulk_action',
@@ -164,7 +191,7 @@
                 ids: [id]
             }, function(resp) {
                 if (resp.success) location.reload();
-                else alert(resp.data || dbem_admin.i18n.error);
+                else alert(resp.data || i18n.error);
             });
         });
 
@@ -183,7 +210,7 @@
                     btn.text('✅');
                     setTimeout(function() { btn.text('📧'); }, 2000);
                 } else {
-                    alert(resp.data || dbem_admin.i18n.error);
+                    alert(resp.data || i18n.error);
                 }
             });
         });
@@ -225,7 +252,7 @@
 
         function updateReminderButton() {
             var visible = $('#dbem-reminder-scope').val() === 'visible';
-            $('#dbem-send-reminder').text('📧 ' + (visible ? 'Invia reminder ai visualizzati' : 'Invia reminder a tutti'));
+            $('#dbem-send-reminder').text('📧 ' + (visible ? i18n.reminder_visible : i18n.reminder_all));
         }
 
         $('#dbem-reminder-scope').on('change', updateReminderButton);
@@ -253,18 +280,18 @@
             var btn = $('#dbem-send-reminder');
             var ids = reminderRecipientIds();
             if (ids && !ids.length) {
-                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.no_results);
+                $('#dbem-reminder-feedback').text('❌ ' + i18n.no_results);
                 return;
             }
 
-            if (!confirm(ids ? dbem_admin.i18n.confirm_reminder_visible : dbem_admin.i18n.confirm_reminder)) return;
-            btn.prop('disabled', true).text('⏳ Invio...');
+            if (!confirm(ids ? i18n.confirm_reminder_visible : i18n.confirm_reminder)) return;
+            btn.prop('disabled', true).text('⏳ ' + i18n.sending);
             $('#dbem-reminder-feedback').text('');
 
             $.post(dbem_admin.ajax_url, reminderRequest('dbem_send_reminder', ids), function(resp) {
                 btn.prop('disabled', false);
                 updateReminderButton();
-                $('#dbem-reminder-feedback').text(resp.success ? '✅ ' + resp.data.message : '❌ ' + (resp.data || dbem_admin.i18n.error));
+                $('#dbem-reminder-feedback').text(resp.success ? '✅ ' + resp.data.message : '❌ ' + (resp.data || i18n.error));
             });
         }
 
@@ -285,14 +312,14 @@
         function fillTemplate(template) {
             $('#dbem-template-subject').val(template.subject);
             $('#dbem-template-message').val(template.message);
-            $('#dbem-template-kind').text(template.custom ? '(personalizzato)' : '(predefinito)');
+            $('#dbem-template-kind').text(template.custom ? i18n.template_custom : i18n.template_default);
             templateLoaded = true;
             templateDirty = false;
         }
 
         function loadPreview(index) {
             $('#dbem-preview-prev, #dbem-preview-next').prop('disabled', true);
-            $('#dbem-preview-counter').text(dbem_admin.i18n.loading);
+            $('#dbem-preview-counter').text(i18n.loading);
 
             var request = reminderRequest('dbem_preview_reminder', previewIds);
             request.index = index;
@@ -304,7 +331,7 @@
             $.post(dbem_admin.ajax_url, request, function(resp) {
                 if (!resp.success) {
                     if (dialog.open) dialog.close();
-                    $('#dbem-reminder-feedback').text('❌ ' + (resp.data || dbem_admin.i18n.error));
+                    $('#dbem-reminder-feedback').text('❌ ' + (resp.data || i18n.error));
                     return;
                 }
 
@@ -313,16 +340,16 @@
                 if (!templateLoaded) fillTemplate(data.template);
                 $('#dbem-preview-to').text(data.to);
                 $('#dbem-preview-subject').text(data.subject);
-                $('#dbem-preview-attachment').text(data.attachment ? 'QR code (PNG)' : '—');
+                $('#dbem-preview-attachment').text(data.attachment ? i18n.qr_attachment : '—');
                 $('#dbem-preview-frame').attr('srcdoc', data.html);
-                $('#dbem-preview-counter').text(dbem_admin.i18n.preview_of.replace('%1$d', data.index + 1).replace('%2$d', data.total));
+                $('#dbem-preview-counter').text(i18n.preview_of.replace('%1$d', data.index + 1).replace('%2$d', data.total));
                 $('#dbem-preview-prev').prop('disabled', data.index === 0);
                 $('#dbem-preview-next').prop('disabled', data.index >= data.total - 1);
-                $('#dbem-preview-send').text('📧 ' + dbem_admin.i18n.send_to.replace('%d', data.total));
+                $('#dbem-preview-send').text('📧 ' + i18n.send_to.replace('%d', data.total));
 
                 if (!dialog.open) dialog.showModal();
             }).fail(function() {
-                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.error);
+                $('#dbem-reminder-feedback').text('❌ ' + i18n.error);
             });
         }
 
@@ -334,21 +361,21 @@
 
             $.post(dbem_admin.ajax_url, request, function(resp) {
                 if (!resp.success) {
-                    setTemplateStatus('❌ ' + (resp.data || dbem_admin.i18n.error));
+                    setTemplateStatus('❌ ' + (resp.data || i18n.error));
                     return;
                 }
                 fillTemplate(resp.data.template);
                 setTemplateStatus('✅ ' + resp.data.message);
                 if (done) done();
             }).fail(function() {
-                setTemplateStatus('❌ ' + dbem_admin.i18n.error);
+                setTemplateStatus('❌ ' + i18n.error);
             });
         }
 
         $('#dbem-preview-reminder').on('click', function() {
             previewIds = reminderRecipientIds();
             if (previewIds && !previewIds.length) {
-                $('#dbem-reminder-feedback').text('❌ ' + dbem_admin.i18n.no_results);
+                $('#dbem-reminder-feedback').text('❌ ' + i18n.no_results);
                 return;
             }
             $('#dbem-reminder-feedback').text('');
@@ -361,7 +388,7 @@
         // L'anteprima segue il testo mentre lo modifichi
         $('#dbem-template-subject, #dbem-template-message').on('input', function() {
             templateDirty = true;
-            setTemplateStatus(dbem_admin.i18n.template_unsaved);
+            setTemplateStatus(i18n.template_unsaved);
             clearTimeout(refreshTimer);
             refreshTimer = setTimeout(function() { loadPreview(previewIndex); }, 600);
         });
@@ -371,7 +398,7 @@
         });
 
         $('#dbem-template-reset').on('click', function() {
-            if (!confirm(dbem_admin.i18n.confirm_reset)) return;
+            if (!confirm(i18n.confirm_reset)) return;
             saveTemplate({ reset: 1 }, function() { loadPreview(previewIndex); });
         });
 
@@ -398,7 +425,10 @@
             var btn = $(this);
             var eventId = btn.data('event');
             var target = btn.data('target');
-            btn.prop('disabled', true).text('⏳ Invio...');
+            // Il testo originale del pulsante arriva dal PHP: si ripristina tale e quale dopo l'invio
+            var label = btn.data('label') || btn.text();
+            btn.data('label', label);
+            btn.prop('disabled', true).text('⏳ ' + i18n.sending);
 
             $.post(dbem_admin.ajax_url, {
                 action: 'dbem_send_survey',
@@ -410,9 +440,12 @@
                 if (resp.success) {
                     $('#dbem-survey-feedback').text('✅ ' + resp.data.message);
                 } else {
-                    $('#dbem-survey-feedback').text('❌ ' + (resp.data || 'Errore'));
+                    $('#dbem-survey-feedback').text('❌ ' + (resp.data || i18n.error));
                 }
-                btn.text(btn.attr('id') === 'dbem-send-survey' ? '📧 Invia survey ai presenti' : '📧 Invia survey a tutti');
+                btn.text(label);
+            }).fail(function() {
+                btn.prop('disabled', false).text(label);
+                $('#dbem-survey-feedback').text('❌ ' + i18n.error);
             });
         });
     }
@@ -502,7 +535,7 @@
             if (c.text) {
                 var ratio = this.contrast(c.text, c.pageBg);
                 if (ratio < 4.5) {
-                    var tpl = c.bg ? dbem_admin.i18n.contrast_low : dbem_admin.i18n.contrast_low_white;
+                    var tpl = c.bg ? i18n.contrast_low : i18n.contrast_low_white;
                     msg = tpl.replace('%s', ratio.toFixed(1).replace('.', ','));
                 }
             }
@@ -524,11 +557,11 @@
             $('.dbem-placeholder-fields[data-source="builder"]').each(function() {
                 var $group = $(this).empty();
                 fields.forEach(function(f, i) {
-                    var label = f.label || dbem_admin.i18n.unnamed_field.replace('%d', i + 1);
+                    var label = f.label || i18n.unnamed_field.replace('%d', i + 1);
                     $('<button type="button" class="button button-small dbem-placeholder"></button>')
                         .attr('data-token', '{campo:' + f.id + '}')
                         .attr('title', '{campo:' + f.id + '}')
-                        .attr('aria-label', dbem_admin.i18n.insert_field.replace('%s', label))
+                        .attr('aria-label', i18n.insert_field.replace('%s', label))
                         .text(label)
                         .appendTo($group);
                 });

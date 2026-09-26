@@ -344,6 +344,9 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 - Segnaposto dei singoli campi del form nelle email (`{campo:id}`), con un pulsante per campo sotto gli editor che si aggiorna mentre si modifica il form
 - Ogni campo del form integrato ha un id stabile. Rinominando l'etichetta di un campo, le iscrizioni già raccolte vengono aggiornate: prima i dati inseriti con l'etichetta vecchia sparivano da export, filtri e reminder. Anche il riconoscimento delle opzioni rinominate segue il campo quando cambia l'etichetta
 - Mittente delle email configurabile (nome e indirizzo). Prima era sempre l'email dell'amministratore, che spesso non appartiene al dominio del sito e fa finire le email nello spam
+- Tutti i testi degli script (admin, check-in, blocchi Gutenberg, pagine pubbliche di check-in, partecipanti e sondaggio) sono traducibili; i blocchi usano `wp.i18n`
+- Pagina Check-in dell'admin: l'elenco dei partecipanti e i contatori ora si caricano. Prima restavano «Seleziona un evento» e 0 / 0
+- Stesso testo prima e dopo le azioni: i pulsanti «Invia survey» e «Scansiona QR Code» e il contatore della pagina partecipanti non cambiano più scritta dopo il primo uso
 
 **Correzioni di sicurezza e di comportamento**
 - Link Approva/Rifiuta nelle email: prima approvavano o rifiutavano all'apertura, quindi anche i filtri antivirus o le anteprime dei link potevano decidere al posto del responsabile. Ora aprono una pagina di conferma e la decisione parte dal pulsante

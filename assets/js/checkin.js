@@ -5,11 +5,28 @@
     var scanner = null;
     var currentEventId = 0;
 
+    // Testi da wp_localize_script; i valori qui sotto servono solo se una cache separa JS e HTML
+    var i18n = $.extend({
+        loading: 'Caricamento...',
+        no_results: 'Nessun risultato',
+        error: 'Errore',
+        network_error: 'Errore di rete',
+        scanner_missing: 'Libreria scanner non caricata',
+        camera_denied: 'Impossibile accedere alla fotocamera. Verifica i permessi.',
+        no_participants: 'Nessun iscritto',
+        checkin: 'Segna presente',
+        status_confirmed: 'Confermato',
+        status_checked_in: 'Presente',
+        status_pending: 'In attesa',
+        status_rejected: 'Rifiutato',
+        status_cancelled: 'Annullato'
+    }, (window.dbem_checkin && dbem_checkin.i18n) || {});
+
     function init() {
-        currentEventId = parseInt($('#dbem-event-select').val()) || 0;
+        currentEventId = parseInt($('#dbem-event-select').val(), 10) || 0;
 
         $('#dbem-event-select').on('change', function() {
-            currentEventId = parseInt($(this).val()) || 0;
+            currentEventId = parseInt($(this).val(), 10) || 0;
             if (currentEventId) {
                 $('#dbem-checkin-panel').show();
                 loadParticipants();
@@ -29,6 +46,11 @@
         $('#dbem-search-input').on('keydown', function(e) {
             if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
         });
+
+        // Check-in dalla lista
+        $('#dbem-checkin-tbody').on('click', '.dbem-checkin-row-btn', function() {
+            processToken($(this).data('token'));
+        });
     }
 
     /* === Scanner QR === */
@@ -37,7 +59,8 @@
         $('#dbem-scan-btn').prop('disabled', true);
 
         if (typeof Html5Qrcode === 'undefined') {
-            alert('Libreria scanner non caricata');
+            showFeedback('error', '❌', '', i18n.scanner_missing);
+            stopScanner();
             return;
         }
 
@@ -46,7 +69,6 @@
             { facingMode: 'environment' },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             function(decodedText) {
-                // Estrai token dall'URL
                 var token = extractToken(decodedText);
                 if (token) {
                     stopScanner();
@@ -56,7 +78,7 @@
             function() { /* ignore scan errors */ }
         ).catch(function(err) {
             console.error('Scanner error:', err);
-            alert('Impossibile accedere alla fotocamera. Verifica i permessi.');
+            showFeedback('error', '❌', '', i18n.camera_denied);
             stopScanner();
         });
     }
@@ -84,7 +106,7 @@
 
     /* === Check-in === */
     function processToken(token) {
-        showFeedback('loading', '⏳', '', dbem_checkin_i18n('loading'));
+        showFeedback('loading', '⏳', '', i18n.loading);
 
         $.post(dbem_checkin.ajax_url, {
             action: 'dbem_checkin',
@@ -100,11 +122,11 @@
                 loadParticipants();
             } else {
                 var msg = resp.data;
-                if (typeof msg === 'object') msg = msg.message || 'Errore';
-                showFeedback('error', '❌', '', msg);
+                if (typeof msg === 'object') msg = msg.message || i18n.error;
+                showFeedback('error', '❌', '', msg || i18n.error);
             }
         }).fail(function() {
-            showFeedback('error', '❌', '', 'Errore di rete');
+            showFeedback('error', '❌', '', i18n.network_error);
         });
     }
 
@@ -136,16 +158,14 @@
             event_id: currentEventId,
             search: q
         }, function(resp) {
+            var $results = $('#dbem-results-list').empty();
             if (resp.success && resp.data.length) {
-                var $results = $('#dbem-results-list').empty();
                 resp.data.forEach(function(r) {
-                    var statusIcon = r.status === 'checked_in' ? '✅' : (r.status === 'cancelled' ? '❌' : '⏳');
-                    var $item = $('<div class="dbem-result-item" tabindex="0">'
-                        + '<span class="dbem-result-status">' + statusIcon + '</span>'
-                        + '<div class="dbem-result-info">'
-                        + '<span class="dbem-result-name">' + escHtml(r.name) + '</span>'
-                        + '<span class="dbem-result-email">' + escHtml(r.email) + '</span>'
-                        + '</div></div>');
+                    var $item = $('<div class="dbem-result-item" tabindex="0"></div>')
+                        .append($('<span class="dbem-result-status"></span>').text(statusIcon(r.status)))
+                        .append($('<div class="dbem-result-info"></div>')
+                            .append($('<span class="dbem-result-name"></span>').text(r.name))
+                            .append($('<span class="dbem-result-email"></span>').text(r.email)));
                     if (r.status === 'confirmed') {
                         $item.on('click keydown', function(e) {
                             if (e.type === 'keydown' && e.key !== 'Enter') return;
@@ -154,49 +174,67 @@
                     }
                     $results.append($item);
                 });
-                $('#dbem-search-results').show();
             } else {
-                $('#dbem-results-list').html('<p>' + dbem_checkin_i18n('no_results') + '</p>');
-                $('#dbem-search-results').show();
+                $results.append($('<p></p>').text(i18n.no_results));
             }
+            $('#dbem-search-results').show();
         });
     }
 
-    /* === Lista partecipanti === */
+    /* === Lista partecipanti e contatori === */
+    function statusIcon(status) {
+        return { checked_in: '✅', cancelled: '❌', rejected: '🚫', pending: '⏳' }[status] || '•';
+    }
+
     function loadParticipants() {
         if (!currentEventId) return;
+        var eventId = currentEventId;
 
         $.post(dbem_checkin.ajax_url, {
-            action: 'dbem_checkin_search',
+            action: 'dbem_checkin_list',
             nonce: dbem_checkin.nonce,
-            event_id: currentEventId,
-            search: '' // vuoto = carica tutti (serve un endpoint dedicato, ma usiamo search con stringa ampia)
-        }, function() {
-            // Il search vuoto non funziona, usiamo un approccio diverso
+            event_id: eventId
+        }, function(resp) {
+            // L'utente potrebbe aver cambiato evento nel frattempo
+            if (eventId !== currentEventId) return;
+            var $tbody = $('#dbem-checkin-tbody').empty();
+            if (!resp.success) {
+                $tbody.append($('<tr><td colspan="5"></td></tr>').find('td').text(resp.data || i18n.error).end());
+                return;
+            }
+
+            var rows = resp.data.registrations;
+            $('#dbem-counter-checkedin').text(resp.data.checked_in);
+            $('#dbem-counter-total').text(resp.data.total);
+
+            if (!rows.length) {
+                $tbody.append($('<tr><td colspan="5"></td></tr>').find('td').text(i18n.no_participants).end());
+                return;
+            }
+
+            rows.forEach(function(r) {
+                var $action = $('<td></td>');
+                if (r.status === 'confirmed') {
+                    $('<button type="button" class="button button-small dbem-checkin-row-btn"></button>')
+                        .attr('data-token', r.token).text(i18n.checkin).appendTo($action);
+                }
+                $('<tr></tr>')
+                    .append($('<td></td>').append(
+                        $('<span class="dbem-status-badge"></span>')
+                            .addClass('dbem-status-' + String(r.status).replace('_', '-'))
+                            .text(statusIcon(r.status) + ' ' + (i18n['status_' + r.status] || r.status))
+                    ))
+                    .append($('<td></td>').text(r.name))
+                    .append($('<td></td>').text(r.email))
+                    .append($('<td></td>').text(r.time || '—'))
+                    .append($action)
+                    .appendTo($tbody);
+            });
+        }).fail(function() {
+            if (eventId !== currentEventId) return;
+            $('#dbem-checkin-tbody').empty().append($('<tr><td colspan="5"></td></tr>').find('td').text(i18n.network_error).end());
         });
-
-        // Per ora ricarichiamo la pagina — la lista è server-rendered
-        // In futuro si può convertire a full AJAX
-        updateCounters();
     }
-
-    function updateCounters() {
-        var total = 0;
-        var checkedIn = 0;
-        $('#dbem-checkin-tbody tr').each(function() {
-            total++;
-            if ($(this).find('.dbem-status-checked-in, td:contains("✅")').length) checkedIn++;
-        });
-        // Per ora i contatori vengono dal PHP, si aggiorneranno al reload
-    }
-
-    function dbem_checkin_i18n(key) {
-        if (typeof dbem_admin !== 'undefined' && dbem_admin.i18n && dbem_admin.i18n[key]) return dbem_admin.i18n[key];
-        var fallbacks = { loading: 'Caricamento...', no_results: 'Nessun risultato' };
-        return fallbacks[key] || key;
-    }
-
-    function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     $(document).ready(init);
 

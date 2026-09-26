@@ -100,6 +100,7 @@ final class DB_Event_Manager {
         add_action('wp_ajax_dbem_register_dbfb', array('DBEM_Registration', 'handle_dbfb_registration'));
         add_action('wp_ajax_dbem_checkin', array('DBEM_Checkin', 'handle_checkin'));
         add_action('wp_ajax_dbem_checkin_search', array('DBEM_Checkin', 'handle_search'));
+        add_action('wp_ajax_dbem_checkin_list', array('DBEM_Checkin', 'handle_list'));
         add_action('wp_ajax_nopriv_dbem_public_pin_check', array('DBEM_Security', 'handle_pin_check'));
         add_action('wp_ajax_dbem_public_pin_check', array('DBEM_Security', 'handle_pin_check'));
         add_action('wp_ajax_nopriv_dbem_public_checkin', array('DBEM_Checkin', 'handle_public_checkin'));

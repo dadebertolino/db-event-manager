@@ -146,7 +146,7 @@ $events = get_posts(array(
         <!-- Contatore -->
         <div class="pp-counter" id="pp-counter" style="display:none">
             <div class="pp-counter-numbers" id="pp-counter-text">0</div>
-            <div class="pp-counter-label" id="pp-counter-label"><?php esc_html_e('iscritti', 'db-event-manager'); ?></div>
+            <div class="pp-counter-label" id="pp-counter-label"><?php esc_html_e('presenti / iscritti', 'db-event-manager'); ?></div>
         </div>
 
         <!-- Filtri stato -->
@@ -220,6 +220,21 @@ $events = get_posts(array(
     var allData = [];
     var allCustomKeys = [];
     var currentFilter = 'all';
+    var T = <?php echo wp_json_encode(array(
+        'error'         => __('Errore', 'db-event-manager'),
+        'network_error' => __('Errore di rete', 'db-event-manager'),
+        /* translators: %d: numero massimo di posti */
+        'max'           => __('max %d', 'db-event-manager'),
+        'csv_headers'   => array(
+            __('Nome', 'db-event-manager'),
+            __('Email', 'db-event-manager'),
+            __('Stato', 'db-event-manager'),
+            __('Orario assegnato', 'db-event-manager'),
+            __('Data iscrizione', 'db-event-manager'),
+            __('Check-in', 'db-event-manager'),
+        ),
+        'csv_file'      => __('partecipanti', 'db-event-manager'),
+    )); ?>;
 
     var statusLabels = {
         pending: {icon: '🕐', label: '<?php echo esc_js(__('In attesa', 'db-event-manager')); ?>', cls: 'pending'},
@@ -246,7 +261,7 @@ $events = get_posts(array(
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success) {
-                    pinError.textContent = (data.data && data.data.message) || 'Errore';
+                    pinError.textContent = (data.data && data.data.message) || T.error;
                     pinError.style.display = 'block';
                     pinInput.select();
                 } else {
@@ -287,7 +302,7 @@ $events = get_posts(array(
         .then(function(r) { return r.json(); })
         .then(function(resp) {
             if (!resp.success) {
-                document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(resp.data.message || 'Errore') + '</div>';
+                document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(resp.data.message || T.error) + '</div>';
                 return;
             }
             allData = resp.data.registrations;
@@ -299,7 +314,7 @@ $events = get_posts(array(
             renderTable();
         })
         .catch(function() {
-            document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ Errore di rete</div>';
+            document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(T.network_error) + '</div>';
         });
     }
 
@@ -309,7 +324,7 @@ $events = get_posts(array(
         var max = stats.max || 0;
 
         var text = checked + ' / ' + total;
-        if (max > 0) text += ' (max ' + max + ')';
+        if (max > 0) text += ' (' + T.max.replace('%d', max) + ')';
         document.getElementById('pp-counter-text').textContent = text;
         document.getElementById('pp-counter-label').textContent =
             '<?php echo esc_js(__('presenti / iscritti', 'db-event-manager')); ?>';
@@ -406,11 +421,11 @@ $events = get_posts(array(
                 showFeedback('success', resp.data.message);
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || resp.data || 'Errore');
+                showFeedback('error', resp.data.message || resp.data || T.error);
             }
         })
         .catch(function() {
-            showFeedback('error', 'Errore di rete');
+            showFeedback('error', T.network_error);
         });
     }
 
@@ -424,14 +439,13 @@ $events = get_posts(array(
     }
 
     function escHtml(s) {
-        var d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // escHtml non protegge il contesto attributo: le virgolette vanno codificate
     function escAttr(s) {
-        return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return escHtml(s);
     }
 
     /* === Export CSV === */
@@ -446,10 +460,10 @@ $events = get_posts(array(
             rejected: '<?php echo esc_js(__('Rifiutato', 'db-event-manager')); ?>'
         };
 
-        var headers = ['Nome', 'Email', 'Stato', 'Orario assegnato', 'Data iscrizione', 'Check-in'];
+        var headers = T.csv_headers.slice();
         // Aggiungi colonne custom dinamiche
         allCustomKeys.forEach(function(k) { headers.push(k); });
-        var rows = [headers.join(';')];
+        var rows = [headers.map(csvEsc).join(';')];
 
         // Usa dati filtrati o tutti
         var data = currentFilter === 'all' ? allData : allData.filter(function(r) { return r.status === currentFilter; });
@@ -478,7 +492,7 @@ $events = get_posts(array(
         a.href = url;
 
         var eventName = document.getElementById('pp-event-select');
-        var fileName = 'partecipanti';
+        var fileName = T.csv_file;
         if (eventName && eventName.selectedIndex > 0) {
             fileName = eventName.options[eventName.selectedIndex].text.replace(/[^a-zA-Z0-9àèìòùé\s-]/g, '').trim().replace(/\s+/g, '_');
         }
@@ -541,10 +555,10 @@ $events = get_posts(array(
                 addForm.style.display = 'none';
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || resp.data || 'Errore');
+                showFeedback('error', resp.data.message || resp.data || T.error);
             }
         })
-        .catch(function() { showFeedback('error', 'Errore di rete'); });
+        .catch(function() { showFeedback('error', T.network_error); });
     });
 
     /* === Modal modifica orario === */
@@ -580,10 +594,10 @@ $events = get_posts(array(
                 showFeedback('success', resp.data.message);
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || 'Errore');
+                showFeedback('error', resp.data.message || T.error);
             }
         })
-        .catch(function() { showFeedback('error', 'Errore di rete'); });
+        .catch(function() { showFeedback('error', T.network_error); });
     });
 })();
 </script>

@@ -9,11 +9,9 @@ class DBEM_Frontend {
         wp_localize_script('dbem-frontend', 'dbem_front', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'i18n'     => array(
-                'sending'    => __('Invio in corso...', 'db-event-manager'),
-                'success'    => __('Iscrizione completata!', 'db-event-manager'),
-                'error'      => __('Errore', 'db-event-manager'),
-                'required'   => __('Questo campo è obbligatorio', 'db-event-manager'),
-                'invalid_email' => __('Inserisci un email valido', 'db-event-manager'),
+                'error'         => __('Errore. Riprova.', 'db-event-manager'),
+                'required'      => __('Questo campo è obbligatorio.', 'db-event-manager'),
+                'invalid_email' => __('Inserisci un indirizzo email valido.', 'db-event-manager'),
                 'replace_yes'   => __('Sì, sostituisci', 'db-event-manager'),
                 'replace_no'    => __('No, mantieni la precedente', 'db-event-manager'),
                 'replace_kept'  => __('Nessuna modifica: la prenotazione precedente resta valida.', 'db-event-manager'),
@@ -380,7 +378,7 @@ class DBEM_Frontend {
                         } else if (resp.data && resp.data.code === 'confirm_replace') {
                             askReplace(resp.data.message);
                         } else {
-                            showResult(false, (resp.data && resp.data.message) || resp.data || 'Errore iscrizione evento');
+                            showResult(false, (resp.data && resp.data.message) || resp.data || <?php echo wp_json_encode(__('Errore durante l\'iscrizione all\'evento.', 'db-event-manager')); ?>);
                         }
                     });
                 }

@@ -185,6 +185,19 @@ $site_name = get_bloginfo('name');
     var preloadedToken = '<?php echo esc_js($preloaded_token); ?>';
     var pinRequired = true;
     var nonce = '<?php echo esc_js($public_nonce); ?>';
+    var T = <?php echo wp_json_encode(array(
+        'error'           => __('Errore', 'db-event-manager'),
+        'network_error'   => __('Errore di rete', 'db-event-manager'),
+        'scanner_missing' => __('Scanner non disponibile', 'db-event-manager'),
+        'camera_denied'   => __('Impossibile accedere alla fotocamera. Verifica i permessi.', 'db-event-manager'),
+        'scan'            => __('Scansiona QR Code', 'db-event-manager'),
+        'close_scanner'   => __('Chiudi scanner', 'db-event-manager'),
+        'checking'        => __('Verifica...', 'db-event-manager'),
+        'searching'       => __('Ricerca...', 'db-event-manager'),
+        'no_results'      => __('Nessun risultato', 'db-event-manager'),
+        /* translators: %s: orario del check-in, può essere vuoto */
+        'present_at'      => __('presente %s', 'db-event-manager'),
+    )); ?>;
 
     /* === PIN === */
     if (pinRequired) {
@@ -203,7 +216,7 @@ $site_name = get_bloginfo('name');
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success) {
-                    pinError.textContent = (data.data && data.data.message) || 'Errore';
+                    pinError.textContent = (data.data && data.data.message) || T.error;
                     pinError.style.display = 'block';
                     pinInput.select();
                 } else {
@@ -234,12 +247,12 @@ $site_name = get_bloginfo('name');
 
     function startScanner() {
         if (typeof Html5Qrcode === 'undefined') {
-            alert('Scanner non disponibile');
+            alert(T.scanner_missing);
             return;
         }
         var reader = document.getElementById('ci-qr-reader');
         reader.style.display = 'block';
-        scanBtn.textContent = '⏹ Chiudi scanner';
+        scanBtn.textContent = '⏹ ' + T.close_scanner;
         scanBtn.classList.add('ci-scanning');
         scanning = true;
 
@@ -256,7 +269,7 @@ $site_name = get_bloginfo('name');
             },
             function() {}
         ).catch(function(err) {
-            alert('Impossibile accedere alla fotocamera. Verifica i permessi.');
+            alert(T.camera_denied);
             stopScanner();
         });
     }
@@ -264,7 +277,7 @@ $site_name = get_bloginfo('name');
     function stopScanner() {
         if (scanner) { scanner.stop().catch(function(){}); scanner = null; }
         document.getElementById('ci-qr-reader').style.display = 'none';
-        scanBtn.textContent = '📷 Scansiona QR Code';
+        scanBtn.textContent = '📷 ' + T.scan;
         scanBtn.classList.remove('ci-scanning');
         scanning = false;
     }
@@ -285,7 +298,7 @@ $site_name = get_bloginfo('name');
     }
 
     function sendCheckin(param) {
-        showFeedback('loading', '⏳', '', '', 'Verifica...');
+        showFeedback('loading', '⏳', '', '', T.checking);
 
         var body = 'action=dbem_public_checkin&' + param;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
@@ -302,7 +315,7 @@ $site_name = get_bloginfo('name');
             if (d.status === 'checked_in') cls = 'success';
             else if (d.status === 'already') cls = 'warning';
 
-            showFeedback(cls, d.icon || '❌', d.name || '', d.event || '', d.message || 'Errore');
+            showFeedback(cls, d.icon || '❌', d.name || '', d.event || '', d.message || T.error);
 
             // Dopo 3 secondi, riattiva lo scanner automaticamente
             if (cls === 'success') {
@@ -313,14 +326,14 @@ $site_name = get_bloginfo('name');
             }
         })
         .catch(function() {
-            showFeedback('error', '❌', '', '', 'Errore di rete');
+            showFeedback('error', '❌', '', '', T.network_error);
         });
     }
 
     function showFeedback(type, icon, name, event, msg) {
         var fb = document.getElementById('ci-feedback');
         fb.className = 'ci-feedback ci-fb-' + type;
-        fb.innerHTML = '<span class="ci-feedback-icon">' + icon + '</span>'
+        fb.innerHTML = '<span class="ci-feedback-icon">' + escHtml(icon) + '</span>'
             + (name ? '<span class="ci-feedback-name">' + escHtml(name) + '</span>' : '')
             + (event ? '<span class="ci-feedback-event">' + escHtml(event) + '</span>' : '')
             + '<span class="ci-feedback-msg">' + escHtml(msg) + '</span>';
@@ -351,7 +364,7 @@ $site_name = get_bloginfo('name');
         if (q.length < 2) return;
 
         var resultsDiv = document.getElementById('ci-search-results');
-        resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;">⏳ Ricerca...</p>';
+        resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;">⏳ ' + escHtml(T.searching) + '</p>';
 
         var body = 'action=dbem_public_search&search=' + encodeURIComponent(q);
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
@@ -365,12 +378,12 @@ $site_name = get_bloginfo('name');
         .then(function(data) {
             resultsDiv.innerHTML = '';
             if (!data.success || !data.data.length) {
-                resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#999;">Nessun risultato</p>';
+                resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#767676;">' + escHtml(T.no_results) + '</p>';
                 return;
             }
             data.data.forEach(function(r) {
-                var statusIcon = r.status === 'checked_in' ? '✅' : (r.status === 'cancelled' ? '❌' : '⏳');
-                var statusText = r.status === 'checked_in' ? ' (presente' + (r.time ? ' ' + r.time : '') + ')' : '';
+                var statusIcon = { checked_in: '✅', cancelled: '❌', rejected: '🚫', pending: '⏳' }[r.status] || '•';
+                var statusText = r.status === 'checked_in' ? ' (' + T.present_at.replace('%s', r.time || '').trim() + ')' : '';
                 var div = document.createElement('div');
                 div.className = 'ci-result';
                 div.setAttribute('role', 'button');
@@ -387,11 +400,14 @@ $site_name = get_bloginfo('name');
             });
         })
         .catch(function() {
-            resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#d63638;">Errore di rete</p>';
+            resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#b32d2e;">' + escHtml(T.network_error) + '</p>';
         });
     }
 
-    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
 })();
 </script>
 </body>

@@ -103,6 +103,36 @@ class DBEM_Checkin {
     }
 
     /**
+     * Elenco partecipanti della pagina check-in admin, con i contatori
+     */
+    public static function handle_list() {
+        check_ajax_referer('dbem_checkin_nonce', 'nonce');
+        if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event') wp_send_json_error(__('Evento non valido', 'db-event-manager'));
+
+        DBEM_DB::ensure_tables();
+        $items = array();
+        $total = 0;
+        $checked_in = 0;
+        foreach (DBEM_DB::get_registrations($event_id, null, 'name', 'ASC') as $r) {
+            $items[] = array(
+                'name'   => $r->name,
+                'email'  => $r->email,
+                'status' => $r->status,
+                'token'  => $r->status === 'confirmed' ? $r->token : '',
+                'time'   => $r->checked_in_at ? wp_date('H:i', strtotime($r->checked_in_at)) : '',
+            );
+            // Come nella pagina pubblica: contano le iscrizioni valide
+            if (in_array($r->status, array('confirmed', 'checked_in'), true)) $total++;
+            if ($r->status === 'checked_in') $checked_in++;
+        }
+
+        wp_send_json_success(array('registrations' => $items, 'total' => $total, 'checked_in' => $checked_in));
+    }
+
+    /**
      * Ricerca partecipanti AJAX
      */
     public static function handle_search() {

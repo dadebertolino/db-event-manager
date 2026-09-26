@@ -2,6 +2,16 @@
 (function($) {
     'use strict';
 
+    // Testi da wp_localize_script; i valori qui sotto servono solo se una cache separa JS e HTML
+    var i18n = $.extend({
+        error: 'Errore. Riprova.',
+        required: 'Questo campo è obbligatorio.',
+        invalid_email: 'Inserisci un indirizzo email valido.',
+        replace_yes: 'Sì, sostituisci',
+        replace_no: 'No, mantieni la precedente',
+        replace_kept: 'Nessuna modifica: la prenotazione precedente resta valida.'
+    }, (window.dbem_front && dbem_front.i18n) || {});
+
     $(document).on('submit', '.dbem-form', function(e) {
         e.preventDefault();
         var $form = $(this);
@@ -15,12 +25,12 @@
         $form.find('[required]').each(function() {
             var $el = $(this);
             if ($el.is(':checkbox') && !$el.is(':checked')) {
-                $el.closest('.dbem-field, .dbem-field-checkbox').find('.dbem-error').text(dbem_front.i18n.required);
+                $el.closest('.dbem-field, .dbem-field-checkbox').find('.dbem-error').text(i18n.required);
                 $el.attr('aria-invalid', 'true');
                 valid = false;
             } else if (!$el.val() || !$el.val().trim()) {
                 $el.attr('aria-invalid', 'true');
-                $el.closest('.dbem-field').find('.dbem-error').text(dbem_front.i18n.required);
+                $el.closest('.dbem-field').find('.dbem-error').text(i18n.required);
                 valid = false;
             }
         });
@@ -30,7 +40,7 @@
             var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRe.test($email.val())) {
                 $email.attr('aria-invalid', 'true');
-                $email.closest('.dbem-field').find('.dbem-error').text(dbem_front.i18n.invalid_email);
+                $email.closest('.dbem-field').find('.dbem-error').text(i18n.invalid_email);
                 valid = false;
             }
         }
@@ -85,13 +95,13 @@
                         sendRegistration($form, true);
                     });
                 } else {
-                    $msg.addClass('dbem-message-error').text((resp.data && resp.data.message) || resp.data || dbem_front.i18n.error).show();
+                    $msg.addClass('dbem-message-error').text((resp.data && resp.data.message) || resp.data || i18n.error).show();
                     $msg.attr('tabindex', '-1').focus();
                     resetButton();
                 }
             },
             error: function() {
-                $msg.addClass('dbem-message-error').text(dbem_front.i18n.error).show();
+                $msg.addClass('dbem-message-error').text(i18n.error).show();
                 resetButton();
             }
         });
@@ -99,15 +109,15 @@
 
     // Domanda di conferma dentro il riquadro messaggi, con le due risposte possibili
     function askReplace($msg, question, onConfirm) {
-        var $yes = $('<button type="button" class="dbem-confirm-yes"></button>').text(dbem_front.i18n.replace_yes);
-        var $no = $('<button type="button" class="dbem-confirm-no"></button>').text(dbem_front.i18n.replace_no);
+        var $yes = $('<button type="button" class="dbem-confirm-yes"></button>').text(i18n.replace_yes);
+        var $no = $('<button type="button" class="dbem-confirm-no"></button>').text(i18n.replace_no);
 
         $yes.on('click', function() {
             onConfirm();
         });
         $no.on('click', function() {
             $msg.empty().removeClass('dbem-message-confirm').addClass('dbem-message-success')
-                .text(dbem_front.i18n.replace_kept).attr('tabindex', '-1').focus();
+                .text(i18n.replace_kept).attr('tabindex', '-1').focus();
         });
 
         $msg.empty().addClass('dbem-message-confirm')

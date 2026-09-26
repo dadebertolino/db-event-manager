@@ -119,13 +119,29 @@ if (!is_array($survey_fields)) $survey_fields = array();
     (function(){
         var form = document.getElementById('dbem-survey-form');
         if (!form) return;
+        var T = <?php echo wp_json_encode(array(
+            'sending'       => __('Invio...', 'db-event-manager'),
+            'error'         => __('Errore', 'db-event-manager'),
+            'network_error' => __('Errore di rete.', 'db-event-manager'),
+        )); ?>;
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             var btn = form.querySelector('.dbem-submit');
+            var btnText = btn.querySelector('.dbem-submit-text');
             var msg = form.querySelector('.dbem-message');
+            // Il testo cambia dentro lo span, così il markup del pulsante resta quello del PHP
+            var label = btnText.textContent;
             btn.disabled = true;
-            btn.textContent = '⏳ Invio...';
+            btnText.textContent = '⏳ ' + T.sending;
             msg.style.display = 'none';
+
+            function showError(text) {
+                msg.className = 'dbem-message dbem-message-error';
+                msg.textContent = text;
+                msg.style.display = 'block';
+                btn.disabled = false;
+                btnText.textContent = label;
+            }
 
             var fd = new FormData(form);
             fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
@@ -141,19 +157,11 @@ if (!is_array($survey_fields)) $survey_fields = array();
                     form.reset();
                     btn.style.display = 'none';
                 } else {
-                    msg.className = 'dbem-message dbem-message-error';
-                    msg.textContent = data.data || 'Errore';
-                    msg.style.display = 'block';
-                    btn.disabled = false;
-                    btn.textContent = '<?php echo esc_js(__('Invia risposte', 'db-event-manager')); ?>';
+                    showError(data.data || T.error);
                 }
             })
             .catch(function() {
-                msg.className = 'dbem-message dbem-message-error';
-                msg.textContent = 'Errore di rete.';
-                msg.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = '<?php echo esc_js(__('Invia risposte', 'db-event-manager')); ?>';
+                showError(T.network_error);
             });
         });
     })();

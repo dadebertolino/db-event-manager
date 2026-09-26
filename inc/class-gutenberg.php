@@ -30,10 +30,12 @@ class DBEM_Gutenberg {
         wp_enqueue_script(
             'dbem-blocks',
             DBEM_PLUGIN_URL . 'assets/js/blocks.js',
-            array('wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render'),
+            array('wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-i18n'),
             DBEM_VERSION,
             true
         );
+        // Traduzioni dei testi del blocco (file JSON in languages/, se presenti)
+        wp_set_script_translations('dbem-blocks', 'db-event-manager', DBEM_PLUGIN_DIR . 'languages');
 
         // Passa lista eventi all'editor
         $events = get_posts(array(

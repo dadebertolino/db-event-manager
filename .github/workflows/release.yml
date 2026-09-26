@@ -46,9 +46,15 @@ jobs:
             -o "db-event-manager-${GITHUB_REF_NAME#v}.zip" "$GITHUB_REF_NAME"
           unzip -l "db-event-manager-${GITHUB_REF_NAME#v}.zip" | head -30
 
+      # Descrizione della release: la voce del changelog del README
+      - name: Note di rilascio
+        run: |
+          awk -v v="$VERSION" '$0=="### "v{p=1; print "## "v; next} p&&/^### [0-9]/{exit} p' README.md > release-notes.md
+          cat release-notes.md
+
       - name: Crea/aggiorna Release con lo ZIP
         uses: softprops/action-gh-release@v2
         with:
           name: "DB Event Manager ${{ env.VERSION }}"
           files: db-event-manager-*.zip
-          generate_release_notes: true
+          body_path: release-notes.md

@@ -199,6 +199,23 @@ $site_name = get_bloginfo('name');
         'present_at'      => __('presente %s', 'db-event-manager'),
     )); ?>;
 
+    // POST ad admin-ajax. Le risposte non 2xx (403 origine/sessione, 429 troppe
+    // richieste) non vanno inghiottite: avviso in console e messaggio del server a video
+    function post(body) {
+        return fetch(ajaxUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        }).then(function(r) {
+            if (!r.ok) console.warn('[DB Event Manager] richiesta non riuscita: HTTP ' + r.status);
+            var fail = {success: false, data: {message: T.error + ' (HTTP ' + r.status + ')'}};
+            return r.json().then(function(j) {
+                return (j && typeof j === 'object') ? j : fail;
+            }, function() { return fail; });
+        });
+    }
+
     /* === PIN === */
     if (pinRequired) {
         var pinInput = document.getElementById('ci-pin-input');
@@ -208,12 +225,7 @@ $site_name = get_bloginfo('name');
         function tryPin() {
             pin = pinInput.value.trim();
             if (!pin) return;
-            fetch(ajaxUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce)
-            })
-            .then(function(r) { return r.json(); })
+            post('action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce))
             .then(function(data) {
                 if (!data.success) {
                     pinError.textContent = (data.data && data.data.message) || T.error;
@@ -224,6 +236,11 @@ $site_name = get_bloginfo('name');
                     document.getElementById('ci-main').style.display = 'block';
                     if (preloadedToken) processToken(preloadedToken);
                 }
+            })
+            .catch(function(err) {
+                console.warn('[DB Event Manager] errore di rete', err);
+                pinError.textContent = T.network_error;
+                pinError.style.display = 'block';
             });
         }
 
@@ -303,12 +320,7 @@ $site_name = get_bloginfo('name');
         var body = 'action=dbem_public_checkin&' + param;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(data) {
             var d = data.success ? data.data : (data.data || {});
             var cls = 'error';
@@ -325,7 +337,8 @@ $site_name = get_bloginfo('name');
                 }, 2500);
             }
         })
-        .catch(function() {
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
             showFeedback('error', '❌', '', '', T.network_error);
         });
     }
@@ -369,15 +382,15 @@ $site_name = get_bloginfo('name');
         var body = 'action=dbem_public_search&search=' + encodeURIComponent(q);
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(data) {
             resultsDiv.innerHTML = '';
-            if (!data.success || !data.data.length) {
+            if (!data.success) {
+                var msg = (data.data && data.data.message) || T.error;
+                resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#b32d2e;">' + escHtml(msg) + '</p>';
+                return;
+            }
+            if (!data.data.length) {
                 resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#767676;">' + escHtml(T.no_results) + '</p>';
                 return;
             }
@@ -399,7 +412,8 @@ $site_name = get_bloginfo('name');
                 resultsDiv.appendChild(div);
             });
         })
-        .catch(function() {
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
             resultsDiv.innerHTML = '<p style="text-align:center;padding:12px;color:#b32d2e;">' + escHtml(T.network_error) + '</p>';
         });
     }

@@ -25,6 +25,10 @@ class DBEM_Privacy_Declarations {
             'has_email'            => false,
             'has_survey'           => false,
             'has_approval_mode'    => false,
+            'has_time_slot'        => false,
+            'has_gdpr_checkbox'    => false,
+            'has_dbfb_form'        => false,
+            // L'IP (REMOTE_ADDR) è sempre salvato in chiaro nella colonna ip_address
             'stores_ip'            => true,
             'retention_text'       => __('I dati vengono conservati fino alla cancellazione manuale da parte dell\'amministratore o fino a richiesta di cancellazione dell\'interessato.', 'db-event-manager'),
         );
@@ -55,6 +59,18 @@ class DBEM_Privacy_Declarations {
             if ($approval_mode === 'approval') {
                 $features['has_approval_mode'] = true;
             }
+
+            if (get_post_meta($event_id, '_dbem_time_slot_enabled', true) === '1') {
+                $features['has_time_slot'] = true;
+            }
+
+            if (get_post_meta($event_id, '_dbem_gdpr_enabled', true) === '1') {
+                $features['has_gdpr_checkbox'] = true;
+            }
+
+            if (get_post_meta($event_id, '_dbem_form_source', true) === 'dbfb') {
+                $features['has_dbfb_form'] = true;
+            }
         }
 
         return $features;
@@ -70,6 +86,25 @@ class DBEM_Privacy_Declarations {
             return $register;
         }
 
+        // Dati raccolti con l'iscrizione: descritti in base alla configurazione reale
+        $collected = array(
+            __('Nome e cognome, indirizzo email del partecipante.', 'db-event-manager'),
+            $features['has_dbfb_form']
+                ? __('Campi personalizzati del form di iscrizione configurati dall\'amministratore (form interno o form DB Form Builder collegato all\'evento).', 'db-event-manager')
+                : __('Campi personalizzati del form di iscrizione configurati dall\'amministratore.', 'db-event-manager'),
+            $features['stores_ip']
+                ? __('Indirizzo IP del dispositivo al momento dell\'iscrizione, salvato in chiaro (non anonimizzato) insieme all\'iscrizione, a fini di sicurezza e prova dell\'invio.', 'db-event-manager')
+                : __('Indirizzo IP: non salvato.', 'db-event-manager'),
+            __('Data e ora dell\'iscrizione, stato dell\'iscrizione, token univoco del QR code (non contiene dati personali in chiaro).', 'db-event-manager'),
+            __('Data e ora del check-in all\'evento, se effettuato.', 'db-event-manager'),
+        );
+        if ($features['has_time_slot']) {
+            $collected[] = __('Orario di ingresso assegnato al partecipante.', 'db-event-manager');
+        }
+        if ($features['has_gdpr_checkbox']) {
+            $collected[] = __('Prova del consenso GDPR (art. 7.1): testo del consenso letto, data e ora, URL e versione dell\'informativa privacy in vigore.', 'db-event-manager');
+        }
+
         // Sempre: registrazioni eventi
         $register[] = array(
             'id'             => 'dbem_registrations',
@@ -77,11 +112,8 @@ class DBEM_Privacy_Declarations {
             'status'         => 'active',
             'purpose'        => __('Gestire le iscrizioni agli eventi pubblicati sul sito: raccolta dati partecipanti, generazione QR code per check-in, gestione presenze.', 'db-event-manager'),
             'legal_basis'    => __('Consenso esplicito (art. 6.1.a GDPR) tramite checkbox privacy nel form di iscrizione, oppure esecuzione della richiesta di partecipazione (art. 6.1.b GDPR).', 'db-event-manager'),
-            'data_collected' => sprintf(
-    		__('Nome, email del partecipante. Il QR code allegato contiene un token univoco (non dati personali in chiaro). Mittente configurato: %s. Le email vengono inviate via wp_mail() — il trasporto effettivo dipende dalla configurazione SMTP del sito.', 'db-event-manager'),
-    			DBEM_Email::from_email()
-		),
-	    'retention'      => $features['retention_text'],
+            'data_collected' => implode(' ', $collected),
+            'retention'      => $features['retention_text'],
             'transfers'      => __('Nessuno. Tutti i dati sono salvati nel database WordPress locale.', 'db-event-manager'),
         );
 
@@ -146,7 +178,9 @@ class DBEM_Privacy_Declarations {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         list($where, $params) = self::build_consent_where($args);
-        $limit = isset($args['_internal_limit']) ? (int) $args['_internal_limit'] : 1000;
+        // 'limit' è la chiave pubblica del contratto Hub; '_internal_limit' resta per compatibilità
+        $limit = (int) ($args['limit'] ?? $args['_internal_limit'] ?? 1000);
+        $limit = max(1, min($limit, 50000));
 
         $sql = "SELECT id, email, name, gdpr_consent_text, gdpr_consent_timestamp,
                        gdpr_consent_privacy_url, gdpr_consent_policy_version, event_id
@@ -169,11 +203,12 @@ class DBEM_Privacy_Declarations {
     }
 
     private static function build_consent_where($args) {
+        global $wpdb;
         $where = array('gdpr_consent_given = 1');
         $params = array();
         if (!empty($args['date_from'])) { $where[] = 'gdpr_consent_timestamp >= %s'; $params[] = $args['date_from'] . ' 00:00:00'; }
         if (!empty($args['date_to']))   { $where[] = 'gdpr_consent_timestamp <= %s'; $params[] = $args['date_to'] . ' 23:59:59'; }
-        if (!empty($args['subject']))   { $where[] = 'email LIKE %s'; $params[] = '%' . $args['subject'] . '%'; }
+        if (!empty($args['subject']))   { $where[] = 'email LIKE %s'; $params[] = '%' . $wpdb->esc_like((string) $args['subject']) . '%'; }
         return array('WHERE ' . implode(' AND ', $where), $params);
     }
 

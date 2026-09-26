@@ -15,6 +15,8 @@ class DBEM_Survey {
      * Render pagina survey frontend (via query var)
      */
     public static function render_survey_page($token) {
+        // Pagina legata al token dell'iscritto: mai in cache di pagina
+        DBEM_Security::no_cache_page();
         DBEM_DB::ensure_tables();
         $reg = DBEM_DB::get_registration_by_token($token);
 
@@ -54,9 +56,16 @@ class DBEM_Survey {
      * Submit survey via AJAX
      */
     public static function handle_submit() {
-        if (!isset($_POST['dbem_survey_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_survey_nonce'])), 'dbem_survey_submit')) {
-            wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
-        }
+        // Nonce (utenti loggati) oppure origine + rate limit (visitatori anonimi):
+        // l'autorizzazione vera è il token personale dell'iscritto
+        DBEM_Security::verify_request(
+            'dbem_survey_submit',
+            'dbem_survey_nonce',
+            'survey',
+            5,
+            __('Richiesta non valida: invia il questionario dalla sua pagina.', 'db-event-manager')
+        );
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce (loggati) o origine + rate limit (anonimi) verificati in DBEM_Security::verify_request()
 
         $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
         if (empty($token)) wp_send_json_error(__('Token mancante.', 'db-event-manager'));
@@ -111,6 +120,7 @@ class DBEM_Survey {
         wp_send_json_success(array(
             'message' => __('Grazie per il tuo feedback!', 'db-event-manager'),
         ));
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
     }
 
     /**

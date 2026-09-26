@@ -165,7 +165,10 @@ class DBEM_Frontend {
         $custom_fields = get_post_meta($event_id, '_dbem_custom_fields', true);
         if (!is_array($custom_fields)) $custom_fields = array();
 
-        $nonce = wp_create_nonce('dbem_registration_nonce');
+        // Nonce solo per gli utenti loggati (pagine non in cache). Per i visitatori
+        // anonimi il server verifica origine + rate limit: un nonce stampato in una
+        // pagina in cache scadrebbe dopo 12–24h bloccando le iscrizioni.
+        $nonce = is_user_logged_in() ? wp_create_nonce('dbem_registration_nonce') : '';
 
         ob_start();
         ?>
@@ -252,7 +255,8 @@ class DBEM_Frontend {
         $name_field = get_post_meta($event_id, '_dbem_dbfb_name_field', true) ?: 'nome';
         $email_field = get_post_meta($event_id, '_dbem_dbfb_email_field', true) ?: 'email';
         $privacy_field = get_post_meta($event_id, '_dbem_dbfb_privacy_field', true);
-        $nonce = wp_create_nonce('dbem_registration_nonce');
+        // Nonce solo per gli utenti loggati: vedi render_registration_form()
+        $nonce = is_user_logged_in() ? wp_create_nonce('dbem_registration_nonce') : '';
 
         wp_enqueue_style('dbem-frontend');
 
@@ -365,21 +369,34 @@ class DBEM_Frontend {
                     yes.focus();
                 }
 
+                var genericError = <?php echo wp_json_encode(__('Errore durante l\'iscrizione all\'evento.', 'db-event-manager')); ?>;
+
                 function send() {
                     fetch(ajaxUrl, {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: body.toString()
                     })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        if (!r.ok) {
+                            console.warn('[DB Event Manager] iscrizione evento non riuscita: HTTP ' + r.status);
+                        }
+                        return r.json().catch(function() { return null; });
+                    })
                     .then(function(resp) {
-                        if (resp.success) {
+                        if (resp && resp.success) {
                             showResult(true, resp.data.message);
-                        } else if (resp.data && resp.data.code === 'confirm_replace') {
+                        } else if (resp && resp.data && resp.data.code === 'confirm_replace') {
                             askReplace(resp.data.message);
                         } else {
-                            showResult(false, (resp.data && resp.data.message) || resp.data || <?php echo wp_json_encode(__('Errore durante l\'iscrizione all\'evento.', 'db-event-manager')); ?>);
+                            var d = resp && resp.data;
+                            showResult(false, (d && d.message) || (typeof d === 'string' && d) || genericError);
                         }
+                    })
+                    .catch(function(err) {
+                        console.warn('[DB Event Manager] iscrizione evento non riuscita', err);
+                        showResult(false, genericError);
                     });
                 }
 

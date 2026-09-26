@@ -112,6 +112,13 @@ class DBEM_Privacy_DSAR {
                 $export_data[] = array('name' => __('Testo consenso', 'db-event-manager'), 'value' => $reg->gdpr_consent_text ?? '');
                 $export_data[] = array('name' => __('Timestamp consenso', 'db-event-manager'), 'value' => $reg->gdpr_consent_timestamp ?? '');
                 $export_data[] = array('name' => __('URL privacy', 'db-event-manager'), 'value' => $reg->gdpr_consent_privacy_url ?? '');
+                $export_data[] = array(
+                    'name'  => __('Versione informativa privacy', 'db-event-manager'),
+                    'value' => !empty($reg->gdpr_consent_policy_version)
+                        /* translators: %d: ID dello snapshot della Privacy Policy in DB Privacy Hub */
+                        ? sprintf(__('v#%d (snapshot DB Privacy Hub)', 'db-event-manager'), (int) $reg->gdpr_consent_policy_version)
+                        : __('Non registrata (Privacy Hub assente al momento del consenso)', 'db-event-manager'),
+                );
             }
 
             $data[] = array(

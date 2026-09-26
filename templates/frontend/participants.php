@@ -236,6 +236,23 @@ $events = get_posts(array(
         'csv_file'      => __('partecipanti', 'db-event-manager'),
     )); ?>;
 
+    // POST ad admin-ajax. Le risposte non 2xx (403 origine/sessione, 429 troppe
+    // richieste) non vanno inghiottite: avviso in console e messaggio del server a video
+    function post(body) {
+        return fetch(ajaxUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        }).then(function(r) {
+            if (!r.ok) console.warn('[DB Event Manager] richiesta non riuscita: HTTP ' + r.status);
+            var fail = {success: false, data: {message: T.error + ' (HTTP ' + r.status + ')'}};
+            return r.json().then(function(j) {
+                return (j && typeof j === 'object') ? j : fail;
+            }, function() { return fail; });
+        });
+    }
+
     var statusLabels = {
         pending: {icon: '🕐', label: '<?php echo esc_js(__('In attesa', 'db-event-manager')); ?>', cls: 'pending'},
         confirmed: {icon: '⏳', label: '<?php echo esc_js(__('Confermato', 'db-event-manager')); ?>', cls: 'confirmed'},
@@ -253,12 +270,7 @@ $events = get_posts(array(
         function tryPin() {
             pin = pinInput.value.trim();
             if (!pin) return;
-            fetch(ajaxUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce)
-            })
-            .then(function(r) { return r.json(); })
+            post('action=dbem_public_pin_check&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce))
             .then(function(data) {
                 if (!data.success) {
                     pinError.textContent = (data.data && data.data.message) || T.error;
@@ -268,6 +280,11 @@ $events = get_posts(array(
                     document.getElementById('pp-pin-screen').style.display = 'none';
                     document.getElementById('pp-main').style.display = 'block';
                 }
+            })
+            .catch(function(err) {
+                console.warn('[DB Event Manager] errore di rete', err);
+                pinError.textContent = T.network_error;
+                pinError.style.display = 'block';
             });
         }
         pinBtn.addEventListener('click', tryPin);
@@ -294,15 +311,10 @@ $events = get_posts(array(
         var body = 'action=dbem_public_participants&event_id=' + currentEvent;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(resp) {
             if (!resp.success) {
-                document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(resp.data.message || T.error) + '</div>';
+                document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml((resp.data && resp.data.message) || T.error) + '</div>';
                 return;
             }
             allData = resp.data.registrations;
@@ -313,7 +325,8 @@ $events = get_posts(array(
             document.getElementById('pp-toolbar').style.display = 'flex';
             renderTable();
         })
-        .catch(function() {
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
             document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(T.network_error) + '</div>';
         });
     }
@@ -410,21 +423,17 @@ $events = get_posts(array(
             + '&registration_id=' + regId + '&event_id=' + currentEvent;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(resp) {
             if (resp.success) {
                 showFeedback('success', resp.data.message);
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || resp.data || T.error);
+                showFeedback('error', (resp.data && resp.data.message) || (typeof resp.data === 'string' && resp.data) || T.error);
             }
         })
-        .catch(function() {
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
             showFeedback('error', T.network_error);
         });
     }
@@ -540,12 +549,7 @@ $events = get_posts(array(
             + '&assigned_time=' + encodeURIComponent(time);
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(resp) {
             if (resp.success) {
                 showFeedback('success', resp.data.message);
@@ -555,10 +559,13 @@ $events = get_posts(array(
                 addForm.style.display = 'none';
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || resp.data || T.error);
+                showFeedback('error', (resp.data && resp.data.message) || (typeof resp.data === 'string' && resp.data) || T.error);
             }
         })
-        .catch(function() { showFeedback('error', T.network_error); });
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
+            showFeedback('error', T.network_error);
+        });
     });
 
     /* === Modal modifica orario === */
@@ -582,22 +589,20 @@ $events = get_posts(array(
             + '&event_id=' + currentEvent;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(r) { return r.json(); })
+        post(body)
         .then(function(resp) {
             timeModal.style.display = 'none';
             if (resp.success) {
                 showFeedback('success', resp.data.message);
                 loadParticipants();
             } else {
-                showFeedback('error', resp.data.message || T.error);
+                showFeedback('error', (resp.data && resp.data.message) || T.error);
             }
         })
-        .catch(function() { showFeedback('error', T.network_error); });
+        .catch(function(err) {
+            console.warn('[DB Event Manager] errore di rete', err);
+            showFeedback('error', T.network_error);
+        });
     });
 })();
 </script>

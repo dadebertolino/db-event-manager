@@ -56,7 +56,8 @@ if (!is_array($survey_fields)) $survey_fields = array();
             <form id="dbem-survey-form" method="post" novalidate>
                 <input type="hidden" name="action" value="dbem_submit_survey">
                 <input type="hidden" name="token" value="<?php echo esc_attr($reg->token); ?>">
-                <input type="hidden" name="dbem_survey_nonce" value="<?php echo esc_attr(wp_create_nonce('dbem_survey_submit')); ?>">
+                <?php // Nonce solo per gli utenti loggati: per gli anonimi il server verifica origine + rate limit ?>
+                <input type="hidden" name="dbem_survey_nonce" value="<?php echo esc_attr(is_user_logged_in() ? wp_create_nonce('dbem_survey_submit') : ''); ?>">
 
                 <?php foreach ($survey_fields as $i => $field):
                     $fid = 'dbem_survey_' . $i;
@@ -146,21 +147,30 @@ if (!is_array($survey_fields)) $survey_fields = array();
             var fd = new FormData(form);
             fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
                 method: 'POST',
+                credentials: 'same-origin',
                 body: fd
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                // 403 (origine/sessione) e 429 (troppe richieste): avviso in console, messaggio del server a video
+                if (!r.ok) console.warn('[DB Event Manager] invio questionario non riuscito: HTTP ' + r.status);
+                return r.json().catch(function() { return null; });
+            })
             .then(function(data) {
-                if (data.success) {
+                if (!data || typeof data !== 'object') {
+                    showError(T.error);
+                } else if (data.success) {
                     msg.className = 'dbem-message dbem-message-success';
                     msg.textContent = data.data.message;
                     msg.style.display = 'block';
                     form.reset();
                     btn.style.display = 'none';
                 } else {
-                    showError(data.data || T.error);
+                    var d = data.data;
+                    showError((d && d.message) || (typeof d === 'string' && d) || T.error);
                 }
             })
-            .catch(function() {
+            .catch(function(err) {
+                console.warn('[DB Event Manager] invio questionario non riuscito', err);
                 showError(T.network_error);
             });
         });

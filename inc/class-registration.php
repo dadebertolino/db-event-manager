@@ -7,10 +7,9 @@ class DBEM_Registration {
      * Gestisci iscrizione da form frontend
      */
     public static function handle_registration() {
-        // Verifica nonce
-        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_nonce'])), 'dbem_registration_nonce')) {
-            wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
-        }
+        // Nonce (utenti loggati) oppure origine + rate limit (visitatori anonimi)
+        self::verify_registration_request();
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce (loggati) o origine + rate limit (anonimi) verificati in verify_registration_request()
 
         // Honeypot
         if (!empty($_POST['dbem_website_url'])) {
@@ -18,7 +17,7 @@ class DBEM_Registration {
         }
 
         $ip = self::get_client_ip();
-        self::check_rate_limit($ip);
+        self::check_rate_limit();
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
@@ -190,6 +189,7 @@ class DBEM_Registration {
         wp_send_json_success(array(
             'message' => $success_message,
         ));
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
     }
 
     /**
@@ -197,7 +197,7 @@ class DBEM_Registration {
      * dopo che l'utente l'ha confermato: il form reinvia con dbem_confirm_replace
      */
     public static function require_replace_confirmation($existing) {
-        if (!$existing || !empty($_POST['dbem_confirm_replace'])) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato dall'handler chiamante
+        if (!$existing || !empty($_POST['dbem_confirm_replace'])) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- richiesta verificata dall'handler chiamante (nonce o origine, vedi verify_registration_request)
 
         wp_send_json_error(array(
             'code'    => 'confirm_replace',
@@ -216,15 +216,41 @@ class DBEM_Registration {
     }
 
     /**
-     * Al massimo 5 invii al minuto per indirizzo IP
+     * Verifica la richiesta di iscrizione; termina con errore JSON se non valida.
+     *
+     * Utenti loggati: nonce classico. Visitatori anonimi (1.8.0): niente nonce
+     * (in una pagina in cache scadrebbe dopo 12–24h), ma origine dello stesso
+     * sito. Logica condivisa con gli altri endpoint pubblici in
+     * DBEM_Security::verify_request(). Il rate limit per IP resta applicato
+     * dagli handler (check_rate_limit) dopo l'honeypot, anche ai loggati.
      */
-    private static function check_rate_limit($ip) {
-        $rate_key = 'dbem_rate_' . md5($ip);
-        $rate_count = (int) get_transient($rate_key);
-        if ($rate_count >= 5) {
-            wp_send_json_error(__('Troppe richieste. Riprova tra qualche minuto.', 'db-event-manager'));
-        }
-        set_transient($rate_key, $rate_count + 1, 60);
+    private static function verify_registration_request() {
+        DBEM_Security::verify_request(
+            'dbem_registration_nonce',
+            'dbem_nonce',
+            'registration',
+            0,
+            __('Richiesta non valida: inviare il modulo dalla pagina dell\'evento.', 'db-event-manager')
+        );
+    }
+
+    /**
+     * @deprecated 1.8.0 Usare DBEM_Security::origin_matches().
+     *
+     * @param string $origin    Valore dell'header Origin o Referer.
+     * @param array  $site_urls URL del sito (home_url, site_url).
+     * @return bool
+     */
+    public static function origin_matches($origin, $site_urls) {
+        return DBEM_Security::origin_matches($origin, $site_urls);
+    }
+
+    /**
+     * Al massimo N invii al minuto per indirizzo IP (default 5, filtro
+     * 'dbem_registration_rate_limit'). Vedi DBEM_Security::check_rate_limit().
+     */
+    private static function check_rate_limit() {
+        DBEM_Security::check_rate_limit('registration', 5);
     }
 
     /**
@@ -322,6 +348,8 @@ class DBEM_Registration {
      * Pagina di esito per il link di modifica
      */
     private static function update_page($message, $status = 200, $extra_html = '') {
+        // Pagina legata a un link personale: mai in cache di pagina
+        DBEM_Security::no_cache_page();
         wp_die(
             '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
             . '<p>' . esc_html($message) . '</p>'
@@ -342,15 +370,15 @@ class DBEM_Registration {
      * Questo handler crea l'iscrizione evento (registrations, QR code, email conferma).
      */
     public static function handle_dbfb_registration() {
-        if (!isset($_POST['dbem_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_nonce'])), 'dbem_registration_nonce')) {
-            wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
-        }
+        // Nonce (utenti loggati) oppure origine + rate limit (visitatori anonimi)
+        self::verify_registration_request();
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce (loggati) o origine + rate limit (anonimi) verificati in verify_registration_request()
 
         // L'endpoint si può chiamare anche senza passare dal form DBFB e dal suo antispam
         if (!empty($_POST['dbem_website_url'])) {
             wp_send_json_error(__('Richiesta non valida.', 'db-event-manager'));
         }
-        self::check_rate_limit(self::get_client_ip());
+        self::check_rate_limit();
 
         $event_id = absint($_POST['event_id'] ?? 0);
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') {
@@ -502,5 +530,6 @@ class DBEM_Registration {
         wp_send_json_success(array(
             'message' => $success_message,
         ));
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
     }
 }

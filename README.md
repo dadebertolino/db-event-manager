@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.6.4
+**Versione:** 1.8.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -304,7 +304,7 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 - **QR code**: phpqrcode (LGPL 3), classi prefissate `DBEM_` per evitare conflitti con altri plugin
 - **Scanner QR**: html5-qrcode inclusa localmente (375KB)
 - **Drag & drop**: SortableJS inclusa localmente (45KB)
-- **Sicurezza**: nonce, capability check, sanitizzazione, rate limiting, PIN check-in/partecipanti, HMAC per link approvazione
+- **Sicurezza**: nonce (admin e utenti loggati), controllo di origine Origin/Referer per le iscrizioni dei visitatori anonimi (compatibile con la cache di pagina), capability check, sanitizzazione, rate limiting (hash salato dell'IP, filtro `dbem_registration_rate_limit`), PIN check-in/partecipanti, HMAC per link approvazione
 - **Token**: bin2hex(random_bytes(32)) — 64 caratteri hex
 - **Email**: HTML responsive, compatibile con plugin SMTP
 - **Auto-updater**: controlla GitHub Releases ogni 12h
@@ -335,6 +335,63 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 ---
 
 ## Changelog
+
+### 1.8.0
+**Iscrizioni compatibili con la cache di pagina + dichiarazioni privacy accurate**
+
+Minor e non patch: cambia il contratto di verifica dell'endpoint pubblico di iscrizione
+(niente più nonce per gli anonimi), nasce il filtro pubblico `dbem_registration_rate_limit`
+e cambia il testo dichiarato al Registro trattamenti del Privacy Hub.
+
+**Iscrizioni con cache di pagina (WP Rocket, LiteSpeed Cache, Cloudflare APO, cache dell'hosting):**
+- Prima il form (integrato e DB Form Builder) inviava un nonce stampato nell'HTML: con la pagina
+  in cache il nonce scadeva dopo 12–24 ore e da quel momento **ogni iscrizione veniva rifiutata**
+  con «Richiesta non valida.»
+- Ora `dbem_register` e `dbem_register_dbfb` verificano: utenti loggati → nonce (le loro pagine non
+  sono in cache); visitatori anonimi → header `Origin` (in mancanza `Referer`) dello stesso host di
+  `home_url()`/`site_url()`, più honeypot e rate limit per IP già esistenti. Il nonce viene stampato
+  solo per gli utenti loggati. Stesso schema di `DBCM_Consent_API` (DB Cookie Manager 3.7.1)
+- Rate limit: la chiave del transient è un hash SHA-256 salato dell'IP (prima `md5` senza sale,
+  invertibile); limite filtrabile con `dbem_registration_rate_limit` (default 5/minuto, `0` disattiva).
+  Superato il limite l'endpoint risponde HTTP 429; origine non valida o sessione scaduta → HTTP 403
+- Frontend: le risposte non riuscite non sono più silenziose. `console.warn` con lo stato HTTP e
+  messaggio del server mostrato all'utente (prima un 403/429 dava solo «Errore. Riprova.» e il form
+  DB Form Builder non mostrava nulla se la risposta non era JSON)
+
+**Stesso schema per gli altri endpoint pubblici (questionario, check-in e partecipanti da telefono):**
+- La logica è ora condivisa in `DBEM_Security::verify_request()` (nonce per i loggati; `Origin`/`Referer`
+  dello stesso sito + rate limit per gli anonimi), `origin_matches()`, `check_rate_limit()` (chiave
+  transient = hash SHA-256 salato di contesto + IP) e `no_cache_page()`. L'iscrizione la riusa;
+  `DBEM_Registration::origin_matches()` resta come alias deprecato
+- Questionario post-evento (`dbem_submit_survey`): prima il nonce stampato nella pagina del link
+  personale poteva scadere in cache e bloccare l'invio. Ora anonimi → origine + rate limit
+  (`dbem_survey_rate_limit`, default 5/minuto); l'autorizzazione resta il token personale
+- Pagine pubbliche check-in e partecipanti (`dbem_public_*`): anonimi → origine + rate limit
+  (`dbem_public_rate_limit`, default 120/minuto per IP), poi il **PIN** con blocco dopo 10 tentativi
+  errati, invariato. `DBEM_Security::public_nonce()` restituisce il nonce solo agli utenti loggati
+- Pagine per-visitatore o legate a un token (check-in, partecipanti, questionario, conferma modifica
+  iscrizione, approvazione da email): header no-cache + `DONOTCACHEPAGE`
+- JS delle pagine check-in, partecipanti e questionario: `console.warn` su risposta non 2xx e messaggio
+  del server a video (prima un errore di verifica PIN o una risposta non JSON restava silenzioso, e
+  la ricerca check-in mostrava «Nessun risultato» anche in caso di errore)
+
+**Registro trattamenti (`dbem_registrations`):**
+- `data_collected` riscritto: prima era copiato dalla voce email (citava solo nome, email e il
+  mittente). Ora elenca nome, email, campi personalizzati del form (anche DB Form Builder), indirizzo
+  IP **salvato in chiaro** (`REMOTE_ADDR`, non anonimizzato), data/ora e stato dell'iscrizione, token
+  del QR code, data/ora del check-in, orario assegnato (solo se almeno un evento ha l'assegnazione
+  orario) e prova del consenso GDPR (solo se almeno un evento ha la checkbox attiva)
+
+**Registro consensi (`dbph_consents_register`):**
+- `hub_query_consents` legge il limite dalla chiave pubblica `limit` passata dal Privacy Hub (fallback
+  `_internal_limit`, default 1000, massimo 50000). Prima ignorava `limit` e restituiva sempre fino a 1000 righe
+- Ricerca per soggetto: `%` e `_` nel testo cercato sono ora trattati come caratteri letterali (`$wpdb->esc_like`)
+
+**DSAR:**
+- L'export delle iscrizioni include `gdpr_consent_policy_version` («Versione informativa privacy», v#N
+  dello snapshot Privacy Hub, oppure «Non registrata» se l'Hub era assente)
+
+**Nessuna migrazione di schema, nessun breaking change** per gli admin: form, email e dati salvati invariati.
 
 ### 1.7.0
 **Novità**

@@ -333,6 +333,45 @@ if (!function_exists('hash_equals')) {
     }
 }
 
+$GLOBALS['__dbem_logged_in'] = false;
+$GLOBALS['__dbem_filters'] = array();
+
+if (!function_exists('is_user_logged_in')) {
+    function is_user_logged_in() {
+        return !empty($GLOBALS['__dbem_logged_in']);
+    }
+}
+
+if (!function_exists('apply_filters')) {
+    function apply_filters($hook, $value, ...$args) {
+        return array_key_exists($hook, $GLOBALS['__dbem_filters']) ? $GLOBALS['__dbem_filters'][$hook] : $value;
+    }
+}
+
+if (!function_exists('wp_parse_url')) {
+    function wp_parse_url($url, $component = -1) {
+        return parse_url($url, $component);
+    }
+}
+
+if (!function_exists('site_url')) {
+    function site_url($path = '') {
+        return 'https://example.com' . $path;
+    }
+}
+
+if (!function_exists('sanitize_key')) {
+    function sanitize_key($key) {
+        return preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) $key));
+    }
+}
+
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce($action = -1) {
+        return 'nonce-' . md5((string) $action);
+    }
+}
+
 if (!class_exists('wpdb')) {
     class wpdb {
         public $prefix = 'wp_';

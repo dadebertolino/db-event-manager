@@ -174,7 +174,7 @@ class DBEM_Checkin {
      * Pagina pubblica check-in (da telefono, senza login WP)
      */
     public static function render_public_page() {
-        nocache_headers();
+        DBEM_Security::no_cache_page();
         include DBEM_PLUGIN_DIR . 'templates/frontend/checkin.php';
         exit;
     }
@@ -285,7 +285,7 @@ class DBEM_Checkin {
      * Pagina pubblica partecipanti (protetta da PIN)
      */
     public static function render_public_participants_page() {
-        nocache_headers();
+        DBEM_Security::no_cache_page();
         include DBEM_PLUGIN_DIR . 'templates/frontend/participants.php';
         exit;
     }

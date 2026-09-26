@@ -95,13 +95,21 @@
                         sendRegistration($form, true);
                     });
                 } else {
-                    $msg.addClass('dbem-message-error').text((resp.data && resp.data.message) || resp.data || i18n.error).show();
+                    var d = resp && resp.data;
+                    $msg.addClass('dbem-message-error').text((d && d.message) || (typeof d === 'string' && d) || i18n.error).show();
                     $msg.attr('tabindex', '-1').focus();
                     resetButton();
                 }
             },
-            error: function() {
-                $msg.addClass('dbem-message-error').text(i18n.error).show();
+            error: function(xhr) {
+                // Risposte 403/429 (origine non valida, sessione scaduta, troppe richieste):
+                // il messaggio del server va mostrato, non inghiottito
+                var d = xhr && xhr.responseJSON && xhr.responseJSON.data;
+                if (window.console && console.warn) {
+                    console.warn('[DB Event Manager] iscrizione non riuscita: HTTP ' + (xhr ? xhr.status : '?'), d || '');
+                }
+                $msg.addClass('dbem-message-error').text((d && d.message) || (typeof d === 'string' && d) || i18n.error).show();
+                $msg.attr('tabindex', '-1').focus();
                 resetButton();
             }
         });

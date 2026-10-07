@@ -290,9 +290,11 @@ class DBEM_Frontend {
                 if (registered) return;
                 var msgRegion = form.querySelector('.dbfb-messages-region');
                 if (!msgRegion) return;
-                // DBFB inserisce un div con classe dbfb-message-success quando il form è inviato
-                var successMsg = msgRegion.querySelector('.dbfb-message-success') || msgRegion.querySelector('[class*="success"]');
-                if (!successMsg && msgRegion.textContent.trim().length < 5) return;
+                // Solo l'esito positivo di DBFB (.dbfb-message.success; .dbfb-message-success nelle
+                // versioni vecchie). Prima bastava un testo qualsiasi nella regione: anche un errore
+                // di validazione o del captcha iscriveva all'evento
+                var successMsg = msgRegion.querySelector('.dbfb-message.success, .dbfb-message-success');
+                if (!successMsg) return;
 
                 // Raccogli dati dal form (prima che venga resettato)
                 var inputs = form.querySelectorAll('input, select, textarea');
@@ -329,6 +331,8 @@ class DBEM_Frontend {
                 if (privacyGiven) body.append('dbem_privacy', '1');
 
                 function showResult(ok, text) {
+                    // Dopo un errore un nuovo invio riuscito di DBFB deve poter iscrivere
+                    if (!ok) registered = false;
                     dbemMsg.className = 'dbem-message dbem-dbfb-message ' + (ok ? 'dbem-message-success' : 'dbem-message-error');
                     dbemMsg.textContent = text;
                     dbemMsg.style.display = 'block';

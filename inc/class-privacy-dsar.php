@@ -98,6 +98,12 @@ class DBEM_Privacy_DSAR {
                 array('name' => __('Orario assegnato', 'db-event-manager'), 'value' => (isset($reg->assigned_time) && $reg->assigned_time) ? $reg->assigned_time : '—'),
                 array('name' => __('IP', 'db-event-manager'), 'value' => $reg->ip_address),
             );
+            if (!empty($reg->reminder_sent_at)) {
+                $export_data[] = array('name' => __('Promemoria inviato', 'db-event-manager'), 'value' => $reg->reminder_sent_at);
+            }
+            if (!empty($reg->survey_sent_at)) {
+                $export_data[] = array('name' => __('Invito al survey inviato', 'db-event-manager'), 'value' => $reg->survey_sent_at);
+            }
 
             // Campi custom del form
             if (is_array($fields)) {
@@ -143,9 +149,14 @@ class DBEM_Privacy_DSAR {
                     array('name' => __('Data risposta', 'db-event-manager'), 'value' => $survey->submitted_at),
                 );
                 if (is_array($survey_data_parsed)) {
-                    foreach ($survey_data_parsed as $key => $val) {
+                    // Intestazioni con l'etichetta della domanda, non con il suo id
+                    $survey_fields = DBEM_Survey::get_fields($reg->event_id);
+                    $survey_rows = array((object) array('data' => $survey->data));
+                    foreach (DBEM_Survey::columns($survey_fields, $survey_rows) as $key => $label) {
+                        $val = DBEM_Survey::column_value($survey_data_parsed, $key, $survey_fields);
+                        if ($val === '' || $val === array()) continue;
                         if (is_array($val)) $val = implode(', ', $val);
-                        $survey_export[] = array('name' => $key, 'value' => $val);
+                        $survey_export[] = array('name' => $label, 'value' => $val);
                     }
                 }
 

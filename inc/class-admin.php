@@ -153,6 +153,8 @@ class DBEM_Admin {
                 'confirm_cancel'   => __('Sei sicuro di voler annullare questa iscrizione?', 'db-event-manager'),
                 'confirm_reminder' => __('Inviare il reminder a tutti i partecipanti confermati e presenti?', 'db-event-manager'),
                 'confirm_reminder_visible' => __('Inviare il reminder solo ai partecipanti visualizzati?', 'db-event-manager'),
+                /* translators: %d: destinatari che hanno già ricevuto un promemoria */
+                'reminder_already' => __('%d di loro hanno già ricevuto un promemoria e lo riceveranno di nuovo.', 'db-event-manager'),
                 'confirm_reset'    => __('Tornare al testo predefinito del reminder?', 'db-event-manager'),
                 /* translators: 1: posizione del partecipante in anteprima, 2: totale */
                 'preview_of'       => __('%1$d di %2$d', 'db-event-manager'),
@@ -1136,6 +1138,49 @@ class DBEM_Admin {
         return ob_get_clean();
     }
 
+    /**
+     * Registro degli invii di promemoria o survey di un evento, dal più recente
+     *
+     * @param string $type 'reminder' o 'survey'
+     */
+    public static function render_send_log($event_id, $type) {
+        $log = array_reverse(DBEM_DB::get_send_log($event_id, $type));
+        ob_start();
+        ?>
+        <details class="dbem-send-log">
+            <summary><?php echo esc_html($type === 'survey' ? __('Inviti al survey già inviati', 'db-event-manager') : __('Promemoria già inviati', 'db-event-manager')); ?> (<?php echo (int) count($log); ?>)</summary>
+            <?php if (!$log): ?>
+                <p class="description"><?php esc_html_e('Nessun invio finora.', 'db-event-manager'); ?></p>
+            <?php else: ?>
+                <ul>
+                    <?php foreach ($log as $row):
+                        $mode = ($row['mode'] ?? '') === 'auto' ? __('automatico', 'db-event-manager') : __('manuale', 'db-event-manager');
+                        $already = (int) ($row['already'] ?? 0);
+                        $note = '';
+                        if ($already) {
+                            $note = ($row['mode'] ?? '') === 'auto'
+                                /* translators: %d: destinatari saltati */
+                                ? sprintf(_n('%d saltato perché già raggiunto', '%d saltati perché già raggiunti', $already, 'db-event-manager'), $already)
+                                /* translators: %d: destinatari che l'avevano già ricevuto */
+                                : sprintf(_n('%d lo aveva già ricevuto', '%d lo avevano già ricevuto', $already, 'db-event-manager'), $already);
+                        } ?>
+                        <li>
+                            <?php echo esc_html(sprintf(
+                                /* translators: 1: data e ora, 2: manuale/automatico, 3: email inviate */
+                                _n('%1$s — %2$s, %3$d email', '%1$s — %2$s, %3$d email', (int) ($row['sent'] ?? 0), 'db-event-manager'),
+                                DBEM_Time::format('d/m/Y H:i', $row['at'] ?? ''),
+                                $mode,
+                                (int) ($row['sent'] ?? 0)
+                            ) . ($note !== '' ? ' (' . $note . ')' : '')); ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </details>
+        <?php
+        return ob_get_clean();
+    }
+
     private static function option_renames_hint() {
         return __('Per avvisare i partecipanti: in Partecipanti filtra per la nuova opzione, scegli "solo quelli visualizzati", controlla l\'anteprima e invia il reminder.', 'db-event-manager');
     }
@@ -1242,6 +1287,16 @@ class DBEM_Admin {
             update_option('dbem_from_name', str_replace(array('"', '<', '>'), '', sanitize_text_field(wp_unslash($_POST['dbem_from_name'] ?? ''))));
             $from_email = sanitize_email(DBEM_Security::input('dbem_from_email'));
             update_option('dbem_from_email', is_email($from_email) ? $from_email : '');
+            // Formato data: '' predefinito, 'wp' formato di WordPress, altrimenti personalizzato
+            $date_choice = DBEM_Security::input('dbem_date_format_choice');
+            $custom_format = trim(DBEM_Security::input('dbem_date_format_custom'));
+            if ($date_choice === 'wp') {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, 'wp');
+            } elseif ($date_choice === 'custom' && $custom_format !== '') {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, $custom_format);
+            } else {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, '');
+            }
             update_option(DBEM_Appearance::OPTION, DBEM_Appearance::sanitize_colors(wp_unslash($_POST['dbem_appearance'] ?? array()))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
@@ -1332,6 +1387,36 @@ class DBEM_Admin {
                         <td>
                             <input type="email" id="dbem_from_email" name="dbem_from_email" value="<?php echo esc_attr(get_option('dbem_from_email', '')); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                             <p class="description"><?php esc_html_e('Lascia vuoto per usare l\'email dell\'amministratore. Usa un indirizzo del dominio del sito: con un indirizzo di un altro dominio (es. Gmail) le email rischiano di finire nello spam. Se un plugin SMTP imposta già il mittente, lascia vuoto.', 'db-event-manager'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <hr>
+
+                <h2><?php esc_html_e('Date', 'db-event-manager'); ?></h2>
+                <?php
+                $date_option = (string) get_option(DBEM_Time::DATE_FORMAT_OPTION, '');
+                $date_choice = $date_option === '' ? 'default' : ($date_option === 'wp' ? 'wp' : 'custom');
+                $sample = time() + 3 * DAY_IN_SECONDS;
+                ?>
+                <table class="form-table">
+                    <tr>
+                        <th><?php esc_html_e('Formato data', 'db-event-manager'); ?></th>
+                        <td>
+                            <fieldset>
+                                <legend class="screen-reader-text"><?php esc_html_e('Formato data', 'db-event-manager'); ?></legend>
+                                <label><input type="radio" name="dbem_date_format_choice" value="default" <?php checked($date_choice, 'default'); ?>>
+                                    <?php echo esc_html(sprintf(__('Predefinito: %s', 'db-event-manager'), wp_date(DBEM_Time::DEFAULT_DATE_FORMAT . ' H:i', $sample))); ?></label><br>
+                                <label><input type="radio" name="dbem_date_format_choice" value="wp" <?php checked($date_choice, 'wp'); ?>>
+                                    <?php echo esc_html(sprintf(__('Come nelle Impostazioni generali di WordPress: %s', 'db-event-manager'), wp_date(get_option('date_format') . ' ' . get_option('time_format'), $sample))); ?></label><br>
+                                <label><input type="radio" name="dbem_date_format_choice" value="custom" <?php checked($date_choice, 'custom'); ?>>
+                                    <?php esc_html_e('Personalizzato:', 'db-event-manager'); ?></label>
+                                <input type="text" name="dbem_date_format_custom" value="<?php echo esc_attr($date_choice === 'custom' ? $date_option : ''); ?>" class="small-text" style="width:8em" aria-label="<?php esc_attr_e('Formato data personalizzato', 'db-event-manager'); ?>" placeholder="j F Y">
+                                <?php if ($date_choice === 'custom'): ?>
+                                    <span class="description"><?php echo esc_html(wp_date($date_option, $sample)); ?></span>
+                                <?php endif; ?>
+                            </fieldset>
+                            <p class="description"><?php echo wp_kses_post(__('Vale per le date viste dai visitatori e nelle email: card e pagina degli eventi, segnaposto {data_evento}, promemoria, pagina di approvazione. Formato personalizzato con i <a href="https://wordpress.org/documentation/article/customize-date-and-time-format/" target="_blank" rel="noopener noreferrer">codici di WordPress</a> (es. <code>j F Y</code> per «10 ottobre 2026»).', 'db-event-manager')); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -1619,21 +1704,26 @@ class DBEM_Admin {
         DBEM_DB::ensure_tables();
         $sent = 0;
         $failed = 0;
+        $already = 0;
         $registration_ids = isset($_POST['registration_ids']) ? array_map('absint', (array) wp_unslash($_POST['registration_ids'])) : null;
         foreach (DBEM_DB::get_reminder_registrations($event_id, $registration_ids) as $reg) {
+            // L'invio manuale raggiunge anche chi l'ha già ricevuto: è una scelta di chi invia
+            if (DBEM_DB::was_sent($reg, 'reminder')) $already++;
             if (DBEM_Email::send_reminder($event_id, $reg)) {
+                DBEM_DB::mark_sent($reg->id, 'reminder');
                 $sent++;
             } else {
                 $failed++;
             }
         }
+        DBEM_DB::log_send($event_id, 'reminder', 'manual', $sent, $already);
 
         wp_send_json_success(array(
             'message' => sprintf(
                 __('Promemoria inviati: %1$d. Non inviati: %2$d.', 'db-event-manager'),
                 $sent,
                 $failed
-            ),
+            ) . ($already ? ' ' . sprintf(_n('%d lo aveva già ricevuto.', '%d lo avevano già ricevuto.', $already, 'db-event-manager'), $already) : ''),
             'sent'   => $sent,
             'failed' => $failed,
         ));

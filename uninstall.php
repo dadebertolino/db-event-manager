@@ -25,6 +25,7 @@ function dbem_uninstall_site() {
         'dbem_delete_data_on_uninstall',
         'dbem_caps_version',
         'dbem_db_version',
+        'dbem_date_format',
         'dbem_appearance',
         'dbem_from_name',
         'dbem_from_email',

@@ -293,7 +293,13 @@
                 return;
             }
 
-            if (!confirm(ids ? i18n.confirm_reminder_visible : i18n.confirm_reminder)) return;
+            // Chi l'ha già ricevuto lo riceve di nuovo: lo si dice prima di inviare
+            var already = ids
+                ? $('tbody tr[data-id]:visible[data-reminder-sent="1"]').length
+                : parseInt(btn.data('already'), 10) || 0;
+            var question = ids ? i18n.confirm_reminder_visible : i18n.confirm_reminder;
+            if (already) question += '\n\n' + i18n.reminder_already.replace('%d', already);
+            if (!confirm(question)) return;
             btn.prop('disabled', true).text('⏳ ' + i18n.sending);
             $('#dbem-reminder-feedback').text('');
 

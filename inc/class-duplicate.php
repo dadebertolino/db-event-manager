@@ -16,7 +16,9 @@ class DBEM_Duplicate {
         // Il PIN dedicato è dato a chi gestisce quell'evento: non deve aprire anche la copia
         '_dbem_checkin_pin',
         // La copia non ha iscrizioni a cui applicare rinomine in sospeso
-        '_dbem_pending_option_renames');
+        '_dbem_pending_option_renames',
+        // Gli invii di promemoria e survey sono dell'evento originale
+        '_dbem_send_log');
 
     public static function init() {
         add_filter('post_row_actions', array(__CLASS__, 'add_row_action'), 10, 2);

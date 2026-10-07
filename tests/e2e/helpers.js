@@ -22,8 +22,8 @@ const PUBLIC_PAGES = {
  * Stato baseline e creazione degli eventi (dbem_e2e_reset_state() nella fixture).
  *
  * @param {import('@playwright/test').APIRequestContext} request
- * @param {{events?: Array<{key?: string, title?: string, status?: string, meta?: object}>, rate_limit?: number}} [opts]
- * @returns {Promise<{events: Object<string, {id: number, url: string}>, pin: string}>}
+ * @param {{events?: Array<{key?: string, title?: string, status?: string, meta?: object, registrations?: Array<{name?: string, email?: string, status?: string}>}>, rate_limit?: number}} [opts]
+ * @returns {Promise<{events: Object<string, {id: number, url: string, registrations: Array<{id: number, token: string}>}>, pin: string}>}
  */
 async function resetState( request, opts = {} ) {
 	const res = await request.post( '/?rest_route=/dbem-e2e/v1/reset', { data: opts } );
@@ -37,7 +37,7 @@ async function resetState( request, opts = {} ) {
  * Email catturate e iscrizioni salvate.
  *
  * @param {import('@playwright/test').APIRequestContext} request
- * @returns {Promise<{mails: Array<{to: string, subject: string, message: string}>, registrations: Array<object>}>}
+ * @returns {Promise<{mails: Array<{to: string, subject: string, message: string}>, registrations: Array<object>, survey: Array<{id: number, event_id: number, registration_id: number, data: string}>}>}
  */
 async function getState( request ) {
 	const res = await request.get( '/?rest_route=/dbem-e2e/v1/state' );

@@ -236,7 +236,7 @@ class DBEM_CPT {
             'year'     => date('Y', $ts_start),
             'multiday' => false,
             'hide_day' => get_post_meta($event_id, '_dbem_hide_card_day', true) === '1',
-            'range'    => $time_slot ? date('d/m/Y', $ts_start) : date('d/m/Y H:i', $ts_start),
+            'range'    => $time_slot ? DBEM_Time::format_date($start) : DBEM_Time::format_datetime($start),
         );
 
         // Evento di un solo giorno (o senza data di fine): riquadro invariato
@@ -245,7 +245,7 @@ class DBEM_CPT {
         }
 
         $card['multiday'] = true;
-        $card['range']    = date('d/m/Y', $ts_start) . ' — ' . date('d/m/Y', $ts_end);
+        $card['range']    = DBEM_Time::format_date($start) . ' — ' . DBEM_Time::format_date($end);
         $card['day']      = date('d', $ts_start) . '-' . date('d', $ts_end);
 
         if (date('Y-m', $ts_start) !== date('Y-m', $ts_end)) {

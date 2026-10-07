@@ -21,8 +21,7 @@ if ($selected_event) {
     DBEM_DB::ensure_tables();
     $event_title = DBEM_CPT::get_event_name($selected_event);
     $responses = DBEM_DB::get_survey_responses($selected_event);
-    $survey_fields = get_post_meta($selected_event, '_dbem_survey_fields', true);
-    if (!is_array($survey_fields)) $survey_fields = array();
+    $survey_fields = DBEM_Survey::get_fields($selected_event);
     $total_checked_in = DBEM_DB::count_registrations($selected_event, 'checked_in');
     $total_regs = DBEM_DB::count_registrations($selected_event);
 }
@@ -75,6 +74,7 @@ if ($selected_event) {
             </a>
             <span id="dbem-survey-feedback" style="margin-left:10px;"></span>
         </div>
+        <?php echo DBEM_Admin::render_send_log($selected_event, 'survey'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con esc_html ?>
 
         <?php if (empty($responses)): ?>
             <p><?php esc_html_e('Nessuna risposta ricevuta.', 'db-event-manager'); ?></p>
@@ -89,14 +89,11 @@ if ($selected_event) {
                     // Raccogli valori
                     $values = array();
                     foreach ($responses as $resp) {
-                        $data = json_decode($resp->data, true);
-                        if (isset($data[$label])) {
-                            $val = $data[$label];
-                            if (is_array($val)) {
-                                foreach ($val as $v) $values[] = $v;
-                            } else {
-                                $values[] = $val;
-                            }
+                        $val = DBEM_Survey::answer(json_decode($resp->data, true), $field);
+                        if (is_array($val)) {
+                            foreach ($val as $v) $values[] = $v;
+                        } elseif ($val !== '') {
+                            $values[] = $val;
                         }
                     }
                 ?>
@@ -131,8 +128,9 @@ if ($selected_event) {
                         <th><?php esc_html_e('Nome', 'db-event-manager'); ?></th>
                         <th><?php esc_html_e('Email', 'db-event-manager'); ?></th>
                         <th><?php esc_html_e('Data', 'db-event-manager'); ?></th>
-                        <?php foreach ($survey_fields as $f): ?>
-                            <th><?php echo esc_html($f['label']); ?></th>
+                        <?php $survey_columns = DBEM_Survey::columns($survey_fields, $responses);
+                        foreach ($survey_columns as $column_label): ?>
+                            <th><?php echo esc_html($column_label); ?></th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
@@ -144,8 +142,8 @@ if ($selected_event) {
                         <td><?php echo esc_html($resp->name); ?></td>
                         <td><?php echo esc_html($resp->email); ?></td>
                         <td><?php echo esc_html(DBEM_Time::format('d/m/Y H:i', $resp->submitted_at)); ?></td>
-                        <?php foreach ($survey_fields as $f):
-                            $val = $data[$f['label']] ?? '';
+                        <?php foreach (array_keys($survey_columns) as $column_key):
+                            $val = DBEM_Survey::column_value($data, $column_key, $survey_fields);
                             if (is_array($val)) $val = implode(', ', $val);
                         ?>
                             <td><?php echo esc_html($val); ?></td>

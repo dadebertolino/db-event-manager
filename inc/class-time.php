@@ -38,6 +38,34 @@ class DBEM_Time {
     }
 
     /**
+     * Formato delle date mostrate a visitatori e nelle email (#40), dalle Impostazioni del
+     * plugin: vuoto = 07/10/2026 come prima della 1.11.0, 'wp' = formato di WordPress
+     * (Impostazioni generali), altrimenti un formato PHP personalizzato
+     */
+    const DATE_FORMAT_OPTION = 'dbem_date_format';
+    const DEFAULT_DATE_FORMAT = 'd/m/Y';
+
+    public static function date_format() {
+        $option = (string) get_option(self::DATE_FORMAT_OPTION, '');
+        if ($option === 'wp') return (string) get_option('date_format') ?: self::DEFAULT_DATE_FORMAT;
+        return $option !== '' ? $option : self::DEFAULT_DATE_FORMAT;
+    }
+
+    public static function time_format() {
+        return get_option(self::DATE_FORMAT_OPTION, '') === 'wp' ? ((string) get_option('time_format') ?: 'H:i') : 'H:i';
+    }
+
+    /** Data salvata in ora locale, nel formato scelto */
+    public static function format_date($local) {
+        return self::format(self::date_format(), $local);
+    }
+
+    /** Data e ora salvate in ora locale, nel formato scelto */
+    public static function format_datetime($local) {
+        return self::format(self::date_format() . ' ' . self::time_format(), $local);
+    }
+
+    /**
      * True se la data locale è già passata
      */
     public static function is_past($local) {

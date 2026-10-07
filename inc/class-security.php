@@ -347,7 +347,7 @@ class DBEM_Security {
             $events[] = array(
                 'id'    => $event_id,
                 'name'  => DBEM_CPT::get_event_name($event_id),
-                'date'  => $start ? date_i18n('d/m/Y', strtotime($start)) : '',
+                'date'  => DBEM_Time::format_date($start),
             );
         }
 

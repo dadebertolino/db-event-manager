@@ -450,18 +450,54 @@
         });
     }
 
-    /* === Opzioni rinominate: avviso nell'editor a blocchi === */
-    function initOptionRenamesNotice() {
-        if (!$('#dbem_custom_fields_json').length || !window.wp || !wp.data || !wp.data.select('core/edit-post')) return;
+    /* === Opzioni rinominate: decisione su ogni rinomina scelta da iscritti === */
+    function initPendingRenames() {
+        var eventId = $('#post_ID').val();
+        if (!$('#dbem_custom_fields_json').length || !eventId) return;
 
+        function replaceBox(html, status) {
+            var $box = $(html);
+            $('#dbem-pending-renames').replaceWith($box);
+            if (status) $box.removeAttr('hidden').find('.dbem-pending-renames-status').text(status);
+        }
+
+        $(document).on('click', '.dbem-pending-rename-actions button', function() {
+            var $btn = $(this);
+            var $row = $btn.closest('.dbem-pending-rename-actions');
+            $row.find('button').prop('disabled', true);
+            $.post(dbem_admin.ajax_url, {
+                action: 'dbem_option_rename_decision',
+                nonce: dbem_admin.nonce,
+                event_id: eventId,
+                label: $row.data('label'),
+                from: $row.data('from'),
+                to: $row.data('to'),
+                decision: $btn.data('decision')
+            }).done(function(resp) {
+                if (resp.success) {
+                    replaceBox(resp.data.html, resp.data.message);
+                } else {
+                    $row.find('button').prop('disabled', false);
+                    $('#dbem-pending-renames .dbem-pending-renames-status').text(resp.data || i18n.error);
+                }
+            }).fail(function() {
+                $row.find('button').prop('disabled', false);
+                $('#dbem-pending-renames .dbem-pending-renames-status').text(i18n.error);
+            });
+        });
+
+        // Editor a blocchi: i metabox si salvano senza ricaricare la pagina, il riquadro si aggiorna qui
+        if (!window.wp || !wp.data || !wp.data.select('core/edit-post')) return;
         var wasSaving = false;
         wp.data.subscribe(function() {
             var saving = wp.data.select('core/edit-post').isSavingMetaBoxes();
             if (wasSaving && !saving) {
-                $.post(dbem_admin.ajax_url, { action: 'dbem_option_renames_notice', nonce: dbem_admin.nonce }, function(resp) {
-                    if (!resp.success || !resp.data.lines.length) return;
-                    var text = resp.data.title + ': ' + resp.data.lines.join('; ') + '. ' + resp.data.hint;
-                    wp.data.dispatch('core/notices').createNotice('info', text, { isDismissible: true, id: 'dbem-option-renames' });
+                $.post(dbem_admin.ajax_url, { action: 'dbem_pending_option_renames', nonce: dbem_admin.nonce, event_id: eventId }, function(resp) {
+                    if (!resp.success) return;
+                    replaceBox(resp.data.html);
+                    if (resp.data.count) {
+                        wp.data.dispatch('core/notices').createNotice('warning', resp.data.notice, { isDismissible: true, id: 'dbem-option-renames' });
+                    }
                 });
             }
             wasSaving = saving;
@@ -619,7 +655,7 @@
         initFieldsBuilder('#dbem-survey-fields', '#dbem_survey_fields_json');
         initParticipants();
         initSurvey();
-        initOptionRenamesNotice();
+        initPendingRenames();
         Appearance.init();
         Placeholders.init();
     });

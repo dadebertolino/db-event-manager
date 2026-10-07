@@ -347,9 +347,9 @@ class DBEM_DB {
     /**
      * Sostituisce i testi delle opzioni rinominate nelle iscrizioni di un evento.
      * $map è testo vecchio => testo nuovo per il campo $label. Restituisce le iscrizioni
-     * aggiornate per ciascun testo vecchio.
+     * aggiornate per ciascun testo vecchio; con $dry_run le conta senza modificarle.
      */
-    public static function rename_option_values($event_id, $label, $map) {
+    public static function rename_option_values($event_id, $label, $map, $dry_run = false) {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         $counts = array_fill_keys(array_keys($map), 0);
@@ -367,7 +367,7 @@ class DBEM_DB {
                     $changed = true;
                 }
             }
-            if (!$changed) continue;
+            if (!$changed || $dry_run) continue;
 
             $data[$label] = is_array($data[$label]) ? $values : $values[0];
             $wpdb->update($table, array('data' => wp_json_encode($data)), array('id' => $reg->id), array('%s'), array('%d'));

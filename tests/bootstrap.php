@@ -94,6 +94,19 @@ if (!function_exists('update_post_meta')) {
     }
 }
 
+if (!function_exists('_n')) {
+    function _n($single, $plural, $number, $domain = 'default') {
+        return $number == 1 ? $single : $plural;
+    }
+}
+
+if (!function_exists('delete_post_meta')) {
+    function delete_post_meta($post_id, $key) {
+        unset($GLOBALS['__dbem_post_meta'][$post_id][$key]);
+        return true;
+    }
+}
+
 if (!function_exists('wp_slash')) {
     function wp_slash($value) {
         return is_array($value) ? array_map('wp_slash', $value) : (is_string($value) ? addslashes($value) : $value);

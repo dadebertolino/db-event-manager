@@ -14,7 +14,9 @@ class DBEM_Duplicate {
      */
     const SKIPPED_META = array('_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date', '_wp_trash_meta_status', '_wp_trash_meta_time', '_wp_desired_post_slug',
         // Il PIN dedicato è dato a chi gestisce quell'evento: non deve aprire anche la copia
-        '_dbem_checkin_pin');
+        '_dbem_checkin_pin',
+        // La copia non ha iscrizioni a cui applicare rinomine in sospeso
+        '_dbem_pending_option_renames');
 
     public static function init() {
         add_filter('post_row_actions', array(__CLASS__, 'add_row_action'), 10, 2);

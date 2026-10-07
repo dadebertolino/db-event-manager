@@ -337,3 +337,10 @@
 .dbem-placeholders-row:first-child .dbem-placeholder {
     font-family: Consolas, Monaco, monospace;
 }
+
+/* Opzioni rinominate in attesa di decisione */
+.dbem-pending-renames { margin-top: 16px; padding: 12px 16px; background: #fcf9e8; border-left: 4px solid #dba617; }
+.dbem-pending-renames ul { margin: 8px 0 0; }
+.dbem-pending-renames li { margin-bottom: 8px; }
+.dbem-pending-rename-actions { display: inline-flex; gap: 8px; margin-left: 8px; vertical-align: middle; }
+.dbem-pending-renames-status:empty { display: none; }

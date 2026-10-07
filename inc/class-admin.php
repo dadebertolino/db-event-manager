@@ -3,6 +3,11 @@ if (!defined('ABSPATH')) exit;
 
 class DBEM_Admin {
 
+    /**
+     * Opzioni rinominate che riguardano iscritti, in attesa di una decisione
+     */
+    const PENDING_RENAMES_META = '_dbem_pending_option_renames';
+
     public static function can_manage_events() {
         return current_user_can(DBEM_CPT::EVENT_MANAGER_CAP);
     }
@@ -476,6 +481,7 @@ class DBEM_Admin {
                 </button>
             </div>
             <input type="hidden" name="_dbem_custom_fields" id="dbem_custom_fields_json" value="<?php echo esc_attr(wp_json_encode($custom_fields)); ?>">
+            <?php echo self::render_pending_option_renames($post->ID); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con esc_html/esc_attr ?>
         </div>
 
         <!-- DB Form Builder -->
@@ -1041,42 +1047,108 @@ class DBEM_Admin {
 
         DBEM_DB::ensure_tables();
         DBEM_DB::rename_data_keys($event_id, $renames);
+
+        // Le rinomine di opzioni ancora da decidere seguono l'etichetta nuova
+        $pending = self::get_pending_option_renames($event_id);
+        foreach ($pending as &$rename) {
+            if (isset($renames[$rename['label']])) $rename['label'] = $renames[$rename['label']];
+        }
+        unset($rename);
+        self::save_pending_option_renames($event_id, $pending);
     }
 
     /**
-     * Porta le opzioni rinominate nelle iscrizioni esistenti e prepara l'avviso
+     * Opzioni rinominate: non si applicano da sole alle iscrizioni. Un testo cambiato può
+     * essere la stessa opzione corretta (refuso, orario spostato) oppure un'opzione nuova
+     * al posto di una piena (Lab 10 ott → Lab 24 ott): lo decide chi gestisce l'evento,
+     * nel riquadro del form, per ogni rinomina scelta da almeno un iscritto.
      */
     private static function apply_option_renames($event_id, $old_fields, $new_fields) {
         $renames = self::find_renamed_options($old_fields, $new_fields);
         if (!$renames) return;
 
-        DBEM_DB::ensure_tables();
-        $summary = array();
+        $pending = self::get_pending_option_renames($event_id);
         foreach ($renames as $label => $map) {
-            foreach (DBEM_DB::rename_option_values($event_id, $label, $map) as $old_text => $count) {
-                $summary[] = array('from' => $old_text, 'to' => $map[$old_text], 'count' => $count);
+            foreach ($map as $from => $to) {
+                // Un'opzione già in sospeso rinominata di nuovo: le iscrizioni hanno ancora il testo originale
+                $chained = false;
+                foreach ($pending as &$rename) {
+                    if ($rename['label'] === $label && $rename['to'] === $from) {
+                        $rename['to'] = $to;
+                        $chained = true;
+                    }
+                }
+                unset($rename);
+                if (!$chained) {
+                    $pending[] = array('label' => $label, 'from' => $from, 'to' => $to);
+                }
             }
         }
-        set_transient('dbem_option_renames_' . get_current_user_id(), $summary, 300);
+        self::save_pending_option_renames($event_id, $pending);
     }
 
     /**
-     * Righe dell'avviso sulle opzioni aggiornate, consumate alla prima lettura
+     * Rinomine in sospeso: [{label, from, to}]
      */
-    private static function take_option_renames_summary() {
-        $key = 'dbem_option_renames_' . get_current_user_id();
-        $summary = get_transient($key);
-        if (!$summary) return array();
-        delete_transient($key);
+    public static function get_pending_option_renames($event_id) {
+        $pending = get_post_meta($event_id, self::PENDING_RENAMES_META, true);
+        if (!is_array($pending)) return array();
+        return array_values(array_filter($pending, function ($r) {
+            return is_array($r) && isset($r['label'], $r['from'], $r['to']);
+        }));
+    }
 
-        $lines = array();
-        foreach ($summary as $row) {
-            $lines[] = sprintf(
-                _n('«%1$s» → «%2$s»: %3$d iscrizione', '«%1$s» → «%2$s»: %3$d iscrizioni', $row['count'], 'db-event-manager'),
-                $row['from'], $row['to'], $row['count']
-            );
+    /**
+     * Salva le rinomine in sospeso tenendo solo quelle che riguardano almeno un iscritto
+     */
+    private static function save_pending_option_renames($event_id, $pending) {
+        DBEM_DB::ensure_tables();
+        $keep = array();
+        foreach ($pending as $rename) {
+            if ($rename['from'] === $rename['to']) continue;
+            $count = DBEM_DB::rename_option_values($event_id, $rename['label'], array($rename['from'] => $rename['to']), true);
+            if (!empty($count[$rename['from']])) $keep[] = $rename;
         }
-        return $lines;
+        if ($keep) {
+            update_post_meta($event_id, self::PENDING_RENAMES_META, wp_slash($keep));
+        } else {
+            delete_post_meta($event_id, self::PENDING_RENAMES_META);
+        }
+    }
+
+    /**
+     * Riquadro delle rinomine da decidere, sotto i campi del form
+     */
+    public static function render_pending_option_renames($event_id) {
+        $pending = self::get_pending_option_renames($event_id);
+        ob_start();
+        ?>
+        <div id="dbem-pending-renames" class="dbem-pending-renames"<?php echo $pending ? '' : ' hidden'; ?>>
+            <?php if ($pending): ?>
+                <p><strong><?php esc_html_e('Opzioni rinominate: vuoi aggiornare anche le iscrizioni?', 'db-event-manager'); ?></strong></p>
+                <p class="description"><?php esc_html_e('Se è la stessa opzione con il testo corretto, aggiorna le iscrizioni. Se è un\'opzione diversa (per esempio un\'altra data al posto di una piena), lascia com\'è: chi l\'aveva scelta resta con il testo precedente.', 'db-event-manager'); ?></p>
+                <ul>
+                    <?php foreach ($pending as $rename):
+                        $count = DBEM_DB::rename_option_values($event_id, $rename['label'], array($rename['from'] => $rename['to']), true);
+                        $count = (int) ($count[$rename['from']] ?? 0); ?>
+                        <li>
+                            <?php echo esc_html(sprintf(
+                                /* translators: 1: campo, 2: testo precedente, 3: testo nuovo, 4: numero di iscrizioni */
+                                _n('%1$s: «%2$s» → «%3$s» (%4$d iscrizione)', '%1$s: «%2$s» → «%3$s» (%4$d iscrizioni)', $count, 'db-event-manager'),
+                                $rename['label'], $rename['from'], $rename['to'], $count
+                            )); ?>
+                            <span class="dbem-pending-rename-actions" data-label="<?php echo esc_attr($rename['label']); ?>" data-from="<?php echo esc_attr($rename['from']); ?>" data-to="<?php echo esc_attr($rename['to']); ?>">
+                                <button type="button" class="button button-small" data-decision="apply"><?php echo esc_html(sprintf(_n('Aggiorna %d iscrizione', 'Aggiorna %d iscrizioni', $count, 'db-event-manager'), $count)); ?></button>
+                                <button type="button" class="button button-small button-link" data-decision="keep"><?php esc_html_e('Lascia com\'è', 'db-event-manager'); ?></button>
+                            </span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+            <p class="dbem-pending-renames-status" role="status"></p>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 
     private static function option_renames_hint() {
@@ -1084,36 +1156,64 @@ class DBEM_Admin {
     }
 
     /**
-     * Editor a blocchi: la scheda evento si salva senza ricaricare, l'avviso lo chiede il JS
+     * AJAX: riquadro aggiornato dopo il salvataggio nell'editor a blocchi (non ricarica la pagina)
      */
-    public static function handle_option_renames_notice() {
+    public static function handle_pending_option_renames() {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
-        if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || !current_user_can('edit_post', $event_id)) {
+            wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        }
 
         wp_send_json_success(array(
-            'title' => __('Opzioni modificate: iscrizioni aggiornate', 'db-event-manager'),
-            'lines' => self::take_option_renames_summary(),
-            'hint'  => self::option_renames_hint(),
+            'count' => count(self::get_pending_option_renames($event_id)),
+            'html'  => self::render_pending_option_renames($event_id),
+            'notice' => __('Hai rinominato opzioni già scelte da qualche iscritto: decidi nel riquadro del form se aggiornare le iscrizioni.', 'db-event-manager'),
         ));
     }
 
     /**
-     * Avviso dopo il salvataggio dell'evento con le opzioni aggiornate nelle iscrizioni
+     * AJAX: decisione su una rinomina (aggiorna le iscrizioni o lascia com'è)
      */
-    public static function render_option_renames_notice() {
-        $lines = self::take_option_renames_summary();
-        if (!$lines) return;
-        ?>
-        <div class="notice notice-info is-dismissible">
-            <p><strong><?php esc_html_e('Opzioni modificate: iscrizioni aggiornate', 'db-event-manager'); ?></strong></p>
-            <ul>
-                <?php foreach ($lines as $line): ?>
-                    <li><?php echo esc_html($line); ?></li>
-                <?php endforeach; ?>
-            </ul>
-            <p><?php echo esc_html(self::option_renames_hint()); ?></p>
-        </div>
-        <?php
+    public static function handle_option_rename_decision() {
+        check_ajax_referer('dbem_admin_nonce', 'nonce');
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || !current_user_can('edit_post', $event_id)) {
+            wp_send_json_error(__('Accesso negato', 'db-event-manager'));
+        }
+        $label    = sanitize_text_field(wp_unslash($_POST['label'] ?? ''));
+        $from     = sanitize_text_field(wp_unslash($_POST['from'] ?? ''));
+        $to       = sanitize_text_field(wp_unslash($_POST['to'] ?? ''));
+        $decision = sanitize_key($_POST['decision'] ?? '');
+
+        $pending = self::get_pending_option_renames($event_id);
+        $found = null;
+        foreach ($pending as $i => $rename) {
+            if ($rename['label'] === $label && $rename['from'] === $from && $rename['to'] === $to) {
+                $found = $i;
+                break;
+            }
+        }
+        if ($found === null || !in_array($decision, array('apply', 'keep'), true)) {
+            wp_send_json_error(__('Rinomina non trovata: ricarica la pagina.', 'db-event-manager'));
+        }
+
+        $message = __('Iscrizioni lasciate com\'erano.', 'db-event-manager');
+        if ($decision === 'apply') {
+            DBEM_DB::ensure_tables();
+            $counts = DBEM_DB::rename_option_values($event_id, $label, array($from => $to));
+            $message = sprintf(
+                _n('%d iscrizione aggiornata.', '%d iscrizioni aggiornate.', (int) ($counts[$from] ?? 0), 'db-event-manager'),
+                (int) ($counts[$from] ?? 0)
+            ) . ' ' . self::option_renames_hint();
+        }
+        unset($pending[$found]);
+        self::save_pending_option_renames($event_id, array_values($pending));
+
+        wp_send_json_success(array(
+            'message' => $message,
+            'html'    => self::render_pending_option_renames($event_id),
+        ));
     }
 
     private static function sanitize_fields_array($fields) {

@@ -449,8 +449,11 @@ $site_name = get_bloginfo('name');
         fb.className = 'pp-feedback pp-fb-' + type;
         fb.textContent = msg;
         fb.style.display = 'block';
-        setTimeout(function() { fb.style.display = 'none'; }, 3000);
+        // Un avviso nuovo non va nascosto dal timer di quello precedente
+        clearTimeout(feedbackTimer);
+        feedbackTimer = setTimeout(function() { fb.style.display = 'none'; }, 3000);
     }
+    var feedbackTimer = null;
 
     function escHtml(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

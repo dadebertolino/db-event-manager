@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 $events = get_posts(array(
     'post_type'      => 'dbem_event',
     'post_status'    => 'publish',
-    'posts_per_page' => 50,
+    'posts_per_page' => -1,
     'orderby'        => 'date',
     'order'          => 'DESC',
 ));

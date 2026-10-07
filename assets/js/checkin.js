@@ -4,6 +4,7 @@
 
     var scanner = null;
     var currentEventId = 0;
+    var feedbackTimer = null;
 
     // Testi da wp_localize_script; i valori qui sotto servono solo se una cache separa JS e HTML
     var i18n = $.extend({
@@ -143,8 +144,10 @@
         $fb.find('.dbem-feedback-message').text(message);
         $fb.show();
         // Auto-hide dopo 5s (non per loading)
+        // Un avviso nuovo non va nascosto dal timer di quello precedente
+        clearTimeout(feedbackTimer);
         if (type !== 'loading') {
-            setTimeout(function() { $fb.fadeOut(300); }, 5000);
+            feedbackTimer = setTimeout(function() { $fb.fadeOut(300); }, 5000);
         }
     }
 

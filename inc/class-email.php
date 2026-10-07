@@ -679,8 +679,8 @@ class DBEM_Email {
         );
 
         $buttons = '<div style="text-align:center;margin:24px 0;">
-            <a href="' . esc_url($approve_url) . '" style="display:inline-block;padding:14px 32px;background:#1d6e3f;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">✅ Approva</a>
-            <a href="' . esc_url($reject_url) . '" style="display:inline-block;padding:14px 32px;background:#d63638;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">❌ Rifiuta</a>
+            <a href="' . esc_url($approve_url) . '" style="display:inline-block;padding:14px 32px;background:#1d6e3f;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">✅ ' . esc_html__('Approva', 'db-event-manager') . '</a>
+            <a href="' . esc_url($reject_url) . '" style="display:inline-block;padding:14px 32px;background:#d63638;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">❌ ' . esc_html__('Rifiuta', 'db-event-manager') . '</a>
         </div>';
 
         return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">

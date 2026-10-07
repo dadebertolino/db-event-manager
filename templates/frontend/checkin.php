@@ -281,7 +281,7 @@ $site_name = get_bloginfo('name');
                 var token = extractToken(text);
                 if (token) {
                     stopScanner();
-                    processToken(token);
+                    processToken(token, true);
                 }
             },
             function() {}
@@ -306,15 +306,16 @@ $site_name = get_bloginfo('name');
     }
 
     /* === Check-in === */
-    function processToken(token) {
-        sendCheckin('token=' + encodeURIComponent(token));
+    // fromScanner: solo dopo una scansione la fotocamera si riaccende da sola
+    function processToken(token, fromScanner) {
+        sendCheckin('token=' + encodeURIComponent(token), fromScanner);
     }
 
     function processRegistration(id) {
         sendCheckin('registration_id=' + encodeURIComponent(id));
     }
 
-    function sendCheckin(param) {
+    function sendCheckin(param, fromScanner) {
         showFeedback('loading', '⏳', '', '', T.checking);
 
         var body = 'action=dbem_public_checkin&' + param;
@@ -329,8 +330,8 @@ $site_name = get_bloginfo('name');
 
             showFeedback(cls, d.icon || '❌', d.name || '', d.event || '', d.message || T.error);
 
-            // Dopo 3 secondi, riattiva lo scanner automaticamente
-            if (cls === 'success') {
+            // Dopo una scansione riuscita lo scanner si riattiva; non dopo una ricerca manuale
+            if (cls === 'success' && fromScanner) {
                 setTimeout(function() {
                     hideFeedback();
                     startScanner();

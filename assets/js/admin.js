@@ -93,9 +93,12 @@
             if (containerId === '#dbem-custom-fields') $(document).trigger('dbem:fields-changed', [fields]);
         }
 
+        // Una sola istanza per elenco: renderFields() la richiama a ogni modifica, e ogni
+        // istanza in più ripeteva il riordino e il render a ogni trascinamento
+        var sortable = null;
         function initSortable() {
-            if (typeof Sortable === 'undefined') return;
-            Sortable.create($list[0], {
+            if (typeof Sortable === 'undefined' || sortable) return;
+            sortable = Sortable.create($list[0], {
                 handle: '.dbem-drag-handle',
                 animation: 150,
                 onEnd: function() {

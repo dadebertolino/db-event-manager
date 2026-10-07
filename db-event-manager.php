@@ -333,7 +333,7 @@ final class DB_Event_Manager {
         $confirm_url = home_url('/?dbem_action=approve_confirm');
         $nonce = wp_create_nonce('dbem_approve_confirm_' . $token);
 
-        $html = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+        $html = '<!DOCTYPE html><html lang="' . esc_attr(get_bloginfo('language')) . '"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
         <title>' . esc_html__('Approva iscrizione', 'db-event-manager') . ' — ' . esc_html($site_name) . '</title>
         <style>
             *{box-sizing:border-box;margin:0;padding:0}

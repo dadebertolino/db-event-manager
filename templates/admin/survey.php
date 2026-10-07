@@ -3,8 +3,9 @@ if (!defined('ABSPATH')) exit;
 
 $events = get_posts(array(
     'post_type'      => 'dbem_event',
-    'post_status'    => array('publish', 'draft'),
-    'posts_per_page' => 100,
+    // Tutti gli eventi che possono avere iscrizioni, non solo pubblicati e bozze, e senza tetto
+    'post_status'    => array('publish', 'future', 'draft', 'pending', 'private'),
+    'posts_per_page' => -1,
     'orderby'        => 'date',
     'order'          => 'DESC',
 ));

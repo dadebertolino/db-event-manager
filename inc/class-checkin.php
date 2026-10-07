@@ -52,13 +52,13 @@ class DBEM_Checkin {
                     'name'    => $reg->name,
                     'email'   => $reg->email,
                     'event'   => $event_title,
-                    'time'    => wp_date('H:i', strtotime($now)),
+                    'time'    => DBEM_Time::format('H:i', $now),
                     'icon'    => '✅',
                 ));
                 break;
 
             case 'checked_in':
-                $time = $reg->checked_in_at ? wp_date('H:i', strtotime($reg->checked_in_at)) : '—';
+                $time = $reg->checked_in_at ? DBEM_Time::format('H:i', $reg->checked_in_at) : '—';
                 wp_send_json_success(array(
                     'status'  => 'already',
                     'message' => sprintf(__('Già registrato alle %s', 'db-event-manager'), $time),
@@ -122,7 +122,7 @@ class DBEM_Checkin {
                 'email'  => $r->email,
                 'status' => $r->status,
                 'token'  => $r->status === 'confirmed' ? $r->token : '',
-                'time'   => $r->checked_in_at ? wp_date('H:i', strtotime($r->checked_in_at)) : '',
+                'time'   => $r->checked_in_at ? DBEM_Time::format('H:i', $r->checked_in_at) : '',
             );
             // Come nella pagina pubblica: contano le iscrizioni valide
             if (in_array($r->status, array('confirmed', 'checked_in'), true)) $total++;
@@ -154,7 +154,7 @@ class DBEM_Checkin {
                 'email'  => $r->email,
                 'token'  => $r->token,
                 'status' => $r->status,
-                'time'   => $r->checked_in_at ? wp_date('H:i', strtotime($r->checked_in_at)) : '',
+                'time'   => $r->checked_in_at ? DBEM_Time::format('H:i', $r->checked_in_at) : '',
             );
         }
 
@@ -228,13 +228,13 @@ class DBEM_Checkin {
                     'message' => sprintf(__('Check-in effettuato', 'db-event-manager')),
                     'name'    => $reg->name,
                     'event'   => $event_title,
-                    'time'    => wp_date('H:i', strtotime($now)),
+                    'time'    => DBEM_Time::format('H:i', $now),
                     'icon'    => '✅',
                 ));
                 break;
 
             case 'checked_in':
-                $time = $reg->checked_in_at ? wp_date('H:i', strtotime($reg->checked_in_at)) : '—';
+                $time = $reg->checked_in_at ? DBEM_Time::format('H:i', $reg->checked_in_at) : '—';
                 wp_send_json_success(array(
                     'status'  => 'already',
                     'message' => sprintf(__('Già registrato alle %s', 'db-event-manager'), $time),
@@ -282,7 +282,7 @@ class DBEM_Checkin {
                 'email'  => $r->email,
                 'status' => $r->status,
                 'event'  => DBEM_CPT::get_event_name($r->event_id),
-                'time'   => $r->checked_in_at ? wp_date('H:i', strtotime($r->checked_in_at)) : '',
+                'time'   => $r->checked_in_at ? DBEM_Time::format('H:i', $r->checked_in_at) : '',
             );
         }
 

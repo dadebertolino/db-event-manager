@@ -100,6 +100,18 @@ if (!function_exists('_n')) {
     }
 }
 
+if (!function_exists('wp_timezone')) {
+    function wp_timezone() {
+        return new DateTimeZone($GLOBALS['__dbem_options']['timezone_string'] ?? 'UTC');
+    }
+}
+
+if (!function_exists('wp_date')) {
+    function wp_date($format, $timestamp = null) {
+        return (new DateTimeImmutable('@' . ($timestamp ?? time())))->setTimezone(wp_timezone())->format($format);
+    }
+}
+
 if (!function_exists('delete_post_meta')) {
     function delete_post_meta($post_id, $key) {
         unset($GLOBALS['__dbem_post_meta'][$post_id][$key]);
@@ -629,6 +641,7 @@ if (!class_exists('wpdb')) {
     $GLOBALS['wpdb'] = new wpdb();
 }
 
+require_once dirname(__DIR__, 2) . '/inc/class-time.php';
 require_once dirname(__DIR__, 2) . '/inc/class-security.php';
 require_once dirname(__DIR__, 2) . '/inc/class-db.php';
 require_once dirname(__DIR__, 2) . '/inc/class-email.php';

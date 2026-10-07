@@ -175,10 +175,10 @@ class DBEM_CPT {
         if ($post_status === 'draft') return 'draft';
 
         $end = get_post_meta($event_id, '_dbem_date_end', true);
-        if ($end && strtotime($end) < time()) return 'past';
+        if ($end && DBEM_Time::is_past($end)) return 'past';
 
         $start = get_post_meta($event_id, '_dbem_date_start', true);
-        if ($start && strtotime($start) <= time() && (!$end || strtotime($end) >= time())) return 'ongoing';
+        if ($start && DBEM_Time::timestamp($start) <= time()) return 'ongoing';
 
         return 'upcoming';
     }
@@ -192,7 +192,7 @@ class DBEM_CPT {
 
         // Controlla deadline
         $deadline = get_post_meta($event_id, '_dbem_registration_deadline', true);
-        if ($deadline && strtotime($deadline) < time()) return false;
+        if ($deadline && DBEM_Time::is_past($deadline)) return false;
 
         // Controlla posti
         $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);

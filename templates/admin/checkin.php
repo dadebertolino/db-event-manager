@@ -24,7 +24,7 @@ $preloaded_token = sanitize_text_field(wp_unslash($_GET['token'] ?? '')); // php
                     <?php echo esc_html($e->post_title); ?>
                     <?php
                     $start = get_post_meta($e->ID, '_dbem_date_start', true);
-                    if ($start) echo ' (' . esc_html(wp_date('d/m/Y', strtotime($start))) . ')';
+                    if ($start) echo ' (' . esc_html(DBEM_Time::format('d/m/Y', $start)) . ')';
                     ?>
                 </option>
             <?php endforeach; ?>

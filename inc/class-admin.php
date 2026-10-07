@@ -904,7 +904,7 @@ class DBEM_Admin {
         $start = get_post_meta($post_id, '_dbem_date_start', true);
         wp_clear_scheduled_hook('dbem_send_reminder', array($post_id));
         if ($reminder_hours > 0 && $start) {
-            $reminder_time = strtotime($start) - ($reminder_hours * 3600);
+            $reminder_time = DBEM_Time::timestamp($start) - ($reminder_hours * 3600);
             if ($reminder_time > time()) {
                 wp_schedule_single_event($reminder_time, 'dbem_send_reminder', array($post_id));
             }
@@ -915,7 +915,7 @@ class DBEM_Admin {
         $end = get_post_meta($post_id, '_dbem_date_end', true);
         wp_clear_scheduled_hook('dbem_send_survey_auto', array($post_id));
         if ($survey_auto > 0 && $end) {
-            $send_time = strtotime($end) + ($survey_auto * 3600);
+            $send_time = DBEM_Time::timestamp($end) + ($survey_auto * 3600);
             if ($send_time > time()) {
                 wp_schedule_single_event($send_time, 'dbem_send_survey_auto', array($post_id));
             }

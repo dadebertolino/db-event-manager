@@ -142,7 +142,7 @@ if ($selected_event) {
                     <tr>
                         <td><?php echo esc_html($resp->name); ?></td>
                         <td><?php echo esc_html($resp->email); ?></td>
-                        <td><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($resp->submitted_at))); ?></td>
+                        <td><?php echo esc_html(DBEM_Time::format('d/m/Y H:i', $resp->submitted_at)); ?></td>
                         <?php foreach ($survey_fields as $f):
                             $val = $data[$f['label']] ?? '';
                             if (is_array($val)) $val = implode(', ', $val);

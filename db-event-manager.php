@@ -51,6 +51,7 @@ final class DB_Event_Manager {
     }
 
     private function includes() {
+        require_once DBEM_PLUGIN_DIR . 'inc/class-time.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-security.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-db.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-cpt.php';
@@ -362,8 +363,8 @@ final class DB_Event_Manager {
                 <h3>' . esc_html__('Richiesta iscrizione', 'db-event-manager') . '</h3>
                 <p><strong>' . esc_html__('Evento:', 'db-event-manager') . '</strong> ' . esc_html($event_title) . '</p>';
         if ($event_start) {
-            $html .= '<p><strong>📅</strong> ' . esc_html(wp_date('d/m/Y H:i', strtotime($event_start)));
-            if ($event_end) $html .= ' — ' . esc_html(wp_date('d/m/Y H:i', strtotime($event_end)));
+            $html .= '<p><strong>📅</strong> ' . esc_html(DBEM_Time::format('d/m/Y H:i', $event_start));
+            if ($event_end) $html .= ' — ' . esc_html(DBEM_Time::format('d/m/Y H:i', $event_end));
             $html .= '</p>';
         }
         if ($location) $html .= '<p><strong>📍</strong> ' . esc_html($location) . '</p>';

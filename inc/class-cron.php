@@ -46,7 +46,7 @@ class DBEM_Cron {
         foreach ($events as $event) {
             // Chiudi se deadline passata
             $deadline = get_post_meta($event->ID, '_dbem_registration_deadline', true);
-            if ($deadline && strtotime($deadline) < time()) {
+            if ($deadline && DBEM_Time::is_past($deadline)) {
                 update_post_meta($event->ID, '_dbem_registration_open', '0');
                 continue;
             }

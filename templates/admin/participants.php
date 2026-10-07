@@ -239,8 +239,8 @@ $status_labels = array(
                                 —
                             <?php endif; ?>
                         </td>
-                        <td><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($reg->registered_at))); ?></td>
-                        <td><?php echo $reg->checked_in_at ? esc_html(wp_date('d/m/Y H:i', strtotime($reg->checked_in_at))) : '—'; ?></td>
+                        <td><?php echo esc_html(DBEM_Time::format('d/m/Y H:i', $reg->registered_at)); ?></td>
+                        <td><?php echo $reg->checked_in_at ? esc_html(DBEM_Time::format('d/m/Y H:i', $reg->checked_in_at)) : '—'; ?></td>
                         <td><?php echo !empty($reg->assigned_time) ? esc_html($reg->assigned_time) : '—'; ?></td>
                         <td class="dbem-actions">
                             <?php if ($reg->status === 'pending'): ?>

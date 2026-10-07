@@ -141,10 +141,12 @@ class DBEM_Export {
     }
 
     /**
-     * Escape vuoto = CSV standard (RFC 4180): le virgolette si raddoppiano e basta.
-     * Senza $escape PHP 8.4 segnala la deprecazione, e l'avviso poteva finire dentro il CSV
+     * Ogni cella passa da csv_safe(), intestazioni comprese: i nomi delle colonne dei campi
+     * vengono dai dati inviati con il form e una chiave come "=HYPERLINK(...)" diventerebbe
+     * una formula. Escape vuoto = CSV standard (RFC 4180): le virgolette si raddoppiano e
+     * basta. Senza $escape PHP 8.4 segnala la deprecazione, e l'avviso poteva finire dentro il CSV
      */
     private static function put_row($output, $row) {
-        fputcsv($output, $row, ',', '"', '');
+        fputcsv($output, array_map(array(__CLASS__, 'csv_safe'), $row), ',', '"', '');
     }
 }

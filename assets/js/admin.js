@@ -171,8 +171,12 @@
                 bulk_action: action,
                 ids: ids
             }, function(resp) {
-                if (resp.success) location.reload();
-                else alert(resp.data || i18n.error);
+                if (resp.success) {
+                    if (resp.data.skipped) alert(resp.data.message);
+                    location.reload();
+                } else {
+                    alert(resp.data || i18n.error);
+                }
             });
         });
 

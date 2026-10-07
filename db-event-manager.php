@@ -82,9 +82,6 @@ final class DB_Event_Manager {
     }
 
     private function init_hooks() {
-        register_activation_hook(__FILE__, array('DBEM_DB', 'activate'));
-        register_deactivation_hook(__FILE__, array('DBEM_Cron', 'deactivate'));
-
         add_action('init', array($this, 'load_textdomain'));
         add_action('init', array('DBEM_CPT', 'register'));
         add_action('admin_menu', array('DBEM_Admin', 'register_menus'));
@@ -489,4 +486,15 @@ final class DB_Event_Manager {
 // Init
 add_action('plugins_loaded', function() {
     DB_Event_Manager::get_instance();
+});
+
+// Attivazione e disattivazione si registrano al caricamento del file: quando WordPress
+// attiva il plugin, plugins_loaded è già passato e un hook registrato lì non partirebbe mai
+register_activation_hook(__FILE__, function() {
+    DB_Event_Manager::get_instance();
+    DBEM_DB::activate();
+});
+register_deactivation_hook(__FILE__, function() {
+    DB_Event_Manager::get_instance();
+    DBEM_Cron::deactivate();
 });

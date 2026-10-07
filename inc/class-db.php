@@ -11,6 +11,8 @@ class DBEM_DB {
         // Genera il PIN delle pagine pubbliche se non esiste
         DBEM_Security::get_pin();
         DBEM_Cron::schedule();
+        // Le regole del CPT (pagine evento, archivio /eventi/) entrano nel flush solo se è registrato
+        DBEM_CPT::register();
         flush_rewrite_rules();
     }
 

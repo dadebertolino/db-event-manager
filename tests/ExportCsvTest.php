@@ -16,4 +16,8 @@ final class ExportCsvTest extends TestCase {
         // Con l'escape predefinito "\" la riga usciva "C:\""", non leggibile da Excel
         $this->assertSame("Anna,\"Dice \"\"ciao\"\"\",\"C:\\\"\"\"\n", $this->row(array('Anna', 'Dice "ciao"', 'C:\\"')));
     }
+
+    public function testEveryCellIsNeutralizedHeadersIncluded(): void {
+        $this->assertSame("ID,\"'=HYPERLINK(\"\"http://x\"\")\",'+1,'@a\n", $this->row(array('ID', '=HYPERLINK("http://x")', '+1', '@a')));
+    }
 }

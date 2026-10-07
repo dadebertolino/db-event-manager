@@ -252,7 +252,9 @@ $status_labels = array(
                             <?php elseif ($reg->status === 'cancelled'): ?>
                                 <button class="button button-small dbem-action-btn dbem-tip" data-action="confirm" data-id="<?php echo esc_attr($reg->id); ?>" aria-label="<?php esc_attr_e('Riconferma', 'db-event-manager'); ?>" data-tooltip="<?php esc_attr_e('Riconferma', 'db-event-manager'); ?>">🔄</button>
                             <?php endif; ?>
+                            <?php if (in_array($reg->status, array('confirmed', 'checked_in'), true)): ?>
                             <button class="button button-small dbem-resend-btn dbem-tip" data-id="<?php echo esc_attr($reg->id); ?>" aria-label="<?php esc_attr_e('Reinvia email conferma', 'db-event-manager'); ?>" data-tooltip="<?php esc_attr_e('Reinvia email', 'db-event-manager'); ?>">📧</button>
+                            <?php endif; ?>
                             <button class="button button-small dbem-action-btn dbem-delete-btn dbem-tip" data-action="delete" data-id="<?php echo esc_attr($reg->id); ?>" aria-label="<?php esc_attr_e('Elimina iscrizione', 'db-event-manager'); ?>" data-tooltip="<?php esc_attr_e('Elimina', 'db-event-manager'); ?>">🗑️</button>
                         </td>
                     </tr>

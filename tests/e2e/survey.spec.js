@@ -72,7 +72,7 @@ test.describe( 'Survey', () => {
 	test.describe( 'admin', () => {
 		test.use( { storageState: ADMIN_STATE } );
 
-		test( 'riepilogo, tabella ed export CSV mostrano le risposte sotto le domande', async ( { page, request } ) => {
+		test( 'riepilogo, tabella ed export CSV mostrano le risposte sotto le domande', async ( { page, request, playwright } ) => {
 			const { events } = await resetState( request, {
 				events: [ surveyEvent( [
 					{ name: 'Anna', email: 'anna@example.com', status: 'checked_in' },
@@ -80,8 +80,16 @@ test.describe( 'Survey', () => {
 				] ) ],
 			} );
 			const [ anna, bruno ] = events.a.registrations;
-			await submitSurvey( request, anna.token, { dbem_survey_0: 'Ottimo', 'dbem_survey_1[]': 'Robotica', dbem_survey_2: 'Tutto bene' } );
-			await submitSurvey( request, bruno.token, { dbem_survey_0: 'Ottimo' } );
+			// Le risposte arrivano da visitatori anonimi: la sessione admin di questo blocco
+			// richiederebbe il nonce
+			const anon = await playwright.request.newContext( { baseURL: BASE } );
+			for ( const [ token, answers ] of [
+				[ anna.token, { dbem_survey_0: 'Ottimo', 'dbem_survey_1[]': 'Robotica', dbem_survey_2: 'Tutto bene' } ],
+				[ bruno.token, { dbem_survey_0: 'Ottimo' } ],
+			] ) {
+				expect( ( await ( await submitSurvey( anon, token, answers ) ).json() ).success ).toBe( true );
+			}
+			await anon.dispose();
 
 			await page.goto( `/wp-admin/edit.php?post_type=dbem_event&page=dbem-survey&event_id=${ events.a.id }` );
 			const voto = page.locator( '.dbem-summary-field' ).filter( { has: page.getByRole( 'heading', { name: 'Voto' } ) } );

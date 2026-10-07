@@ -63,7 +63,9 @@ rifiutata. #36: l'offset non serve, il contratto di Privacy Hub passa solo `limi
 Fase 3 (1.10.0): D6, D7, accessibilità #45–#48 (#46: non toccato il `<main>`
 del template singolo, che si annida solo con temi che lo aprono nell'header), con
 E2E axe su form, check-in e partecipanti.
-Ancora aperti: #37 (in parte), #40 (in parte), #44.
+1.11.0: #37 (risposte per id della domanda, con conversione di quelle salvate), #40
+(impostazione «Formato data»), #44 (registro degli invii; l'automatico salta chi ha già
+ricevuto l'invio manuale). Tutti i bug del piano sono chiusi.
 #25: formato del PIN (4-10 cifre) corretto; resta il contatore dei tentativi non
 atomico. #6 e #23 non hanno ancora un test automatico: arriva con integration ed
 E2E (Fase 2 e 3). #2, #12, #13 hanno unit test sulla logica; il percorso completo
@@ -119,14 +121,14 @@ su database va in Fase 2.
 | 34 ✅ | ○ | `class-privacy-dsar.php:79, 176, 175-197` | `LOWER(email) = %s` impedisce l'indice; l'eraser può ciclare all'infinito se il DELETE fallisce (`done` sempre `false`). |
 | 35 ✅ | ○ | `class-registration.php:282` | Il transient della modifica in attesa (nome, email, IP, campi, 24 h) non è coperto da export e cancellazione DSAR. |
 | 36 ✅ | ○ | `class-privacy-declarations.php:169-188` | Query del registro consensi senza `ensure_tables()` e senza offset oltre 50.000 righe. |
-| 37 ◐ | ○ | `class-survey.php:97, 104` | Survey: `empty('0')` su obbligatorio; risposte indicizzate per etichetta (rinominare una domanda le fa sparire dal riepilogo, etichette duplicate si sovrascrivono). |
+| 37 ✅ | ○ | `class-survey.php:97, 104` | Survey: `empty('0')` su obbligatorio; risposte indicizzate per etichetta (rinominare una domanda le fa sparire dal riepilogo, etichette duplicate si sovrascrivono). |
 | 38 ✅ | ○ | `class-export.php` | CSV admin con `,` (Excel italiano lo apre in una colonna; l'export pubblico usa `;`); include l'IP (minimizzazione). |
 | 39 ✅ | ○ | `class-registration.php:66-69`, survey | Messaggi d'errore con escape doppio («L'aula» → `L&#039;aula`). |
-| 40 ◐ | ○ | vari | i18n: `d/m/Y` fisso invece di `date_format`, `lang="it"` fisso nella pagina di approvazione, «✅ Approva»/«❌ Rifiuta» fissi nelle email. |
+| 40 ✅ | ○ | vari | i18n: `d/m/Y` fisso invece di `date_format`, `lang="it"` fisso nella pagina di approvazione, «✅ Approva»/«❌ Rifiuta» fissi nelle email. |
 | 41 ✅ | ○ | `participants.php:4-10` | Menu eventi della pagina Partecipanti: solo `publish`/`draft`, massimo 100. |
 | 42 ✅ | ○ | `templates/frontend/checkin.php:333-338`, `checkin.js:146`, `participants.php:444` | Lo scanner pubblico riaccende la fotocamera dopo ogni check-in (anche da ricerca); i timer degli avvisi non vengono azzerati. |
 | 43 ✅ | ○ | `admin.js:87, 96-110` | `Sortable.create` richiamato a ogni render: istanze che si accumulano. Da verificare l'effetto. |
-| 44 | ○ | vari | Invii doppi non tracciati (promemoria/survey manuale + automatico, nessun indicatore «inviato»). |
+| 44 ✅ | ○ | vari | Invii doppi non tracciati (promemoria/survey manuale + automatico, nessun indicatore «inviato»). |
 | 49 ✅ | ✔ | `inc/lib/phpqrcode.php:957, 3551` | Libreria QR: parametri opzionali prima di uno obbligatorio in `QRimage::png()` e `QRvect::svg()`, avviso di deprecazione su PHP 8.0+ al caricamento del file. Con `display_errors` attivo l'avviso può finire in una risposta AJAX (JSON non valido) o in un PNG. Trovato il 2026-10-07 con `php -l` su PHP 8.5. |
 
 ### Accessibilità (WCAG 2.1 AA) — da trattare in un blocco unico
@@ -242,7 +244,7 @@ Bug coperti: #11, #15, #22, #23, #26, #42, accessibilità #45–#48.
 - [ ] Email catturate: conferma, attesa, approvazione dal link, rifiuto, modifica
 - [ ] Check-in admin e pagina pubblica con PIN (blocco dopo 10 errori), telefono
 - [ ] Partecipanti: azioni, aggiunta manuale, export CSV scaricato
-- [ ] Survey: link personale, invio, risultati
+- [x] Survey: link personale, invio, risultati, domanda rinominata (1.11.0)
 - [ ] Admin: evento con campi, Duplica (elenco ed editor), gestore delegato
 - [ ] axe su form, pagina evento, archivio, check-in, partecipanti (anche con colori personalizzati)
 - [ ] Ecosistema con Privacy Hub: registro trattamenti, registro consensi, DSAR

@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.10.0
+**Versione:** 1.11.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 6.0+, PHP 7.4+  
@@ -341,6 +341,34 @@ La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il contro
 ---
 
 ## Changelog
+
+### 1.11.0
+**Survey per id delle domande, registro degli invii, formato delle date**
+
+Minor: chiude gli ultimi punti aperti di `TESTING-PLAN.md` (#37, #40, #44).
+
+**Survey (#37):**
+- Le risposte si salvano sotto l'id della domanda invece che sotto l'etichetta. Prima rinominare una
+  domanda faceva sparire le sue risposte da riepilogo, tabella ed export, e due domande con la stessa
+  etichetta si sovrascrivevano. Tabella, CSV ed export dei dati personali mostrano l'etichetta attuale;
+  le risposte a domande eliminate restano visibili
+- Le risposte già salvate vengono convertite una volta sola all'aggiornamento (versione 3 dello schema)
+
+**Registro degli invii (#44):**
+- Per ogni evento, nelle pagine Partecipanti e Survey, l'elenco di promemoria e inviti al survey già
+  partiti: data, manuale o automatico, quante email, quanti l'avevano già ricevuto
+- Promemoria e survey automatici saltano chi ha già ricevuto lo stesso invio a mano (prima arrivavano
+  due volte). L'invio manuale raggiunge comunque tutti, ma la conferma dice quanti l'hanno già ricevuto
+- Le date di invio sono nell'export dei dati personali; la copia di un evento non eredita il registro
+
+**Formato delle date (#40):**
+- Nuova impostazione «Formato data»: predefinito (07/10/2026, come prima), il formato delle Impostazioni
+  generali di WordPress (es. «10 ottobre 2026 18:00») o un formato personalizzato. Vale per le date viste
+  dai visitatori e nelle email; le tabelle dell'admin restano compatte
+
+**Test:** E2E del survey (risposta dal link personale, voto obbligatorio, iscritti esclusi, riepilogo,
+tabella ed export in admin, domanda rinominata) e integration test per conversione delle risposte e
+registro degli invii.
 
 ### 1.10.0
 **Fuso orario, posti, stati delle iscrizioni, accessibilità e altre correzioni**

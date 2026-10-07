@@ -50,15 +50,14 @@ class DBEM_Frontend {
         $count = DBEM_DB::count_registrations($event_id);
         $status = DBEM_CPT::get_event_status($event_id);
 
-        // Formato data: il valore da datetime-local è già in ora locale
-        // Se l'evento ha assegnazione orario, mostra solo la data (senza ora)
+        // Formato scelto nelle Impostazioni; con l'assegnazione orario solo la data
         $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true);
         if ($time_slot_enabled === '1') {
-            $start_fmt = $start ? date('d/m/Y', strtotime($start)) : '';
-            $end_fmt = $end ? date('d/m/Y', strtotime($end)) : '';
+            $start_fmt = DBEM_Time::format_date($start);
+            $end_fmt = DBEM_Time::format_date($end);
         } else {
-            $start_fmt = $start ? date('d/m/Y H:i', strtotime($start)) : '';
-            $end_fmt = $end ? date('d/m/Y H:i', strtotime($end)) : '';
+            $start_fmt = DBEM_Time::format_datetime($start);
+            $end_fmt = DBEM_Time::format_datetime($end);
         }
 
         ob_start();

@@ -1287,6 +1287,16 @@ class DBEM_Admin {
             update_option('dbem_from_name', str_replace(array('"', '<', '>'), '', sanitize_text_field(wp_unslash($_POST['dbem_from_name'] ?? ''))));
             $from_email = sanitize_email(DBEM_Security::input('dbem_from_email'));
             update_option('dbem_from_email', is_email($from_email) ? $from_email : '');
+            // Formato data: '' predefinito, 'wp' formato di WordPress, altrimenti personalizzato
+            $date_choice = DBEM_Security::input('dbem_date_format_choice');
+            $custom_format = trim(DBEM_Security::input('dbem_date_format_custom'));
+            if ($date_choice === 'wp') {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, 'wp');
+            } elseif ($date_choice === 'custom' && $custom_format !== '') {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, $custom_format);
+            } else {
+                update_option(DBEM_Time::DATE_FORMAT_OPTION, '');
+            }
             update_option(DBEM_Appearance::OPTION, DBEM_Appearance::sanitize_colors(wp_unslash($_POST['dbem_appearance'] ?? array()))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
             flush_rewrite_rules();
@@ -1377,6 +1387,36 @@ class DBEM_Admin {
                         <td>
                             <input type="email" id="dbem_from_email" name="dbem_from_email" value="<?php echo esc_attr(get_option('dbem_from_email', '')); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                             <p class="description"><?php esc_html_e('Lascia vuoto per usare l\'email dell\'amministratore. Usa un indirizzo del dominio del sito: con un indirizzo di un altro dominio (es. Gmail) le email rischiano di finire nello spam. Se un plugin SMTP imposta già il mittente, lascia vuoto.', 'db-event-manager'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <hr>
+
+                <h2><?php esc_html_e('Date', 'db-event-manager'); ?></h2>
+                <?php
+                $date_option = (string) get_option(DBEM_Time::DATE_FORMAT_OPTION, '');
+                $date_choice = $date_option === '' ? 'default' : ($date_option === 'wp' ? 'wp' : 'custom');
+                $sample = time() + 3 * DAY_IN_SECONDS;
+                ?>
+                <table class="form-table">
+                    <tr>
+                        <th><?php esc_html_e('Formato data', 'db-event-manager'); ?></th>
+                        <td>
+                            <fieldset>
+                                <legend class="screen-reader-text"><?php esc_html_e('Formato data', 'db-event-manager'); ?></legend>
+                                <label><input type="radio" name="dbem_date_format_choice" value="default" <?php checked($date_choice, 'default'); ?>>
+                                    <?php echo esc_html(sprintf(__('Predefinito: %s', 'db-event-manager'), wp_date(DBEM_Time::DEFAULT_DATE_FORMAT . ' H:i', $sample))); ?></label><br>
+                                <label><input type="radio" name="dbem_date_format_choice" value="wp" <?php checked($date_choice, 'wp'); ?>>
+                                    <?php echo esc_html(sprintf(__('Come nelle Impostazioni generali di WordPress: %s', 'db-event-manager'), wp_date(get_option('date_format') . ' ' . get_option('time_format'), $sample))); ?></label><br>
+                                <label><input type="radio" name="dbem_date_format_choice" value="custom" <?php checked($date_choice, 'custom'); ?>>
+                                    <?php esc_html_e('Personalizzato:', 'db-event-manager'); ?></label>
+                                <input type="text" name="dbem_date_format_custom" value="<?php echo esc_attr($date_choice === 'custom' ? $date_option : ''); ?>" class="small-text" style="width:8em" aria-label="<?php esc_attr_e('Formato data personalizzato', 'db-event-manager'); ?>" placeholder="j F Y">
+                                <?php if ($date_choice === 'custom'): ?>
+                                    <span class="description"><?php echo esc_html(wp_date($date_option, $sample)); ?></span>
+                                <?php endif; ?>
+                            </fieldset>
+                            <p class="description"><?php echo wp_kses_post(__('Vale per le date viste dai visitatori e nelle email: card e pagina degli eventi, segnaposto {data_evento}, promemoria, pagina di approvazione. Formato personalizzato con i <a href="https://wordpress.org/documentation/article/customize-date-and-time-format/" target="_blank" rel="noopener noreferrer">codici di WordPress</a> (es. <code>j F Y</code> per «10 ottobre 2026»).', 'db-event-manager')); ?></p>
                         </td>
                     </tr>
                 </table>

@@ -288,24 +288,23 @@ class DBEM_Email {
     private static function format_event_date_range($start, $end, $date_only = false) {
         if (!$start) return '';
 
-        $format = $date_only ? 'd/m/Y' : 'd/m/Y H:i';
-        $start_timestamp = strtotime($start);
-        $start_formatted = date($format, $start_timestamp);
-        if (!$end || date('Y-m-d', $start_timestamp) === date('Y-m-d', strtotime($end))) {
+        $format = $date_only ? array('DBEM_Time', 'format_date') : array('DBEM_Time', 'format_datetime');
+        $start_formatted = call_user_func($format, $start);
+        if (!$end || substr($start, 0, 10) === substr($end, 0, 10)) {
             return $start_formatted;
         }
 
-        return $start_formatted . ' - ' . date($format, strtotime($end));
+        return $start_formatted . ' - ' . call_user_func($format, $end);
     }
 
     /**
-     * I campi Data del form arrivano come aaaa-mm-gg: li riporta a gg/mm/aaaa
+     * I campi Data del form arrivano come aaaa-mm-gg: li riporta al formato scelto
      */
     private static function format_field_date($value) {
         if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) return $value;
         if (!checkdate((int) $m[2], (int) $m[3], (int) $m[1])) return $value;
 
-        return $m[3] . '/' . $m[2] . '/' . $m[1];
+        return DBEM_Time::format_date($value);
     }
 
     /**
@@ -316,15 +315,9 @@ class DBEM_Email {
         $start = get_post_meta($event_id, '_dbem_date_start', true);
         $location = get_post_meta($event_id, '_dbem_location', true);
 
-        // Formato data: il valore datetime-local è già in ora locale, usiamo date() non wp_date()
-        // Se l'evento ha assegnazione orario, mostra solo la data
+        // Formato scelto nelle Impostazioni; con l'assegnazione orario solo la data
         $time_slot_enabled = get_post_meta($event_id, '_dbem_time_slot_enabled', true);
-        if ($start) {
-            $ts = strtotime($start);
-            $date_formatted = ($time_slot_enabled === '1') ? date('d/m/Y', $ts) : date('d/m/Y H:i', $ts);
-        } else {
-            $date_formatted = '';
-        }
+        $date_formatted = $time_slot_enabled === '1' ? DBEM_Time::format_date($start) : DBEM_Time::format_datetime($start);
 
         // Riepilogo dati
         $data = json_decode($reg->data, true);

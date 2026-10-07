@@ -76,7 +76,8 @@ function dbem_e2e_event_meta($title) {
  * Riporta il plugin allo stato baseline e crea gli eventi richiesti.
  *
  * @param array $opts {
- *     @type array $events     Eventi da creare: [{key, title, status, meta}] (meta sovrascrive la baseline).
+ *     @type array $events     Eventi da creare: [{key, title, status, meta, registrations}] (meta sovrascrive
+ *                             la baseline; registrations: [{name, email, status}] iscrizioni già salvate).
  *     @type int   $rate_limit Limite iscrizioni/minuto per IP (assente = spento).
  * }
  * @return array{events: array, pin: string}
@@ -113,7 +114,22 @@ function dbem_e2e_reset_state($opts = array()) {
         foreach (array_merge(dbem_e2e_event_meta($title), (array) ($event['meta'] ?? array())) as $meta_key => $value) {
             update_post_meta($id, $meta_key, wp_slash($value));
         }
-        $events[$key] = array('id' => $id, 'url' => get_permalink($id));
+        $registrations = array();
+        foreach ((array) ($event['registrations'] ?? array()) as $j => $reg) {
+            $token = bin2hex(random_bytes(32));
+            $wpdb->insert($wpdb->prefix . 'dbem_registrations', array(
+                'event_id'      => $id,
+                'data'          => wp_json_encode(array('nome' => $reg['name'] ?? 'Iscritto ' . $j, 'email' => $reg['email'] ?? 'iscritto' . $j . '@example.com')),
+                'email'         => strtolower($reg['email'] ?? 'iscritto' . $j . '@example.com'),
+                'name'          => $reg['name'] ?? 'Iscritto ' . $j,
+                'token'         => $token,
+                'status'        => $reg['status'] ?? 'confirmed',
+                'registered_at' => current_time('mysql'),
+                'checked_in_at' => ($reg['status'] ?? '') === 'checked_in' ? current_time('mysql') : null,
+            ));
+            $registrations[] = array('id' => (int) $wpdb->insert_id, 'token' => $token);
+        }
+        $events[$key] = array('id' => $id, 'url' => get_permalink($id), 'registrations' => $registrations);
     }
 
     return array('events' => $events, 'pin' => DBEM_E2E_PIN);
@@ -136,6 +152,7 @@ add_action('rest_api_init', function () {
             return array(
                 'mails'         => get_option(DBEM_E2E_MAILS, array()),
                 'registrations' => $wpdb->get_results("SELECT id, event_id, name, email, status, data, gdpr_consent_given FROM {$wpdb->prefix}dbem_registrations ORDER BY id", ARRAY_A),
+                'survey'        => $wpdb->get_results("SELECT id, event_id, registration_id, data FROM {$wpdb->prefix}dbem_survey_responses ORDER BY id", ARRAY_A),
             );
         },
     ));

@@ -7,6 +7,7 @@ class DBEM_Email {
      * Invia email di conferma iscrizione
      */
     public static function send_confirmation($event_id, $reg) {
+        $reg = self::without_links($reg);
         $email_data = get_post_meta($event_id, '_dbem_confirmation_email', true);
         if (!$email_data || empty($email_data['subject']) || empty($email_data['message'])) return false;
 
@@ -43,6 +44,7 @@ class DBEM_Email {
      * Notifica admin nuova iscrizione
      */
     public static function notify_admin($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
 
         // Email destinatario personalizzata per evento, fallback a admin del sito
@@ -80,6 +82,7 @@ class DBEM_Email {
      * Invia email survey
      */
     public static function send_survey_email($event_id, $reg) {
+        $reg = self::without_links($reg);
         $survey_email = get_post_meta($event_id, '_dbem_survey_email', true);
         if (!$survey_email || empty($survey_email['subject'])) return false;
 
@@ -101,6 +104,7 @@ class DBEM_Email {
      * Invia email annullamento
      */
     public static function send_cancellation($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
         $subject = sprintf(__('Iscrizione annullata: %s', 'db-event-manager'), $event_title);
 
@@ -155,6 +159,7 @@ class DBEM_Email {
      * $template (oggetto e messaggio) serve all'anteprima di un testo non ancora salvato.
      */
     public static function build_reminder($event_id, $reg, $template = null) {
+        $reg = self::without_links($reg);
         if (!$template) {
             $template = self::get_reminder_template($event_id);
         }
@@ -459,6 +464,7 @@ class DBEM_Email {
      * Link di conferma per modificare un'iscrizione esistente, inviato all'indirizzo dell'iscrizione
      */
     public static function send_update_confirmation($event_id, $reg, $confirm_url) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
         $subject = sprintf(__('Conferma la modifica della tua iscrizione: %s', 'db-event-manager'), $event_title);
         $message = sprintf(
@@ -477,6 +483,7 @@ class DBEM_Email {
      * chi legge questa casella. Non dice se l'iscrizione è confermata, in attesa o rifiutata.
      */
     public static function send_already_registered($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
         $subject = sprintf(__('La tua iscrizione: %s', 'db-event-manager'), $event_title);
         $message = sprintf(
@@ -486,6 +493,35 @@ class DBEM_Email {
         );
 
         return wp_mail($reg->email, self::clean_subject($subject), self::build_html_email($message), self::get_headers());
+    }
+
+    /**
+     * Copia dell'iscrizione per le email: negli indirizzi web scritti dall'iscritto (nome,
+     * campi del form) un carattere invisibile spezza "://" e "www.", così non diventano
+     * link né qui (build_html_email) né nel programma di posta. Senza, il modulo
+     * permetterebbe di far inviare dal sito un link scelto da chiunque a un indirizzo
+     * qualsiasi. I link del testo dell'evento e del sito restano cliccabili.
+     */
+    public static function without_links($reg) {
+        if (!is_object($reg)) return $reg;
+        $copy = clone $reg;
+        if (isset($copy->name) && is_string($copy->name)) {
+            $copy->name = self::break_links($copy->name);
+        }
+        if (isset($copy->data) && is_string($copy->data)) {
+            $data = json_decode($copy->data, true);
+            if (is_array($data)) {
+                array_walk_recursive($data, function (&$value) {
+                    if (is_string($value)) $value = self::break_links($value);
+                });
+                $copy->data = wp_json_encode($data);
+            }
+        }
+        return $copy;
+    }
+
+    private static function break_links($text) {
+        return preg_replace(array('#(\w)://#u', '#\b(www)\.#iu'), array("$1:\u{2060}//", "$1\u{2060}."), $text);
     }
 
     private static function build_html_email($message, $qr_url = '') {
@@ -517,6 +553,7 @@ class DBEM_Email {
      * Email "iscrizione in attesa di approvazione" all'iscritto
      */
     public static function send_pending_notification($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
 
         $subject = sprintf(__('Iscrizione ricevuta: %s', 'db-event-manager'), $event_title);
@@ -536,6 +573,7 @@ class DBEM_Email {
      * Email richiesta approvazione all'approvatore (con link approva/rifiuta)
      */
     public static function send_approval_request($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
 
         // Determina destinatario
@@ -586,6 +624,7 @@ class DBEM_Email {
      * Email rifiuto iscrizione
      */
     public static function send_rejection($event_id, $reg) {
+        $reg = self::without_links($reg);
         $event_title = DBEM_CPT::get_event_name($event_id);
 
         $subject = sprintf(__('Iscrizione non approvata: %s', 'db-event-manager'), $event_title);

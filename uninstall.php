@@ -24,6 +24,7 @@ function dbem_uninstall_site() {
         'dbem_checkin_pin',
         'dbem_delete_data_on_uninstall',
         'dbem_caps_version',
+        'dbem_db_version',
         'dbem_appearance',
         'dbem_from_name',
         'dbem_from_email',
@@ -53,7 +54,8 @@ function dbem_uninstall_site() {
         // Eventi e relativi meta
         $events = get_posts(array(
             'post_type'      => 'dbem_event',
-            'post_status'    => 'any',
+            // 'any' esclude cestino e bozze automatiche, che hanno comunque i meta dell'evento
+            'post_status'    => array('any', 'trash', 'auto-draft'),
             'posts_per_page' => -1,
             'fields'         => 'ids',
         ));

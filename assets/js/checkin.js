@@ -4,6 +4,7 @@
 
     var scanner = null;
     var currentEventId = 0;
+    var feedbackTimer = null;
 
     // Testi da wp_localize_script; i valori qui sotto servono solo se una cache separa JS e HTML
     var i18n = $.extend({
@@ -111,13 +112,14 @@
         $.post(dbem_checkin.ajax_url, {
             action: 'dbem_checkin',
             nonce: dbem_checkin.nonce,
-            token: token
+            token: token,
+            event_id: currentEventId
         }, function(resp) {
             if (resp.success) {
                 var d = resp.data;
                 var fbClass = 'success';
                 if (d.status === 'already') fbClass = 'warning';
-                if (d.status === 'cancelled' || d.status === 'not_admitted') fbClass = 'error';
+                if (d.status === 'cancelled' || d.status === 'not_admitted' || d.status === 'other_event') fbClass = 'error';
                 showFeedback(fbClass, d.icon, d.name || '', d.message);
                 loadParticipants();
             } else {
@@ -142,8 +144,10 @@
         $fb.find('.dbem-feedback-message').text(message);
         $fb.show();
         // Auto-hide dopo 5s (non per loading)
+        // Un avviso nuovo non va nascosto dal timer di quello precedente
+        clearTimeout(feedbackTimer);
         if (type !== 'loading') {
-            setTimeout(function() { $fb.fadeOut(300); }, 5000);
+            feedbackTimer = setTimeout(function() { $fb.fadeOut(300); }, 5000);
         }
     }
 

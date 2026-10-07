@@ -3,8 +3,9 @@ if (!defined('ABSPATH')) exit;
 
 $events = get_posts(array(
     'post_type'      => 'dbem_event',
-    'post_status'    => array('publish', 'draft'),
-    'posts_per_page' => 100,
+    // Tutti gli eventi che possono avere iscrizioni, non solo pubblicati e bozze, e senza tetto
+    'post_status'    => array('publish', 'future', 'draft', 'pending', 'private'),
+    'posts_per_page' => -1,
     'orderby'        => 'date',
     'order'          => 'DESC',
 ));
@@ -239,8 +240,8 @@ $status_labels = array(
                                 —
                             <?php endif; ?>
                         </td>
-                        <td><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($reg->registered_at))); ?></td>
-                        <td><?php echo $reg->checked_in_at ? esc_html(wp_date('d/m/Y H:i', strtotime($reg->checked_in_at))) : '—'; ?></td>
+                        <td><?php echo esc_html(DBEM_Time::format('d/m/Y H:i', $reg->registered_at)); ?></td>
+                        <td><?php echo $reg->checked_in_at ? esc_html(DBEM_Time::format('d/m/Y H:i', $reg->checked_in_at)) : '—'; ?></td>
                         <td><?php echo !empty($reg->assigned_time) ? esc_html($reg->assigned_time) : '—'; ?></td>
                         <td class="dbem-actions">
                             <?php if ($reg->status === 'pending'): ?>

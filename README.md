@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.9.0
+**Versione:** 1.9.1
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 6.0+, PHP 7.4+  
@@ -317,11 +317,14 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 
 ### Sviluppo
 Dopo `composer install`:
-- `composer test` — test PHPUnit, senza WordPress
+- `composer test` — unit test PHPUnit, senza WordPress (`tests/unit/`)
+- `composer test:integration` — test con WordPress e MySQL veri (`tests/integration/`), dopo `bin/install-wp-tests.sh`
 - `composer phpcs` — regole `WordPress.Security` e compatibilità con PHP 7.4+ (PHPCompatibilityWP) su tutto il PHP del plugin, template compresi; ogni violazione è un errore
 - `composer check-js` — sintassi dei file in `assets/js` e degli script inline nei file PHP
 
-La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5, PHPCS e il controllo JavaScript. PHPUnit è fermo alla 9.6 e `composer.json` fissa la piattaforma a PHP 7.4, così le dipendenze si installano anche sulla versione minima dichiarata. Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
+Test nel browser (wp-env + Playwright): `npm ci`, `npx wp-env start`, `npm run env:setup`, `npx playwright test`.
+
+La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il controllo JavaScript, gli integration test (WordPress 6.0 e latest, anche multisite) e gli E2E; ogni notte gli stessi contro WordPress in sviluppo. Dettagli in [TESTING.md](TESTING.md). Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
 
 ---
 
@@ -338,6 +341,99 @@ La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5
 ---
 
 ## Changelog
+
+### 1.9.1
+**Fuso orario, posti, stati delle iscrizioni e altre correzioni**
+
+Patch: solo correzioni, dalla Fase 2 di `TESTING-PLAN.md` (numeri tra parentesi). Ogni correzione
+ha il suo test; da questa versione girano anche gli integration test (WordPress e MySQL veri) e gli
+E2E nel browser, vedi [TESTING.md](TESTING.md).
+
+**Fuso orario (#7):**
+- Le date degli eventi sono salvate in ora locale, ma venivano lette come UTC (WordPress tiene PHP in
+  UTC). Su un sito italiano in estate: promemoria e survey automatici partivano **2 ore dopo** il
+  previsto (un promemoria «1 ora prima» arrivava dopo l'inizio), le iscrizioni restavano aperte 2 ore
+  oltre la scadenza, gli stati «in corso» e «concluso» erano sfasati, e gli orari di iscrizione,
+  check-in e survey comparivano +2 ore nelle pagine admin, check-in e approvazione. Ora ogni
+  conversione passa da `DBEM_Time` con il fuso del sito. Promemoria già programmati: si correggono
+  risalvando l'evento o disattivando e riattivando il plugin
+
+**Posti e invii automatici (#8, #16, #17):**
+- Le iscrizioni rifiutate non occupano più posti
+- Il controllo orario non chiude più le iscrizioni per posti esauriti in modo permanente: i posti si
+  contano al momento, e un annullamento o un rifiuto riapre le iscrizioni da solo (la scadenza
+  continua a chiuderle)
+- Promemoria e survey automatici partono solo per eventi pubblicati: un evento annullato e spostato
+  nel cestino non manda più il promemoria
+- Disattivare e riattivare il plugin cancellava tutti i promemoria e survey programmati: ora la
+  riattivazione li riprogramma
+
+**Stati delle iscrizioni (#14, #13 C, #20, #21):**
+- La pagina partecipanti da telefono usa le stesse regole dell'admin: ogni azione solo dallo stato di
+  partenza ammesso (prima «approva» su un presente lo riportava a confermato). Riconfermare un
+  annullato o un rifiutato controlla i posti e invia QR ed email (prima non partiva nulla)
+- Ogni cambio di stato ricontrolla lo stato nel database: due scansioni dello stesso QR, o due
+  operatori insieme, non fanno il check-in due volte (la seconda risponde «già registrato»)
+- Orario assegnato oltre 50 caratteri: prima il salvataggio falliva in silenzio ma QR ed email di
+  approvazione partivano e la pagina diceva «approvata». Ora il valore viene rifiutato prima, e senza
+  salvataggio non parte nulla
+- Survey: si risponde solo con il survey attivo e un'iscrizione confermata o presente (prima un invio
+  diretto funzionava anche a survey disattivato, e da iscritti in attesa, rifiutati o annullati)
+
+**Form e pagine (#18, #11, #15, #26, #27, #28, #37, #39):**
+- Campi del form integrato validati anche lato server: scelte solo tra le opzioni definite, email,
+  numeri e date nel loro formato; le aree di testo conservano gli a capo; «0» è una risposta valida
+  nei campi obbligatori (anche nel survey); i messaggi d'errore non mostrano più `&#039;` al posto
+  dell'apostrofo
+- Eventi protetti da password: pagina, shortcode e iscrizione chiedono la password (prima descrizione
+  e form erano visibili e utilizzabili)
+- Check-in admin: un QR di un altro evento rispetto a quello scelto non fa il check-in e lo segnala
+- Pagina partecipanti da telefono: cambiando evento in fretta non compaiono più i dati di quello
+  precedente; la ricerca restituisce fino a 25 risultati
+- Le barre rovesciate nei testi dell'evento non si perdono più al salvataggio («Aula B\2»)
+
+**Iscrizioni contemporanee e PIN (#9, #25, #22):**
+- Due o più invii insieme sull'ultimo posto: prima entravano tutti (posti superati) e con la stessa
+  email nascevano doppioni. Controllo dell'email, dei posti e salvataggio avvengono ora sotto un lock
+  MySQL per evento (`GET_LOCK`), anche per DB Form Builder e per l'aggiunta manuale da telefono
+- Tentativi di PIN errati: una raffica di richieste parallele superava il limite di 10; ora il
+  contatore è aggiornato sotto lock
+- DB Form Builder: l'iscrizione all'evento partiva anche quando DBFB mostrava un errore (validazione,
+  captcha), perché bastava un testo qualsiasi nella zona messaggi. Ora solo dopo l'invio riuscito
+
+**Database e privacy (#32, #33, #34, #35, #36):**
+- Schema con versione (`dbem_db_version`): tabelle, colonne e indici si aggiornano con `dbDelta` solo
+  al cambio di versione. Prima ogni richiesta eseguiva controlli sulle tabelle e un indice nuovo non
+  arrivava mai a chi aggiornava. Indice sull'email sui primi 191 caratteri (MySQL 5.6 / MariaDB 10.1),
+  indice sui campi del consenso per il registro di Privacy Hub
+- Export e cancellazione dei dati personali: ricerca dell'email con l'indice; la cancellazione non può
+  più ciclare all'infinito se il database restituisce un errore; vengono cancellate anche le modifiche
+  in attesa di conferma (nome, email, IP e campi conservati per 24 ore)
+- Registro consensi di Privacy Hub: nessun errore SQL se il plugin è attivo ma non ha ancora tabelle;
+  email mascherate correttamente anche con lettere accentate
+
+**Email ed export (#29, #30, #31, #38):**
+- I testi delle email sono testo semplice: prima si salvavano con l'HTML ma l'invio lo mostrava
+  letterale (`<b>`). I testi già salvati vengono convertiti all'invio
+- Un meta email malformato non impedisce più di aprire l'evento (errore fatale su PHP 8)
+- Un parametro inviato come array (`dbem_email[]=…`) non manda più in errore 500 l'iscrizione
+- Export CSV dell'admin separato da punto e virgola, come quello della pagina partecipanti: Excel in
+  italiano lo apriva in una sola colonna
+
+**Pagine (#40, #41, #42, #43):**
+- Pagina di approvazione nella lingua del sito; pulsanti «Approva» e «Rifiuta» delle email traducibili
+- Menu eventi di Partecipanti e Survey: anche eventi programmati, privati e in revisione, senza il
+  limite di 100 (50 per il Check-in)
+- Check-in da telefono: la fotocamera si riaccende solo dopo una scansione, non dopo una ricerca
+  manuale; un avviso nuovo non viene più nascosto dal timer di quello precedente
+- Builder dei campi: a ogni modifica si aggiungeva un'istanza del trascinamento, che ripeteva il
+  riordino a ogni spostamento
+
+**Altro (#24, #49):**
+- Disinstallazione con «Elimina tutti i dati»: vengono eliminati anche gli eventi nel cestino e
+  l'opzione della versione dello schema
+- Libreria QR: niente più avvisi di deprecazione su PHP 8, che con la visualizzazione degli errori
+  attiva potevano finire in una risposta o nel PNG
 
 ### 1.9.0
 **Duplica evento, PIN per evento, correzioni di sicurezza e privacy**

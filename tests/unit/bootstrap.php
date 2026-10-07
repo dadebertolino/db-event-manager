@@ -1,7 +1,7 @@
 <?php
 
 if (!defined('ABSPATH')) {
-    define('ABSPATH', dirname(__DIR__) . '/');
+    define('ABSPATH', dirname(__DIR__, 2) . '/');
 }
 
 // PHP 7.4: in WordPress lo fornisce il core (dalla 5.9), qui no
@@ -23,7 +23,8 @@ function dbem_call_private($class, $method, ...$args) {
     return $reflection->invoke(null, ...$args);
 }
 
-$GLOBALS['__dbem_options'] = array();
+// Schema già alla versione corrente: gli unit test non hanno dbDelta
+$GLOBALS['__dbem_options'] = array('dbem_db_version' => '2');
 $GLOBALS['__dbem_transients'] = array();
 
 $GLOBALS['__dbem_roles'] = array();
@@ -94,9 +95,27 @@ if (!function_exists('update_post_meta')) {
     }
 }
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text, $remove_breaks = false) {
+        return trim(strip_tags(preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', (string) $text)));
+    }
+}
+
 if (!function_exists('_n')) {
     function _n($single, $plural, $number, $domain = 'default') {
         return $number == 1 ? $single : $plural;
+    }
+}
+
+if (!function_exists('wp_timezone')) {
+    function wp_timezone() {
+        return new DateTimeZone($GLOBALS['__dbem_options']['timezone_string'] ?? 'UTC');
+    }
+}
+
+if (!function_exists('wp_date')) {
+    function wp_date($format, $timestamp = null) {
+        return (new DateTimeImmutable('@' . ($timestamp ?? time())))->setTimezone(wp_timezone())->format($format);
     }
 }
 
@@ -364,6 +383,12 @@ if (!function_exists('get_posts')) {
     }
 }
 
+if (!function_exists('post_password_required')) {
+    function post_password_required($post = null) {
+        return !empty($GLOBALS['__dbem_protected'][is_object($post) ? $post->ID : $post]);
+    }
+}
+
 if (!function_exists('get_post_status')) {
     function get_post_status($post_id) {
         return $GLOBALS['__dbem_posts'][$post_id] ?? 'publish';
@@ -500,7 +525,7 @@ if (!class_exists('wpdb')) {
             if (str_contains($query, "SELECT COUNT(*) FROM") && str_contains($query, "email = 'alice@example.com'")) {
                 return 2;
             }
-            if (str_contains($query, "SELECT COUNT(*) FROM") && str_contains($query, "status != 'cancelled'")) {
+            if (str_contains($query, "SELECT COUNT(*) FROM") && (str_contains($query, "status != 'cancelled'") || str_contains($query, "status NOT IN ('cancelled', 'rejected')"))) {
                 return 1;
             }
             return 0;
@@ -629,16 +654,18 @@ if (!class_exists('wpdb')) {
     $GLOBALS['wpdb'] = new wpdb();
 }
 
-require_once dirname(__DIR__) . '/inc/class-security.php';
-require_once dirname(__DIR__) . '/inc/class-db.php';
-require_once dirname(__DIR__) . '/inc/class-email.php';
-require_once dirname(__DIR__) . '/inc/class-cpt.php';
-require_once dirname(__DIR__) . '/inc/class-appearance.php';
-require_once dirname(__DIR__) . '/inc/class-admin.php';
-require_once dirname(__DIR__) . '/inc/class-registration.php';
-require_once dirname(__DIR__) . '/inc/class-qrcode.php';
-require_once dirname(__DIR__) . '/inc/class-checkin.php';
-require_once dirname(__DIR__) . '/inc/class-duplicate.php';
-require_once dirname(__DIR__) . '/inc/class-updater.php';
-require_once dirname(__DIR__) . '/inc/class-export.php';
-require_once dirname(__DIR__) . '/inc/class-privacy-declarations.php';
+require_once dirname(__DIR__, 2) . '/inc/class-time.php';
+require_once dirname(__DIR__, 2) . '/inc/class-security.php';
+require_once dirname(__DIR__, 2) . '/inc/class-db.php';
+require_once dirname(__DIR__, 2) . '/inc/class-email.php';
+require_once dirname(__DIR__, 2) . '/inc/class-cpt.php';
+require_once dirname(__DIR__, 2) . '/inc/class-appearance.php';
+require_once dirname(__DIR__, 2) . '/inc/class-admin.php';
+require_once dirname(__DIR__, 2) . '/inc/class-registration.php';
+require_once dirname(__DIR__, 2) . '/inc/class-qrcode.php';
+require_once dirname(__DIR__, 2) . '/inc/class-checkin.php';
+require_once dirname(__DIR__, 2) . '/inc/class-duplicate.php';
+require_once dirname(__DIR__, 2) . '/inc/class-updater.php';
+require_once dirname(__DIR__, 2) . '/inc/class-export.php';
+require_once dirname(__DIR__, 2) . '/inc/class-privacy-declarations.php';
+require_once dirname(__DIR__, 2) . '/inc/class-survey.php';

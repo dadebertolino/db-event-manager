@@ -3,7 +3,7 @@
  * Plugin Name: DB Event Manager
  * Plugin URI: https://github.com/dadebertolino/db-event-manager
  * Description: Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento. Niente Eventbrite, niente SaaS, niente abbonamenti.
- * Version: 1.9.0
+ * Version: 1.9.1
  * Author: Davide Bertolino
  * Author URI: https://www.davidebertolino.it
  * License: GPL v2 or later
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DBEM_VERSION', '1.9.0');
+define('DBEM_VERSION', '1.9.1');
 define('DBEM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DBEM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DBEM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -51,6 +51,7 @@ final class DB_Event_Manager {
     }
 
     private function includes() {
+        require_once DBEM_PLUGIN_DIR . 'inc/class-time.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-security.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-db.php';
         require_once DBEM_PLUGIN_DIR . 'inc/class-cpt.php';
@@ -219,7 +220,7 @@ final class DB_Event_Manager {
 
     public function handle_endpoints() {
         // Approvazione/rifiuto via link email
-        $action = isset($_GET['dbem_action']) ? sanitize_key($_GET['dbem_action']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
+        $action = sanitize_key(DBEM_Security::input('dbem_action', '', 'get')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
         if ($action && in_array($action, array('approve', 'reject'))) {
             $this->handle_approval_action($action);
             exit;
@@ -332,7 +333,7 @@ final class DB_Event_Manager {
         $confirm_url = home_url('/?dbem_action=approve_confirm');
         $nonce = wp_create_nonce('dbem_approve_confirm_' . $token);
 
-        $html = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+        $html = '<!DOCTYPE html><html lang="' . esc_attr(get_bloginfo('language')) . '"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
         <title>' . esc_html__('Approva iscrizione', 'db-event-manager') . ' — ' . esc_html($site_name) . '</title>
         <style>
             *{box-sizing:border-box;margin:0;padding:0}
@@ -362,8 +363,8 @@ final class DB_Event_Manager {
                 <h3>' . esc_html__('Richiesta iscrizione', 'db-event-manager') . '</h3>
                 <p><strong>' . esc_html__('Evento:', 'db-event-manager') . '</strong> ' . esc_html($event_title) . '</p>';
         if ($event_start) {
-            $html .= '<p><strong>📅</strong> ' . esc_html(wp_date('d/m/Y H:i', strtotime($event_start)));
-            if ($event_end) $html .= ' — ' . esc_html(wp_date('d/m/Y H:i', strtotime($event_end)));
+            $html .= '<p><strong>📅</strong> ' . esc_html(DBEM_Time::format('d/m/Y H:i', $event_start));
+            if ($event_end) $html .= ' — ' . esc_html(DBEM_Time::format('d/m/Y H:i', $event_end));
             $html .= '</p>';
         }
         if ($location) $html .= '<p><strong>📍</strong> ' . esc_html($location) . '</p>';
@@ -382,7 +383,7 @@ final class DB_Event_Manager {
             $html .= '
                 <div class="dbem-f">
                     <label for="assigned_time">🕐 ' . esc_html__('Orario assegnato', 'db-event-manager') . '</label>
-                    <input type="text" id="assigned_time" name="assigned_time"
+                    <input type="text" id="assigned_time" name="assigned_time" maxlength="' . esc_attr(DBEM_DB::ASSIGNED_TIME_MAX) . '"
                         placeholder="' . esc_attr__('Es. 10:30, 14:00-14:30, Turno A ore 9:00', 'db-event-manager') . '">
                     <p class="dbem-hint">' . esc_html__('Inserisci l\'orario da comunicare al partecipante. Lascia vuoto per approvare senza orario.', 'db-event-manager') . '</p>
                 </div>';
@@ -405,8 +406,8 @@ final class DB_Event_Manager {
     private function handle_approve_confirm() {
         $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
         $key = sanitize_text_field(wp_unslash($_POST['key'] ?? ''));
-        $confirm_action = sanitize_key($_POST['confirm_action'] ?? 'approve');
-        $link_action = sanitize_key($_POST['link_action'] ?? 'approve');
+        $confirm_action = sanitize_key(DBEM_Security::input('confirm_action', 'approve'));
+        $link_action = sanitize_key(DBEM_Security::input('link_action', 'approve'));
         if (!in_array($confirm_action, array('approve', 'reject'), true) || !in_array($link_action, array('approve', 'reject'), true)) {
             wp_die(esc_html__('Dati mancanti.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }
@@ -453,7 +454,13 @@ final class DB_Event_Manager {
         }
 
         // Approvazione con orario
-        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''));
+        $assigned_time = DBEM_DB::clean_assigned_time(sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')));
+        if ($assigned_time === false) {
+            wp_die(
+                esc_html(sprintf(__('L\'orario può avere al massimo %d caratteri. Torna indietro e accorcialo: l\'iscrizione non è stata approvata.', 'db-event-manager'), DBEM_DB::ASSIGNED_TIME_MAX)),
+                esc_html__('Orario troppo lungo', 'db-event-manager'), array('response' => 400, 'back_link' => true)
+            );
+        }
         $update_data = array('status' => 'confirmed');
         $update_format = array('%s');
         if (!empty($assigned_time)) {
@@ -461,7 +468,10 @@ final class DB_Event_Manager {
             $update_format[] = '%s';
         }
 
-        $wpdb->update($table, $update_data, array('id' => $reg->id), $update_format, array('%d'));
+        // Senza salvataggio niente QR né email: prima partivano anche con l'UPDATE fallito
+        if ($wpdb->update($table, $update_data, array('id' => $reg->id), $update_format, array('%d')) === false) {
+            wp_die(esc_html__('Errore nel salvataggio: l\'iscrizione non è stata approvata. Riprova.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 500, 'back_link' => true));
+        }
         $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg->id));
         DBEM_QRCode::generate($reg->token);
         DBEM_Email::send_confirmation($reg->event_id, $reg);

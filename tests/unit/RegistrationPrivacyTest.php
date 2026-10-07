@@ -113,4 +113,17 @@ final class RegistrationPrivacyTest extends TestCase {
             $GLOBALS['wpdb'] = $saved;
         }
     }
+
+    public function testPasswordProtectedEventNeedsThePassword(): void {
+        $GLOBALS['__dbem_posts'] = array(10 => 'publish');
+        $GLOBALS['__dbem_protected'] = array(10 => true);
+        try {
+            DBEM_Registration::require_event(10, 'builtin');
+            $this->fail('Iscrizione a un evento protetto senza password');
+        } catch (RuntimeException $e) {
+            $this->assertSame('Evento non valido.', $GLOBALS['__dbem_json_error']);
+        } finally {
+            $GLOBALS['__dbem_protected'] = array();
+        }
+    }
 }

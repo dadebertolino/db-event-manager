@@ -76,7 +76,9 @@ class DBEM_Privacy_DSAR {
 
         // Registrazioni
         $regs = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $reg_table WHERE LOWER(email) = %s ORDER BY id ASC LIMIT %d OFFSET %d",
+            // Le email si salvano in minuscolo e la collation è case-insensitive: niente LOWER(),
+            // che impedirebbe l'uso dell'indice
+            "SELECT * FROM $reg_table WHERE email = %s ORDER BY id ASC LIMIT %d OFFSET %d",
             $email, $per_page, $offset
         ));
 
@@ -173,7 +175,7 @@ class DBEM_Privacy_DSAR {
         $reg_table = $wpdb->prefix . 'dbem_registrations';
 
         $regs = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, token FROM $reg_table WHERE LOWER(email) = %s ORDER BY id ASC LIMIT %d",
+            "SELECT id, token FROM $reg_table WHERE email = %s ORDER BY id ASC LIMIT %d",
             $email, $per_page
         ));
 
@@ -189,11 +191,47 @@ class DBEM_Privacy_DSAR {
             );
         }
 
+        // Modifiche in attesa di conferma: nome, email, IP e campi per 24 ore
+        $pending_removed = self::erase_pending_updates($email);
+        if ($pending_removed > 0) {
+            $messages[] = sprintf(__('%d modifiche in attesa di conferma cancellate.', 'db-event-manager'), $pending_removed);
+        }
+
+        // Una cancellazione non riuscita (errore del database) rileggerebbe sempre le stesse
+        // righe: con 100 o più il ciclo non finirebbe mai. Si chiude segnalando i dati trattenuti
+        $items_retained = count($regs) - $items_removed;
+        if ($items_retained > 0) {
+            $messages[] = sprintf(__('%d iscrizioni non cancellate per un errore del database: riprova.', 'db-event-manager'), $items_retained);
+        }
+
         return array(
-            'items_removed'  => $items_removed,
-            'items_retained' => 0,
+            'items_removed'  => ($items_removed + $pending_removed) > 0,
+            'items_retained' => $items_retained > 0,
             'messages'       => $messages,
-            'done'           => count($regs) < $per_page,
+            'done'           => $items_retained > 0 || count($regs) < $per_page,
         );
+    }
+
+    /**
+     * Cancella i transient delle modifiche in attesa di conferma (request_update_confirmation)
+     * legati all'indirizzo. Solo quelli nella tabella delle opzioni: con una cache a oggetti
+     * persistente scadono comunque entro 24 ore.
+     */
+    private static function erase_pending_updates($email) {
+        global $wpdb;
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+            $wpdb->esc_like('_transient_dbem_update_') . '%'
+        ));
+
+        $removed = 0;
+        foreach ((array) $rows as $row) {
+            $pending = maybe_unserialize($row->option_value);
+            if (is_array($pending) && strtolower((string) ($pending['email'] ?? '')) === $email) {
+                delete_transient(substr($row->option_name, strlen('_transient_')));
+                $removed++;
+            }
+        }
+        return $removed;
     }
 }

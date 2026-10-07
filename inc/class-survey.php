@@ -29,9 +29,8 @@ class DBEM_Survey {
         }
 
         $event_id = $reg->event_id;
-        $survey_enabled = get_post_meta($event_id, '_dbem_survey_enabled', true);
 
-        if ($survey_enabled !== '1') {
+        if (!self::is_enabled($event_id) || !self::can_answer($reg)) {
             wp_die(
                 '<div style="text-align:center;padding:40px;font-family:sans-serif;">'
                 . '<h2>📋</h2><p>' . esc_html__('Il survey per questo evento non è attivo.', 'db-event-manager') . '</p></div>',
@@ -50,6 +49,18 @@ class DBEM_Survey {
 
         include DBEM_PLUGIN_DIR . 'templates/frontend/survey.php';
         exit;
+    }
+
+    public static function is_enabled($event_id) {
+        return get_post_meta($event_id, '_dbem_survey_enabled', true) === '1';
+    }
+
+    /**
+     * Rispondono solo le iscrizioni valide (confermate o presenti), come per l'invio
+     * del link: chi è in attesa, rifiutato o annullato ha comunque il token del QR
+     */
+    public static function can_answer($reg) {
+        return in_array($reg->status ?? '', array('confirmed', 'checked_in'), true);
     }
 
     /**
@@ -73,6 +84,10 @@ class DBEM_Survey {
         DBEM_DB::ensure_tables();
         $reg = DBEM_DB::get_registration_by_token($token);
         if (!$reg) wp_send_json_error(__('Token non valido.', 'db-event-manager'));
+        // Gli stessi controlli della pagina: un POST diretto non deve aggirarli
+        if (!self::is_enabled($reg->event_id) || !self::can_answer($reg)) {
+            wp_send_json_error(__('Il survey per questo evento non è attivo.', 'db-event-manager'));
+        }
 
         if (DBEM_DB::has_survey_response($reg->id)) {
             wp_send_json_error(__('Hai già risposto a questo questionario.', 'db-event-manager'));
@@ -94,10 +109,11 @@ class DBEM_Survey {
                 $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
             }
 
-            if ($field['required'] && empty($value)) {
+            // "0" è una risposta valida; il messaggio va a textContent, niente esc_html
+            if ($field['required'] && ($value === '' || $value === array())) {
                 wp_send_json_error(sprintf(
                     __('Il campo "%s" è obbligatorio.', 'db-event-manager'),
-                    esc_html($field['label'])
+                    $field['label']
                 ));
             }
 
@@ -131,7 +147,7 @@ class DBEM_Survey {
         if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
-        $target = sanitize_key($_POST['target'] ?? 'checked_in'); // checked_in | all
+        $target = sanitize_key(DBEM_Security::input('target', 'checked_in')); // checked_in | all
 
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') wp_send_json_error(__('Evento mancante', 'db-event-manager'));
 

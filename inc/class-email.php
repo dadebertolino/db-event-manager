@@ -9,7 +9,8 @@ class DBEM_Email {
     public static function send_confirmation($event_id, $reg) {
         $reg = self::without_links($reg);
         $email_data = get_post_meta($event_id, '_dbem_confirmation_email', true);
-        if (!$email_data || empty($email_data['subject']) || empty($email_data['message'])) return false;
+        if (!is_array($email_data) || empty($email_data['subject']) || empty($email_data['message'])) return false;
+        $email_data['message'] = self::plain_text($email_data['message']);
 
         $placeholders = self::get_placeholders($event_id, $reg);
         $subject = self::replace_placeholders($email_data['subject'], $placeholders);
@@ -84,7 +85,8 @@ class DBEM_Email {
     public static function send_survey_email($event_id, $reg) {
         $reg = self::without_links($reg);
         $survey_email = get_post_meta($event_id, '_dbem_survey_email', true);
-        if (!$survey_email || empty($survey_email['subject'])) return false;
+        if (!is_array($survey_email) || empty($survey_email['subject'])) return false;
+        $survey_email['message'] = self::plain_text($survey_email['message'] ?? '');
 
         $survey_link = home_url('/?dbem_survey=' . $reg->token);
         $placeholders = self::get_placeholders($event_id, $reg);
@@ -456,6 +458,15 @@ class DBEM_Email {
     /**
      * Oggetto su una riga sola
      */
+    /**
+     * Testi salvati prima della 1.9.1 con wp_kses_post(): HTML e entità diventano testo
+     * semplice, gli a capo restano (<br> e fine paragrafo compresi)
+     */
+    public static function plain_text($text) {
+        $text = preg_replace(array('#<br\s*/?>#i', '#</p>\s*#i'), array("\n", "\n\n"), (string) $text);
+        return trim(html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES, 'UTF-8'));
+    }
+
     private static function clean_subject($subject) {
         return trim(preg_replace('/[\r\n]+/', ' ', (string) $subject));
     }
@@ -668,8 +679,8 @@ class DBEM_Email {
         );
 
         $buttons = '<div style="text-align:center;margin:24px 0;">
-            <a href="' . esc_url($approve_url) . '" style="display:inline-block;padding:14px 32px;background:#1d6e3f;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">✅ Approva</a>
-            <a href="' . esc_url($reject_url) . '" style="display:inline-block;padding:14px 32px;background:#d63638;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">❌ Rifiuta</a>
+            <a href="' . esc_url($approve_url) . '" style="display:inline-block;padding:14px 32px;background:#1d6e3f;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">✅ ' . esc_html__('Approva', 'db-event-manager') . '</a>
+            <a href="' . esc_url($reject_url) . '" style="display:inline-block;padding:14px 32px;background:#d63638;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:6px;">❌ ' . esc_html__('Rifiuta', 'db-event-manager') . '</a>
         </div>';
 
         return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">

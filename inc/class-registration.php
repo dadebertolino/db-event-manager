@@ -24,7 +24,7 @@ class DBEM_Registration {
 
         // Valida campi obbligatori
         $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
-        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
+        $email = strtolower(sanitize_email(DBEM_Security::input('dbem_email')));
 
         if (empty($name)) {
             wp_send_json_error(__('Il nome è obbligatorio.', 'db-event-manager'));
@@ -50,19 +50,12 @@ class DBEM_Registration {
         if (is_array($custom_fields)) {
             foreach ($custom_fields as $i => $field) {
                 $field_key = 'dbem_custom_' . $i;
-                $value = '';
-                if ($field['type'] === 'checkbox') {
-                    $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)wp_unslash($_POST[$field_key])) : array();
-                } else {
-                    $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
+                $raw = isset($_POST[$field_key]) ? wp_unslash($_POST[$field_key]) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitizzato e validato da field_value()
+                $result = self::field_value($field, $raw);
+                if ($result['error'] !== '') {
+                    wp_send_json_error($result['error']);
                 }
-                if ($field['required'] && empty($value)) {
-                    wp_send_json_error(sprintf(
-                        __('Il campo "%s" è obbligatorio.', 'db-event-manager'),
-                        esc_html($field['label'])
-                    ));
-                }
-                $custom_data[$field['label']] = $value;
+                $custom_data[$field['label']] = $result['value'];
             }
         }
 
@@ -127,9 +120,17 @@ class DBEM_Registration {
             'ip_address'    => $ip,
         );
 
+        // Da qui al salvataggio un'iscrizione per volta per evento: due invii insieme non
+        // superano i posti né creano due iscrizioni con la stessa email
+        if (!DBEM_DB::lock_event($event_id)) {
+            wp_send_json_error(__('Troppe iscrizioni in questo momento. Riprova tra qualche secondo.', 'db-event-manager'));
+        }
+        $existing = $existing ?: DBEM_DB::get_registration_by_email($event_id, $email);
         if ($existing) {
+            DBEM_DB::unlock_event($event_id);
             self::handle_existing($event_id, $existing, $registration_data);
         }
+        self::require_seat($event_id);
 
         $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
@@ -161,6 +162,7 @@ class DBEM_Registration {
             '%s', // ip_address
         ));
         $reg_id = $wpdb->insert_id;
+        DBEM_DB::unlock_event($event_id);
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione. Riprova.', 'db-event-manager'));
@@ -176,6 +178,52 @@ class DBEM_Registration {
             'message' => self::received_message(),
         ));
         // phpcs:enable WordPress.Security.NonceVerification.Missing
+    }
+
+    /**
+     * Valore di un campo del form integrato, sanitizzato e validato sul tipo: le scelte
+     * solo tra le opzioni definite, email, numeri e date nel loro formato. Il browser fa
+     * gli stessi controlli, ma un invio diretto all'endpoint li salterebbe.
+     *
+     * @param array        $field Campo come salvato in _dbem_custom_fields
+     * @param string|array $raw   Valore inviato, già unslash
+     * @return array{value: string|string[], error: string} error vuoto se valido
+     */
+    public static function field_value($field, $raw) {
+        $type = $field['type'] ?? 'text';
+        $label = (string) ($field['label'] ?? '');
+        $options = array_map('strval', (array) ($field['options'] ?? array()));
+        /* translators: %s: etichetta del campo */
+        $invalid = sprintf(__('Il valore del campo "%s" non è valido.', 'db-event-manager'), $label);
+
+        if ($type === 'checkbox') {
+            $value = array_values(array_filter(array_map('sanitize_text_field', array_filter((array) $raw, 'is_scalar')), 'strlen'));
+            if ($options && array_diff($value, $options)) return array('value' => $value, 'error' => $invalid);
+        } else {
+            $value = is_scalar($raw)
+                ? ($type === 'textarea' ? sanitize_textarea_field((string) $raw) : sanitize_text_field((string) $raw))
+                : '';
+            if ($value !== '') {
+                $valid = true;
+                if (in_array($type, array('select', 'radio'), true) && $options) {
+                    $valid = in_array($value, $options, true);
+                } elseif ($type === 'email') {
+                    $valid = (bool) is_email($value);
+                } elseif ($type === 'number') {
+                    $valid = is_numeric($value);
+                } elseif ($type === 'date') {
+                    $valid = (bool) preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+                }
+                if (!$valid) return array('value' => $value, 'error' => $invalid);
+            }
+        }
+
+        // "0" è un valore valido; il messaggio va a .text(), niente esc_html
+        if (!empty($field['required']) && ($value === '' || $value === array())) {
+            /* translators: %s: etichetta del campo */
+            return array('value' => $value, 'error' => sprintf(__('Il campo "%s" è obbligatorio.', 'db-event-manager'), $label));
+        }
+        return array('value' => $value, 'error' => '');
     }
 
     /**
@@ -197,7 +245,8 @@ class DBEM_Registration {
      */
     public static function require_event($event_id, $form_source) {
         $source = $event_id ? (get_post_meta($event_id, '_dbem_form_source', true) ?: 'builtin') : '';
-        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || get_post_status($event_id) !== 'publish' || $source !== $form_source) {
+        // Evento protetto da password: serve il cookie di chi l'ha inserita
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || get_post_status($event_id) !== 'publish' || $source !== $form_source || post_password_required($event_id)) {
             wp_send_json_error(__('Evento non valido.', 'db-event-manager'));
         }
     }
@@ -208,6 +257,17 @@ class DBEM_Registration {
     public static function require_open($event_id) {
         if (!DBEM_CPT::are_registrations_open($event_id)) {
             wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
+        }
+    }
+
+    /**
+     * Ultimo controllo dei posti, dentro il lock dell'evento (DBEM_DB::lock_event)
+     */
+    private static function require_seat($event_id) {
+        $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
+        if ($max > 0 && DBEM_DB::count_registrations($event_id) >= $max) {
+            DBEM_DB::unlock_event($event_id);
+            wp_send_json_error(__('I posti sono esauriti.', 'db-event-manager'));
         }
     }
 
@@ -399,7 +459,7 @@ class DBEM_Registration {
         self::require_event($event_id, 'dbfb');
 
         $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
-        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
+        $email = strtolower(sanitize_email(DBEM_Security::input('dbem_email')));
 
         if (empty($name) || !is_email($email)) {
             wp_send_json_error(__('Nome e email sono obbligatori.', 'db-event-manager'));
@@ -482,9 +542,17 @@ class DBEM_Registration {
             'ip_address'    => $ip,
         );
 
+        // Da qui al salvataggio un'iscrizione per volta per evento: due invii insieme non
+        // superano i posti né creano due iscrizioni con la stessa email
+        if (!DBEM_DB::lock_event($event_id)) {
+            wp_send_json_error(__('Troppe iscrizioni in questo momento. Riprova tra qualche secondo.', 'db-event-manager'));
+        }
+        $existing = $existing ?: DBEM_DB::get_registration_by_email($event_id, $email);
         if ($existing) {
+            DBEM_DB::unlock_event($event_id);
             self::handle_existing($event_id, $existing, $registration_data);
         }
+        self::require_seat($event_id);
 
         $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
@@ -516,6 +584,7 @@ class DBEM_Registration {
             '%s', // ip_address
         ));
         $reg_id = $wpdb->insert_id;
+        DBEM_DB::unlock_event($event_id);
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione.', 'db-event-manager'));

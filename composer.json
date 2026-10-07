@@ -12,10 +12,12 @@
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
     "phpcompatibility/phpcompatibility-wp": "^3.0@alpha",
     "phpcompatibility/php-compatibility": "^10.0@alpha",
-    "phpcompatibility/phpcompatibility-paragonie": "^2.0@alpha"
+    "phpcompatibility/phpcompatibility-paragonie": "^2.0@alpha",
+    "yoast/phpunit-polyfills": "^1.1"
   },
   "scripts": {
     "test": "phpunit --configuration phpunit.xml",
+    "test:integration": "phpunit -c phpunit-integration.xml.dist",
     "phpcs": "phpcs",
     "check-js": "node bin/check-js.js"
   },

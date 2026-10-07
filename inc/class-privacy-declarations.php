@@ -189,6 +189,8 @@ class DBEM_Privacy_Declarations {
     }
 
     public static function hub_count_consents($args = array()) {
+        // Plugin attivo ma mai usato: senza tabella l'Hub riceverebbe un errore SQL
+        DBEM_DB::ensure_tables();
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         list($where, $params) = self::build_consent_where($args);
@@ -197,6 +199,7 @@ class DBEM_Privacy_Declarations {
     }
 
     public static function hub_query_consents($args = array()) {
+        DBEM_DB::ensure_tables();
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         list($where, $params) = self::build_consent_where($args);
@@ -237,8 +240,9 @@ class DBEM_Privacy_Declarations {
     private static function mask_email($email) {
         $parts = explode('@', $email);
         if (count($parts) !== 2) return '***';
+        // A caratteri, non a byte: un indirizzo con lettere accentate non va spezzato a metà
         $local = $parts[0];
-        $masked = substr($local, 0, 2) . str_repeat('*', max(strlen($local) - 2, 0));
+        $masked = mb_substr($local, 0, 2) . str_repeat('*', max(mb_strlen($local) - 2, 0));
         return $masked . '@' . $parts[1];
     }
 }

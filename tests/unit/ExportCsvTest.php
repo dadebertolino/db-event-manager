@@ -14,10 +14,10 @@ final class ExportCsvTest extends TestCase {
 
     public function testQuotesAreDoubledAndBackslashIsPlainText(): void {
         // Con l'escape predefinito "\" la riga usciva "C:\""", non leggibile da Excel
-        $this->assertSame("Anna,\"Dice \"\"ciao\"\"\",\"C:\\\"\"\"\n", $this->row(array('Anna', 'Dice "ciao"', 'C:\\"')));
+        $this->assertSame("Anna;\"Dice \"\"ciao\"\"\";\"C:\\\"\"\"\n", $this->row(array('Anna', 'Dice "ciao"', 'C:\\"')));
     }
 
     public function testEveryCellIsNeutralizedHeadersIncluded(): void {
-        $this->assertSame("ID,\"'=HYPERLINK(\"\"http://x\"\")\",'+1,'@a\n", $this->row(array('ID', '=HYPERLINK("http://x")', '+1', '@a')));
+        $this->assertSame("ID;\"'=HYPERLINK(\"\"http://x\"\")\";'+1;'@a\n", $this->row(array('ID', '=HYPERLINK("http://x")', '+1', '@a')));
     }
 }

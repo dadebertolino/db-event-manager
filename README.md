@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.9.0
+**Versione:** 1.9.1
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 6.0+, PHP 7.4+  
@@ -341,6 +341,61 @@ La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il contro
 ---
 
 ## Changelog
+
+### 1.9.1
+**Fuso orario, posti, stati delle iscrizioni e altre correzioni**
+
+Patch: solo correzioni, dalla Fase 2 di `TESTING-PLAN.md` (numeri tra parentesi). Ogni correzione
+ha il suo test; da questa versione girano anche gli integration test (WordPress e MySQL veri) e gli
+E2E nel browser, vedi [TESTING.md](TESTING.md).
+
+**Fuso orario (#7):**
+- Le date degli eventi sono salvate in ora locale, ma venivano lette come UTC (WordPress tiene PHP in
+  UTC). Su un sito italiano in estate: promemoria e survey automatici partivano **2 ore dopo** il
+  previsto (un promemoria «1 ora prima» arrivava dopo l'inizio), le iscrizioni restavano aperte 2 ore
+  oltre la scadenza, gli stati «in corso» e «concluso» erano sfasati, e gli orari di iscrizione,
+  check-in e survey comparivano +2 ore nelle pagine admin, check-in e approvazione. Ora ogni
+  conversione passa da `DBEM_Time` con il fuso del sito. Promemoria già programmati: si correggono
+  risalvando l'evento o disattivando e riattivando il plugin
+
+**Posti e invii automatici (#8, #16, #17):**
+- Le iscrizioni rifiutate non occupano più posti
+- Il controllo orario non chiude più le iscrizioni per posti esauriti in modo permanente: i posti si
+  contano al momento, e un annullamento o un rifiuto riapre le iscrizioni da solo (la scadenza
+  continua a chiuderle)
+- Promemoria e survey automatici partono solo per eventi pubblicati: un evento annullato e spostato
+  nel cestino non manda più il promemoria
+- Disattivare e riattivare il plugin cancellava tutti i promemoria e survey programmati: ora la
+  riattivazione li riprogramma
+
+**Stati delle iscrizioni (#14, #13 C, #20, #21):**
+- La pagina partecipanti da telefono usa le stesse regole dell'admin: ogni azione solo dallo stato di
+  partenza ammesso (prima «approva» su un presente lo riportava a confermato). Riconfermare un
+  annullato o un rifiutato controlla i posti e invia QR ed email (prima non partiva nulla)
+- Ogni cambio di stato ricontrolla lo stato nel database: due scansioni dello stesso QR, o due
+  operatori insieme, non fanno il check-in due volte (la seconda risponde «già registrato»)
+- Orario assegnato oltre 50 caratteri: prima il salvataggio falliva in silenzio ma QR ed email di
+  approvazione partivano e la pagina diceva «approvata». Ora il valore viene rifiutato prima, e senza
+  salvataggio non parte nulla
+- Survey: si risponde solo con il survey attivo e un'iscrizione confermata o presente (prima un invio
+  diretto funzionava anche a survey disattivato, e da iscritti in attesa, rifiutati o annullati)
+
+**Form e pagine (#18, #11, #15, #26, #27, #28, #37, #39):**
+- Campi del form integrato validati anche lato server: scelte solo tra le opzioni definite, email,
+  numeri e date nel loro formato; le aree di testo conservano gli a capo; «0» è una risposta valida
+  nei campi obbligatori (anche nel survey); i messaggi d'errore non mostrano più `&#039;` al posto
+  dell'apostrofo
+- Eventi protetti da password: pagina, shortcode e iscrizione chiedono la password (prima descrizione
+  e form erano visibili e utilizzabili)
+- Check-in admin: un QR di un altro evento rispetto a quello scelto non fa il check-in e lo segnala
+- Pagina partecipanti da telefono: cambiando evento in fretta non compaiono più i dati di quello
+  precedente; la ricerca restituisce fino a 25 risultati
+- Le barre rovesciate nei testi dell'evento non si perdono più al salvataggio («Aula B\2»)
+
+**Altro (#24, #49):**
+- Disinstallazione con «Elimina tutti i dati»: vengono eliminati anche gli eventi nel cestino
+- Libreria QR: niente più avvisi di deprecazione su PHP 8, che con la visualizzazione degli errori
+  attiva potevano finire in una risposta o nel PNG
 
 ### 1.9.0
 **Duplica evento, PIN per evento, correzioni di sicurezza e privacy**

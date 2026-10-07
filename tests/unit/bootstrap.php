@@ -376,6 +376,12 @@ if (!function_exists('get_posts')) {
     }
 }
 
+if (!function_exists('post_password_required')) {
+    function post_password_required($post = null) {
+        return !empty($GLOBALS['__dbem_protected'][is_object($post) ? $post->ID : $post]);
+    }
+}
+
 if (!function_exists('get_post_status')) {
     function get_post_status($post_id) {
         return $GLOBALS['__dbem_posts'][$post_id] ?? 'publish';

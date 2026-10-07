@@ -111,13 +111,14 @@
         $.post(dbem_checkin.ajax_url, {
             action: 'dbem_checkin',
             nonce: dbem_checkin.nonce,
-            token: token
+            token: token,
+            event_id: currentEventId
         }, function(resp) {
             if (resp.success) {
                 var d = resp.data;
                 var fbClass = 'success';
                 if (d.status === 'already') fbClass = 'warning';
-                if (d.status === 'cancelled' || d.status === 'not_admitted') fbClass = 'error';
+                if (d.status === 'cancelled' || d.status === 'not_admitted' || d.status === 'other_event') fbClass = 'error';
                 showFeedback(fbClass, d.icon, d.name || '', d.message);
                 loadParticipants();
             } else {

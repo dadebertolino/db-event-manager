@@ -198,7 +198,8 @@ class DBEM_Registration {
      */
     public static function require_event($event_id, $form_source) {
         $source = $event_id ? (get_post_meta($event_id, '_dbem_form_source', true) ?: 'builtin') : '';
-        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || get_post_status($event_id) !== 'publish' || $source !== $form_source) {
+        // Evento protetto da password: serve il cookie di chi l'ha inserita
+        if (!$event_id || get_post_type($event_id) !== 'dbem_event' || get_post_status($event_id) !== 'publish' || $source !== $form_source || post_password_required($event_id)) {
             wp_send_json_error(__('Evento non valido.', 'db-event-manager'));
         }
     }

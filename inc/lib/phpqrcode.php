@@ -16,6 +16,10 @@
  *    https://sourceforge.net/projects/phpqrcode/
  *    https://github.com/t0k4rt/phpqrcode
  *
+ * Modifiche per DB Event Manager: classi con prefisso DBEM_; in DBEM_QRimage::png()
+ * e DBEM_QRvect::svg() i colori hanno un valore predefinito (bianco/nero), perché un
+ * parametro opzionale prima di uno obbligatorio genera una deprecazione su PHP 8.0+.
+ *
  * PHP QR Code is distributed under LGPL 3
  * Copyright (C) 2010 Dominik Dzienia <deltalab at poczta dot fm>
  *
@@ -954,7 +958,7 @@
     class DBEM_QRimage {
 
         //----------------------------------------------------------------------
-        public static function png($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color, $fore_color)
+        public static function png($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color = 0xFFFFFF, $fore_color = 0x000000)
         {
             $image = self::image($frame, $pixelPerPoint, $outerFrame, $back_color, $fore_color);
 
@@ -3548,7 +3552,7 @@
         }
         
         //----------------------------------------------------------------------
-        public static function svg($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color, $fore_color) 
+        public static function svg($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE, $back_color = 0xFFFFFF, $fore_color = 0x000000) 
         {
             $vect = self::vectSVG($frame, $pixelPerPoint, $outerFrame, $back_color, $fore_color);
             

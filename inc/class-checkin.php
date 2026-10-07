@@ -35,6 +35,19 @@ class DBEM_Checkin {
 
         $event_title = DBEM_CPT::get_event_name($reg->event_id);
 
+        // QR di un altro evento rispetto a quello scelto nella pagina: nessun check-in
+        $event_id = absint($_POST['event_id'] ?? 0);
+        if ($event_id && (int) $reg->event_id !== $event_id) {
+            wp_send_json_success(array(
+                'status'  => 'other_event',
+                /* translators: %s: nome dell'evento del QR */
+                'message' => sprintf(__('QR di un altro evento: %s. Check-in non effettuato.', 'db-event-manager'), $event_title),
+                'name'    => $reg->name,
+                'event'   => $event_title,
+                'icon'    => '⛔',
+            ));
+        }
+
         switch ($reg->status) {
             case 'confirmed':
                 $now = current_time('mysql');

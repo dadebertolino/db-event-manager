@@ -38,6 +38,10 @@ class DBEM_Shortcodes {
         <div<?php echo DBEM_Appearance::wrapper_attributes('dbem-event-wrapper', $event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?>>
             <h2 class="dbem-event-title"><?php echo esc_html($event_name); ?></h2>
 
+            <?php if (post_password_required($post)): ?>
+                <?php echo get_the_password_form($post); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup del core ?>
+            <?php else: ?>
+
             <?php if ($event_desc): ?>
                 <div class="dbem-event-description">
                     <?php
@@ -50,6 +54,7 @@ class DBEM_Shortcodes {
             <?php endif; ?>
 
             <?php echo DBEM_Frontend::render_event_details($event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato dal renderer ?>
+            <?php endif; ?>
         </div>
         <?php
         return ob_get_clean();

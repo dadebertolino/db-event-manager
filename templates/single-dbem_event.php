@@ -21,6 +21,11 @@ while (have_posts()) : the_post();
     <article<?php echo DBEM_Appearance::wrapper_attributes('dbem-single-event', $event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi già escapati ?>>
         <h1 class="dbem-event-title" style="margin-bottom:16px;"><?php echo esc_html($event_name); ?></h1>
 
+        <?php if (post_password_required()): ?>
+            <?php // Evento protetto da password: niente descrizione, dettagli né form finché non la si inserisce
+            echo get_the_password_form(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup del core ?>
+        <?php else: ?>
+
         <?php if (has_post_thumbnail()): ?>
             <div class="dbem-event-thumbnail" style="margin-bottom:20px;">
                 <?php the_post_thumbnail('large', array('style' => 'width:100%;height:auto;border-radius:10px;')); ?>
@@ -34,6 +39,7 @@ while (have_posts()) : the_post();
         <?php endif; ?>
 
         <?php echo DBEM_Frontend::render_event_details($event_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato dal renderer ?>
+        <?php endif; ?>
     </article>
 
 </main>

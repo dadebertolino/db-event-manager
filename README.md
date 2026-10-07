@@ -392,8 +392,46 @@ E2E nel browser, vedi [TESTING.md](TESTING.md).
   precedente; la ricerca restituisce fino a 25 risultati
 - Le barre rovesciate nei testi dell'evento non si perdono più al salvataggio («Aula B\2»)
 
+**Iscrizioni contemporanee e PIN (#9, #25, #22):**
+- Due o più invii insieme sull'ultimo posto: prima entravano tutti (posti superati) e con la stessa
+  email nascevano doppioni. Controllo dell'email, dei posti e salvataggio avvengono ora sotto un lock
+  MySQL per evento (`GET_LOCK`), anche per DB Form Builder e per l'aggiunta manuale da telefono
+- Tentativi di PIN errati: una raffica di richieste parallele superava il limite di 10; ora il
+  contatore è aggiornato sotto lock
+- DB Form Builder: l'iscrizione all'evento partiva anche quando DBFB mostrava un errore (validazione,
+  captcha), perché bastava un testo qualsiasi nella zona messaggi. Ora solo dopo l'invio riuscito
+
+**Database e privacy (#32, #33, #34, #35, #36):**
+- Schema con versione (`dbem_db_version`): tabelle, colonne e indici si aggiornano con `dbDelta` solo
+  al cambio di versione. Prima ogni richiesta eseguiva controlli sulle tabelle e un indice nuovo non
+  arrivava mai a chi aggiornava. Indice sull'email sui primi 191 caratteri (MySQL 5.6 / MariaDB 10.1),
+  indice sui campi del consenso per il registro di Privacy Hub
+- Export e cancellazione dei dati personali: ricerca dell'email con l'indice; la cancellazione non può
+  più ciclare all'infinito se il database restituisce un errore; vengono cancellate anche le modifiche
+  in attesa di conferma (nome, email, IP e campi conservati per 24 ore)
+- Registro consensi di Privacy Hub: nessun errore SQL se il plugin è attivo ma non ha ancora tabelle;
+  email mascherate correttamente anche con lettere accentate
+
+**Email ed export (#29, #30, #31, #38):**
+- I testi delle email sono testo semplice: prima si salvavano con l'HTML ma l'invio lo mostrava
+  letterale (`<b>`). I testi già salvati vengono convertiti all'invio
+- Un meta email malformato non impedisce più di aprire l'evento (errore fatale su PHP 8)
+- Un parametro inviato come array (`dbem_email[]=…`) non manda più in errore 500 l'iscrizione
+- Export CSV dell'admin separato da punto e virgola, come quello della pagina partecipanti: Excel in
+  italiano lo apriva in una sola colonna
+
+**Pagine (#40, #41, #42, #43):**
+- Pagina di approvazione nella lingua del sito; pulsanti «Approva» e «Rifiuta» delle email traducibili
+- Menu eventi di Partecipanti e Survey: anche eventi programmati, privati e in revisione, senza il
+  limite di 100 (50 per il Check-in)
+- Check-in da telefono: la fotocamera si riaccende solo dopo una scansione, non dopo una ricerca
+  manuale; un avviso nuovo non viene più nascosto dal timer di quello precedente
+- Builder dei campi: a ogni modifica si aggiungeva un'istanza del trascinamento, che ripeteva il
+  riordino a ogni spostamento
+
 **Altro (#24, #49):**
-- Disinstallazione con «Elimina tutti i dati»: vengono eliminati anche gli eventi nel cestino
+- Disinstallazione con «Elimina tutti i dati»: vengono eliminati anche gli eventi nel cestino e
+  l'opzione della versione dello schema
 - Libreria QR: niente più avvisi di deprecazione su PHP 8, che con la visualizzazione degli errori
   attiva potevano finire in una risposta o nel PNG
 

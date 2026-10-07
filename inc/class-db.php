@@ -11,6 +11,7 @@ class DBEM_DB {
         // Genera il PIN delle pagine pubbliche se non esiste
         DBEM_Security::get_pin();
         DBEM_Cron::schedule();
+        DBEM_Cron::reschedule_all_events();
         // Le regole del CPT (pagine evento, archivio /eventi/) entrano nel flush solo se è registrato
         DBEM_CPT::register();
         flush_rewrite_rules();
@@ -130,7 +131,7 @@ class DBEM_DB {
             ));
         }
         return (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $table WHERE event_id = %d AND status != 'cancelled'",
+            "SELECT COUNT(*) FROM $table WHERE event_id = %d AND status NOT IN ('cancelled', 'rejected')",
             $event_id
         ));
     }

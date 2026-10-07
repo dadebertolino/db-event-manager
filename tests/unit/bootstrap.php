@@ -512,7 +512,7 @@ if (!class_exists('wpdb')) {
             if (str_contains($query, "SELECT COUNT(*) FROM") && str_contains($query, "email = 'alice@example.com'")) {
                 return 2;
             }
-            if (str_contains($query, "SELECT COUNT(*) FROM") && str_contains($query, "status != 'cancelled'")) {
+            if (str_contains($query, "SELECT COUNT(*) FROM") && (str_contains($query, "status != 'cancelled'") || str_contains($query, "status NOT IN ('cancelled', 'rejected')"))) {
                 return 1;
             }
             return 0;

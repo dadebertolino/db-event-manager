@@ -53,7 +53,8 @@ function dbem_uninstall_site() {
         // Eventi e relativi meta
         $events = get_posts(array(
             'post_type'      => 'dbem_event',
-            'post_status'    => 'any',
+            // 'any' esclude cestino e bozze automatiche, che hanno comunque i meta dell'evento
+            'post_status'    => array('any', 'trash', 'auto-draft'),
             'posts_per_page' => -1,
             'fields'         => 'ids',
         ));

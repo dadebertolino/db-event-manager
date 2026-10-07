@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.9.1
+**Versione:** 1.10.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 6.0+, PHP 7.4+  
@@ -342,12 +342,31 @@ La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il contro
 
 ## Changelog
 
-### 1.9.1
-**Fuso orario, posti, stati delle iscrizioni e altre correzioni**
+### 1.10.0
+**Fuso orario, posti, stati delle iscrizioni, accessibilità e altre correzioni**
 
-Patch: solo correzioni, dalla Fase 2 di `TESTING-PLAN.md` (numeri tra parentesi). Ogni correzione
-ha il suo test; da questa versione girano anche gli integration test (WordPress e MySQL veri) e gli
-E2E nel browser, vedi [TESTING.md](TESTING.md).
+Minor: correzioni dalle Fasi 2 e 3 di `TESTING-PLAN.md` (numeri tra parentesi) più una funzione
+nuova, l'email di annullamento con la sua spunta. Ogni correzione ha il suo test; da questa versione
+girano anche gli integration test (WordPress e MySQL veri) e gli E2E nel browser, vedi
+[TESTING.md](TESTING.md).
+
+**Annullamento e export (D6, D7):**
+- Annullando un'iscrizione dall'admin (singola o in blocco) o dalla pagina partecipanti, con la
+  spunta «Avvisa via email chi viene annullato» (attiva di default) il partecipante riceve un'email.
+  Prima l'email esisteva ma non veniva mai inviata. Da telefono l'annullamento chiede conferma
+- L'export CSV dell'admin non contiene più l'indirizzo IP, che resta nel database come prova
+  dell'iscrizione e nell'export dei dati personali
+
+**Accessibilità (#45–#48):**
+- Form di iscrizione: i radio obbligatori e i gruppi di checkbox obbligatori ora vengono controllati
+  (prima si poteva inviare senza sceglierli); «obbligatorio» letto dai lettori di schermo anche per i
+  gruppi; ogni errore è collegato al suo campo; una sola regione di messaggi annunciata; la barra dei
+  posti ha un nome; il pulsante non resta senza nome durante l'invio
+- Check-in da telefono: zoom di nuovo consentito, contrasti sopra 4,5:1, errori del PIN annunciati,
+  risultati della ricerca attivabili anche con la barra spaziatrice e pulsanti solo se azionabili
+- Partecipanti da telefono: pulsanti con un nome che dice azione e persona («presente» ha un'icona
+  diversa da «approva»); la finestra dell'orario è un dialog con il focus trattenuto, Esc e ritorno
+  del focus al pulsante
 
 **Fuso orario (#7):**
 - Le date degli eventi sono salvate in ora locale, ma venivano lette come UTC (WordPress tiene PHP in

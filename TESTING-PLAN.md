@@ -60,7 +60,10 @@ dipende da D7), #40 (lingua della pagina di approvazione e pulsanti delle email;
 restano i formati data fissi). #22: con la pagina aperta prima che le iscrizioni si
 chiudano, DBFB può ancora salvare il suo invio; l'iscrizione all'evento viene
 rifiutata. #36: l'offset non serve, il contratto di Privacy Hub passa solo `limit`.
-Ancora aperti: #37 (in parte), #40 (in parte), #44, accessibilità #45–#48.
+Fase 3 (1.10.0): D6, D7, accessibilità #45–#48 (#46: non toccato il `<main>`
+del template singolo, che si annida solo con temi che lo aprono nell'header), con
+E2E axe su form, check-in e partecipanti.
+Ancora aperti: #37 (in parte), #40 (in parte), #44.
 #25: formato del PIN (4-10 cifre) corretto; resta il contatore dei tentativi non
 atomico. #6 e #23 non hanno ancora un test automatico: arriva con integration ed
 E2E (Fase 2 e 3). #2, #12, #13 hanno unit test sulla logica; il percorso completo
@@ -117,7 +120,7 @@ su database va in Fase 2.
 | 35 ✅ | ○ | `class-registration.php:282` | Il transient della modifica in attesa (nome, email, IP, campi, 24 h) non è coperto da export e cancellazione DSAR. |
 | 36 ✅ | ○ | `class-privacy-declarations.php:169-188` | Query del registro consensi senza `ensure_tables()` e senza offset oltre 50.000 righe. |
 | 37 ◐ | ○ | `class-survey.php:97, 104` | Survey: `empty('0')` su obbligatorio; risposte indicizzate per etichetta (rinominare una domanda le fa sparire dal riepilogo, etichette duplicate si sovrascrivono). |
-| 38 ◐ | ○ | `class-export.php` | CSV admin con `,` (Excel italiano lo apre in una colonna; l'export pubblico usa `;`); include l'IP (minimizzazione). |
+| 38 ✅ | ○ | `class-export.php` | CSV admin con `,` (Excel italiano lo apre in una colonna; l'export pubblico usa `;`); include l'IP (minimizzazione). |
 | 39 ✅ | ○ | `class-registration.php:66-69`, survey | Messaggi d'errore con escape doppio («L'aula» → `L&#039;aula`). |
 | 40 ◐ | ○ | vari | i18n: `d/m/Y` fisso invece di `date_format`, `lang="it"` fisso nella pagina di approvazione, «✅ Approva»/«❌ Rifiuta» fissi nelle email. |
 | 41 ✅ | ○ | `participants.php:4-10` | Menu eventi della pagina Partecipanti: solo `publish`/`draft`, massimo 100. |
@@ -130,10 +133,10 @@ su database va in Fase 2.
 
 | # | Dove | Problema |
 |---|---|---|
-| 45 | `frontend.js:25-35` | Radio obbligatorio senza scelta supera la validazione; gruppo checkbox obbligatorio senza `required`/`aria-required`, asterisco `aria-hidden` (3.3.2). |
-| 46 | form frontend | Errori non collegati ai campi (`aria-describedby`); `role="alert"` insieme ad `aria-live="polite"`; progressbar senza nome; pulsante senza nome durante l'invio; `<main>` annidato nel main del tema. |
-| 47 | `templates/frontend/checkin.php:14` | `user-scalable=no, maximum-scale=1` (1.4.4). |
-| 48 | pagine check-in / partecipanti | Contrasti sotto 4.5:1 (`.ci-or`, `.ci-fb-error`, header `small`); errori PIN senza `aria-live`; risultati `role=button` che non rispondono allo Spazio; modale orario senza `role=dialog`, trappola e ritorno del focus; pulsanti solo emoji (✅ con due significati); nessuna conferma prima di annullare. |
+| 45 ✅ | `frontend.js:25-35` | Radio obbligatorio senza scelta supera la validazione; gruppo checkbox obbligatorio senza `required`/`aria-required`, asterisco `aria-hidden` (3.3.2). |
+| 46 ✅ | form frontend | Errori non collegati ai campi (`aria-describedby`); `role="alert"` insieme ad `aria-live="polite"`; progressbar senza nome; pulsante senza nome durante l'invio; `<main>` annidato nel main del tema. |
+| 47 ✅ | `templates/frontend/checkin.php:14` | `user-scalable=no, maximum-scale=1` (1.4.4). |
+| 48 ✅ | pagine check-in / partecipanti | Contrasti sotto 4.5:1 (`.ci-or`, `.ci-fb-error`, header `small`); errori PIN senza `aria-live`; risultati `role=button` che non rispondono allo Spazio; modale orario senza `role=dialog`, trappola e ritorno del focus; pulsanti solo emoji (✅ con due significati); nessuna conferma prima di annullare. |
 
 ### Verificato e corretto (non sono bug)
 
@@ -170,7 +173,9 @@ uso reale.
   chi è già iscritto, che non può più modificare i dati dopo la chiusura
   (altrimenti la differenza di risposta rivelerebbe l'iscrizione).
 - **D5 ✅** Rinomina delle opzioni solo dopo conferma, per ogni rinomina (1.9.0).
-- **D6, D7** da decidere.
+- **D6 ✅** Email di annullamento con la spunta «Avvisa via email chi viene
+  annullato», attiva di default (1.10.0).
+- **D7 ✅** IP tolto dall'export CSV; nessun avviso aggiuntivo sulla disinstallazione.
 
 | # | Tema | Situazione | Opzioni |
 |---|---|---|---|

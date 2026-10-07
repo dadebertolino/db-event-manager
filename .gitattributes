@@ -9,3 +9,4 @@
 /phpunit.xml        export-ignore
 /phpcs.xml.dist     export-ignore
 /MIGLIORAMENTI-*.md export-ignore
+/TESTING-PLAN.md    export-ignore

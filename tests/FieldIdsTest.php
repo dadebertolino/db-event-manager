@@ -52,10 +52,9 @@ final class FieldIdsTest extends TestCase {
     }
 
     public function testFieldPlaceholderUsesCurrentValue(): void {
-        $method = new ReflectionMethod('DBEM_Email', 'replace_placeholders');
-        $values = (new ReflectionMethod('DBEM_Email', 'get_placeholders'))->invoke(null, 10, $this->registration());
+        $values = dbem_call_private('DBEM_Email', 'get_placeholders', 10, $this->registration());
 
-        $text = $method->invoke(null, 'Lab: {campo:f_lab} - vecchio: {campo:eliminato}', $values);
+        $text = dbem_call_private('DBEM_Email', 'replace_placeholders', 'Lab: {campo:f_lab} - vecchio: {campo:eliminato}', $values);
 
         $this->assertSame('Lab: Robotica, Chimica - vecchio: ', $text);
     }

@@ -29,8 +29,7 @@ final class EmailEditorTest extends TestCase {
     }
 
     public function testConfirmationPlaceholdersAreAllReplaced(): void {
-        $method = new ReflectionMethod('DBEM_Email', 'get_placeholders');
-        $values = $method->invoke(null, 10, $this->registration());
+        $values = dbem_call_private('DBEM_Email', 'get_placeholders', 10, $this->registration());
 
         foreach (array_keys(DBEM_Email::placeholders_for('confirmation')) as $token) {
             $this->assertArrayHasKey($token, $values, $token . ' è mostrato nell\'editor ma non viene sostituito');

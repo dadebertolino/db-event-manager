@@ -32,8 +32,7 @@ final class SecurityFixesTest extends TestCase {
     }
 
     private function call_private($class, $method, ...$args) {
-        $reflection = new ReflectionMethod($class, $method);
-        return $reflection->invoke(null, ...$args);
+        return dbem_call_private($class, $method, ...$args);
     }
 
     public function testPlaceholdersAreReplacedInOnePass(): void {

@@ -11,6 +11,18 @@ if (!function_exists('str_contains')) {
     }
 }
 
+/**
+ * Chiama un metodo statico privato. Prima di PHP 8.1 serve setAccessible(),
+ * che dalla 8.5 è deprecato
+ */
+function dbem_call_private($class, $method, ...$args) {
+    $reflection = new ReflectionMethod($class, $method);
+    if (PHP_VERSION_ID < 80100) {
+        $reflection->setAccessible(true);
+    }
+    return $reflection->invoke(null, ...$args);
+}
+
 $GLOBALS['__dbem_options'] = array();
 $GLOBALS['__dbem_transients'] = array();
 

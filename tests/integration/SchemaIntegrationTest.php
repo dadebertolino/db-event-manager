@@ -33,6 +33,9 @@ class SchemaIntegrationTest extends WP_UnitTestCase {
 
     public function test_nessuna_query_di_controllo_con_lo_schema_aggiornato(): void {
         global $wpdb;
+        // Allinea lo stato: l'ALTER TABLE di un altro test fa un commit implicito e il
+        // rollback di fine test può lasciare l'opzione di versione cancellata
+        DBEM_DB::ensure_tables();
         $before = $wpdb->num_queries;
         DBEM_DB::ensure_tables();
         $this->assertSame($before, $wpdb->num_queries);

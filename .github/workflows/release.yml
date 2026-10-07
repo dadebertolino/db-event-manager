@@ -13,7 +13,7 @@ jobs:
     name: "Build ZIP e pubblica Release"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # L'updater ricava la versione dal tag: se non coincide con quella del plugin,
       # WordPress continuerebbe a proporre l'aggiornamento anche dopo averlo installato

@@ -4,6 +4,13 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', dirname(__DIR__) . '/');
 }
 
+// PHP 7.4: in WordPress lo fornisce il core (dalla 5.9), qui no
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle === '' || strpos($haystack, $needle) !== false;
+    }
+}
+
 $GLOBALS['__dbem_options'] = array();
 $GLOBALS['__dbem_transients'] = array();
 
@@ -582,3 +589,4 @@ require_once dirname(__DIR__) . '/inc/class-qrcode.php';
 require_once dirname(__DIR__) . '/inc/class-checkin.php';
 require_once dirname(__DIR__) . '/inc/class-duplicate.php';
 require_once dirname(__DIR__) . '/inc/class-updater.php';
+require_once dirname(__DIR__) . '/inc/class-export.php';

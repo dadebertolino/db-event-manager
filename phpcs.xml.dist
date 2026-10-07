@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <ruleset name="DB Event Manager">
-    <description>Controlli di sicurezza WordPress su tutto il codice PHP del plugin, template compresi.</description>
+    <description>Controlli di sicurezza WordPress e compatibilità con PHP 7.4+ su tutto il codice PHP del plugin, template compresi.</description>
 
     <file>inc/</file>
     <file>templates/</file>
@@ -13,7 +13,12 @@
     <arg name="extensions" value="php"/>
     <arg name="parallel" value="4"/>
 
-    <config name="minimum_wp_version" value="5.8"/>
+    <config name="minimum_wp_version" value="6.0"/>
 
     <rule ref="WordPress.Security"/>
+
+    <!-- Il plugin dichiara PHP 7.4: niente funzioni o sintassi più recenti
+         (quelle che WordPress fornisce come polyfill sono ammesse) -->
+    <config name="testVersion" value="7.4-"/>
+    <rule ref="PHPCompatibilityWP"/>
 </ruleset>

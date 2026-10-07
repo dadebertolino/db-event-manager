@@ -6,7 +6,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 **Versione:** 1.9.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
-**Richiede:** WordPress 5.8+, PHP 7.4+  
+**Richiede:** WordPress 6.0+, PHP 7.4+  
 **GitHub:** [dadebertolino/db-event-manager](https://github.com/dadebertolino/db-event-manager)
 
 ---
@@ -316,10 +316,10 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 ### Sviluppo
 Dopo `composer install`:
 - `composer test` — test PHPUnit, senza WordPress
-- `composer phpcs` — regole `WordPress.Security` su tutto il PHP del plugin, template compresi; ogni violazione è un errore
+- `composer phpcs` — regole `WordPress.Security` e compatibilità con PHP 7.4+ (PHPCompatibilityWP) su tutto il PHP del plugin, template compresi; ogni violazione è un errore
 - `composer check-js` — sintassi dei file in `assets/js` e degli script inline nei file PHP
 
-La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
+La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5, PHPCS e il controllo JavaScript. PHPUnit è fermo alla 9.6 e `composer.json` fissa la piattaforma a PHP 7.4, così le dipendenze si installano anche sulla versione minima dichiarata. Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
 
 ---
 
@@ -362,6 +362,17 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 - Nessun errore se il filesystem di WordPress non è disponibile o l'installazione non restituisce
   la cartella di destinazione
 - Test: `UpdaterTest` (release, scelta dello ZIP, cache degli errori, cartella, riattivazione)
+
+**Requisiti e test:**
+- WordPress minimo **6.0** (prima 5.8), come gli altri plugin DB; PHP minimo invariato, 7.4
+- Export CSV di partecipanti e survey: `fputcsv()` riceve l'escape vuoto (CSV standard, RFC 4180).
+  Su PHP 8.4 la chiamata senza escape genera un avviso di deprecazione, che con `display_errors`
+  attivo poteva finire dentro il file; una barra rovesciata prima di una virgoletta ora resta testo
+- CI: `php -l` e PHPUnit su PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 e 8.5 (prima `php -l` su 7.4 e 8.3 e
+  test solo su 8.2: PHPUnit 11 non gira su PHP 7.4). PHPUnit passa alla 9.6, la piattaforma Composer
+  è fissata a PHP 7.4; run annullata a ogni nuovo push sullo stesso branch; azioni GitHub e Node aggiornati
+- PHPCS: aggiunto PHPCompatibilityWP con `testVersion 7.4-` (versione 10 alpha, l'unica che conosce
+  la sintassi di PHP 8)
 
 ### 1.8.0
 **Iscrizioni compatibili con la cache di pagina + dichiarazioni privacy accurate**

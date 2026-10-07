@@ -58,7 +58,7 @@ class DBEM_Export {
             }
         }
         $headers = array_merge($headers, $custom_keys);
-        fputcsv($output, $headers);
+        self::put_row($output, $headers);
 
         // Dati
         $status_labels = array(
@@ -84,7 +84,7 @@ class DBEM_Export {
             foreach ($custom_keys as $ck) {
                 $row[] = self::csv_safe($data[$ck] ?? '');
             }
-            fputcsv($output, $row);
+            self::put_row($output, $row);
         }
 
         fclose($output);
@@ -125,7 +125,7 @@ class DBEM_Export {
         }
 
         $headers = array_merge(array('Nome', 'Email', 'Data risposta'), $survey_keys);
-        fputcsv($output, $headers);
+        self::put_row($output, $headers);
 
         foreach ($responses as $resp) {
             $data = json_decode($resp->data, true);
@@ -133,10 +133,18 @@ class DBEM_Export {
             foreach ($survey_keys as $k) {
                 $row[] = self::csv_safe($data[$k] ?? '');
             }
-            fputcsv($output, $row);
+            self::put_row($output, $row);
         }
 
         fclose($output);
         exit;
+    }
+
+    /**
+     * Escape vuoto = CSV standard (RFC 4180): le virgolette si raddoppiano e basta.
+     * Senza $escape PHP 8.4 segnala la deprecazione, e l'avviso poteva finire dentro il CSV
+     */
+    private static function put_row($output, $row) {
+        fputcsv($output, $row, ',', '"', '');
     }
 }

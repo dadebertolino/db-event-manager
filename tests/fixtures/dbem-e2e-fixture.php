@@ -144,6 +144,17 @@ add_action('rest_api_init', function () {
         },
     ));
 
+    // Cambia un meta di un evento dopo il reset (es. rinominare una domanda del survey)
+    register_rest_route('dbem-e2e/v1', '/meta', array(
+        'methods'             => 'POST',
+        'permission_callback' => '__return_true',
+        'callback'            => function (WP_REST_Request $request) {
+            $params = (array) $request->get_json_params();
+            update_post_meta((int) $params['event_id'], (string) $params['key'], wp_slash($params['value']));
+            return array('ok' => true);
+        },
+    ));
+
     register_rest_route('dbem-e2e/v1', '/state', array(
         'methods'             => 'GET',
         'permission_callback' => '__return_true',

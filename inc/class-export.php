@@ -114,25 +114,18 @@ class DBEM_Export {
         $output = fopen('php://output', 'w');
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-        // Raccogli headers dalle risposte
-        $survey_keys = array();
-        foreach ($responses as $resp) {
-            $data = json_decode($resp->data, true);
-            if (is_array($data)) {
-                foreach (array_keys($data) as $k) {
-                    if (!in_array($k, $survey_keys)) $survey_keys[] = $k;
-                }
-            }
-        }
+        // Colonne: le domande con l'etichetta attuale, più quelle eliminate con risposte
+        $fields = DBEM_Survey::get_fields($event_id);
+        $columns = DBEM_Survey::columns($fields, $responses);
 
-        $headers = array_merge(array('Nome', 'Email', 'Data risposta'), $survey_keys);
+        $headers = array_merge(array('Nome', 'Email', 'Data risposta'), array_values($columns));
         self::put_row($output, $headers);
 
         foreach ($responses as $resp) {
             $data = json_decode($resp->data, true);
-            $row = array(self::csv_safe($resp->name), self::csv_safe($resp->email), $resp->submitted_at);
-            foreach ($survey_keys as $k) {
-                $row[] = self::csv_safe($data[$k] ?? '');
+            $row = array($resp->name, $resp->email, $resp->submitted_at);
+            foreach (array_keys($columns) as $key) {
+                $row[] = DBEM_Survey::column_value($data, $key, $fields);
             }
             self::put_row($output, $row);
         }

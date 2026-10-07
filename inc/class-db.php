@@ -78,7 +78,7 @@ class DBEM_DB {
     /**
      * Versione dello schema: va incrementata quando cambia create_tables()
      */
-    const DB_VERSION = '2';
+    const DB_VERSION = '3';
     const DB_VERSION_OPTION = 'dbem_db_version';
 
     /**
@@ -101,7 +101,12 @@ class DBEM_DB {
             }
         }
 
+        $previous = (int) get_option(self::DB_VERSION_OPTION, 0);
         self::create_tables();
+        // 3: risposte al survey sotto l'id della domanda invece che sotto l'etichetta
+        if ($previous < 3 && class_exists('DBEM_Survey')) {
+            DBEM_Survey::migrate_label_keys();
+        }
         update_option(self::DB_VERSION_OPTION, self::DB_VERSION, true);
     }
 

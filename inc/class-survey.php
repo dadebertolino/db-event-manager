@@ -51,6 +51,102 @@ class DBEM_Survey {
         exit;
     }
 
+    /**
+     * Domande del survey, ciascuna con un id stabile (come i campi del form integrato):
+     * le risposte si salvano sotto l'id, così rinominare una domanda non le fa sparire
+     * e due domande con la stessa etichetta non si sovrascrivono
+     */
+    public static function get_fields($event_id) {
+        $fields = get_post_meta($event_id, '_dbem_survey_fields', true);
+        if (!is_array($fields)) return array();
+
+        $with_ids = DBEM_CPT::assign_field_ids($fields);
+        if ($with_ids !== $fields) {
+            update_post_meta($event_id, '_dbem_survey_fields', wp_slash($with_ids));
+        }
+        return $with_ids;
+    }
+
+    /**
+     * Risposta a una domanda: sotto l'id; prima della 1.11.0 sotto l'etichetta
+     * (risposte non ancora convertite, vedi migrate_label_keys)
+     */
+    public static function answer($data, $field) {
+        if (!is_array($data)) return '';
+        if (isset($field['id']) && array_key_exists($field['id'], $data)) return $data[$field['id']];
+        return $data[$field['label'] ?? ''] ?? '';
+    }
+
+    /**
+     * Colonne per tabelle ed export: le domande attuali (etichetta attuale) più le chiavi
+     * di risposte a domande eliminate nel frattempo, che restano visibili
+     *
+     * @return array<string, string> chiave nei dati => intestazione
+     */
+    public static function columns($fields, $responses) {
+        $columns = array();
+        $known = array();
+        foreach ($fields as $field) {
+            $columns[$field['id']] = $field['label'];
+            $known[$field['id']] = true;
+            $known[$field['label']] = true;
+        }
+        foreach ($responses as $resp) {
+            $data = json_decode($resp->data, true);
+            foreach (is_array($data) ? array_keys($data) : array() as $key) {
+                if (!isset($known[$key])) {
+                    $columns[$key] = (string) $key;
+                    $known[$key] = true;
+                }
+            }
+        }
+        return $columns;
+    }
+
+    /**
+     * Valore di una colonna (vedi columns) per una risposta
+     */
+    public static function column_value($data, $key, $fields) {
+        foreach ($fields as $field) {
+            if ($field['id'] === $key) return self::answer($data, $field);
+        }
+        return is_array($data) ? ($data[$key] ?? '') : '';
+    }
+
+    /**
+     * 1.11.0: le risposte salvate sotto l'etichetta passano sotto l'id della domanda
+     * con quell'etichetta. Le chiavi di domande che non esistono più restano com'erano.
+     * Gira una volta, con l'aggiornamento dello schema (DBEM_DB::maybe_upgrade).
+     */
+    public static function migrate_label_keys() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_survey_responses';
+        $fields_by_event = array();
+
+        foreach ($wpdb->get_results("SELECT id, event_id, data FROM $table") as $row) {
+            $event_id = (int) $row->event_id;
+            if (!isset($fields_by_event[$event_id])) {
+                $map = array();
+                foreach (self::get_fields($event_id) as $field) {
+                    if (!isset($map[$field['label']])) $map[$field['label']] = $field['id'];
+                }
+                $fields_by_event[$event_id] = $map;
+            }
+            $data = json_decode($row->data, true);
+            if (!is_array($data)) continue;
+
+            $converted = array();
+            foreach ($data as $key => $value) {
+                $new_key = $fields_by_event[$event_id][$key] ?? $key;
+                // Un id già presente (risposta nuova) vince sull'etichetta
+                if (!array_key_exists($new_key, $converted)) $converted[$new_key] = $value;
+            }
+            if ($converted !== $data) {
+                $wpdb->update($table, array('data' => wp_json_encode($converted)), array('id' => (int) $row->id), array('%s'), array('%d'));
+            }
+        }
+    }
+
     public static function is_enabled($event_id) {
         return get_post_meta($event_id, '_dbem_survey_enabled', true) === '1';
     }
@@ -94,8 +190,7 @@ class DBEM_Survey {
         }
 
         $event_id = $reg->event_id;
-        $survey_fields = get_post_meta($event_id, '_dbem_survey_fields', true);
-        if (!is_array($survey_fields)) $survey_fields = array();
+        $survey_fields = self::get_fields($event_id);
 
         $responses = array();
         foreach ($survey_fields as $i => $field) {
@@ -117,7 +212,7 @@ class DBEM_Survey {
                 ));
             }
 
-            $responses[$field['label']] = $value;
+            $responses[$field['id']] = $value;
         }
 
         global $wpdb;

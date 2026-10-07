@@ -2,8 +2,7 @@
 if (!defined('ABSPATH')) exit;
 
 $event_title = DBEM_CPT::get_event_name($reg->event_id);
-$survey_fields = get_post_meta($reg->event_id, '_dbem_survey_fields', true);
-if (!is_array($survey_fields)) $survey_fields = array();
+$survey_fields = DBEM_Survey::get_fields($reg->event_id);
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>

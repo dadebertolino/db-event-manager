@@ -101,11 +101,26 @@ test.describe( 'Survey', () => {
 			await expect( table.getByRole( 'row', { name: /Anna.*Ottimo.*Robotica.*Tutto bene/ } ) ).toBeVisible();
 
 			const href = await page.getByRole( 'link', { name: /Esporta CSV/ } ).getAttribute( 'href' );
-			const csv = ( await ( await page.request.get( href || '' ) ).text() ).replace( /^﻿/, '' );
+			const csv = ( await ( await page.request.get( href || '' ) ).text() ).replace( /^\uFEFF/, '' );
 			const [ header, ...rows ] = csv.trim().split( /\r?\n/ );
 			expect( header ).toContain( 'Voto' );
 			expect( header ).toContain( 'Commenti' );
 			expect( rows.find( ( r ) => r.includes( 'anna@example.com' ) ) ).toContain( 'Tutto bene' );
+		} );
+		test( 'rinominare una domanda non fa sparire le risposte (bug #37)', async ( { page, request, playwright } ) => {
+			const { events } = await resetState( request, { events: [ surveyEvent( [ { name: 'Anna', email: 'anna@example.com', status: 'checked_in' } ] ) ] } );
+			const anon = await playwright.request.newContext( { baseURL: BASE, storageState: { cookies: [], origins: [] } } );
+			const body = await ( await submitSurvey( anon, events.a.registrations[ 0 ].token, { dbem_survey_0: 'Buono' } ) ).json();
+			expect( body.success, JSON.stringify( body ) ).toBe( true );
+			await anon.dispose();
+
+			const renamed = SURVEY_FIELDS.map( ( f ) => ( f.id === 's_voto' ? { ...f, label: 'Giudizio' } : f ) );
+			await request.post( '/?rest_route=/dbem-e2e/v1/meta', { data: { event_id: events.a.id, key: '_dbem_survey_fields', value: renamed } } );
+
+			await page.goto( `/wp-admin/edit.php?post_type=dbem_event&page=dbem-survey&event_id=${ events.a.id }` );
+			const giudizio = page.locator( '.dbem-summary-field' ).filter( { has: page.getByRole( 'heading', { name: 'Giudizio' } ) } );
+			await expect( giudizio.getByRole( 'row', { name: /Buono\s+1/ } ) ).toBeVisible();
+			await expect( page.locator( 'table.widefat.striped' ).getByRole( 'columnheader', { name: 'Giudizio' } ) ).toBeVisible();
 		} );
 	} );
 } );

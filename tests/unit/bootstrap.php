@@ -24,7 +24,7 @@ function dbem_call_private($class, $method, ...$args) {
 }
 
 // Schema già alla versione corrente: gli unit test non hanno dbDelta
-$GLOBALS['__dbem_options'] = array('dbem_db_version' => '2');
+$GLOBALS['__dbem_options'] = array('dbem_db_version' => '3');
 $GLOBALS['__dbem_transients'] = array();
 
 $GLOBALS['__dbem_roles'] = array();

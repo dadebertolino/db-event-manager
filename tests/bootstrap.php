@@ -130,6 +130,12 @@ if (!function_exists('add_action')) {
     }
 }
 
+if (!function_exists('add_filter')) {
+    function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {
+        return true;
+    }
+}
+
 if (!function_exists('get_role')) {
     function get_role($role) {
         return $GLOBALS['__dbem_roles'][$role] ?? null;
@@ -199,7 +205,8 @@ if (!function_exists('set_transient')) {
 
 if (!function_exists('get_transient')) {
     function get_transient($key) {
-        return $GLOBALS['__dbem_transients'][$key] ?? false;
+        // Come WordPress: anche un valore null salvato è un valore in cache
+        return array_key_exists($key, $GLOBALS['__dbem_transients']) ? $GLOBALS['__dbem_transients'][$key] : false;
     }
 }
 
@@ -574,3 +581,4 @@ require_once dirname(__DIR__) . '/inc/class-registration.php';
 require_once dirname(__DIR__) . '/inc/class-qrcode.php';
 require_once dirname(__DIR__) . '/inc/class-checkin.php';
 require_once dirname(__DIR__) . '/inc/class-duplicate.php';
+require_once dirname(__DIR__) . '/inc/class-updater.php';

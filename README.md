@@ -354,6 +354,15 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 - Per gli sviluppatori: filtro `dbem_duplicate_skipped_meta` (meta da non copiare) e azione
   `dbem_event_duplicated` (`$new_id`, `$source_id`)
 
+**Aggiornamento da GitHub (updater 1.1.0, lo stesso di DB Privacy Hub e DB Debug Manager):**
+- Dopo l'aggiornamento il plugin viene riattivato **solo se era attivo**, anche se attivo su tutta
+  la rete di un multisite. Prima veniva sempre attivato, anche se l'amministratore lo aveva disattivato
+- Release letta in modo più robusto: si usa un asset `.zip` valido, in mancanza lo ZIP del sorgente;
+  se mancano entrambi l'aggiornamento non viene proposto
+- Nessun errore se il filesystem di WordPress non è disponibile o l'installazione non restituisce
+  la cartella di destinazione
+- Test: `UpdaterTest` (release, scelta dello ZIP, cache degli errori, cartella, riattivazione)
+
 ### 1.8.0
 **Iscrizioni compatibili con la cache di pagina + dichiarazioni privacy accurate**
 

@@ -52,9 +52,10 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
 ### ✅ Check-in con QR code
 - **Pagina pubblica check-in** — aprila sul telefono, niente login WordPress
-- Protetta da PIN obbligatorio (generato automaticamente, modificabile in Impostazioni)
+- Protetta da PIN obbligatorio (generato automaticamente, modificabile in Impostazioni); ogni evento può avere un PIN dedicato
+- Il PIN apre solo gli eventi pubblicati che gli corrispondono: un QR di un altro evento non passa
 - Scanner QR integrato (fotocamera smartphone)
-- Ricerca manuale per nome/email su tutti gli eventi (i risultati non contengono i token dei QR code)
+- Ricerca manuale per nome/email sugli eventi aperti dal PIN (i risultati non contengono i token dei QR code)
 - Le iscrizioni in attesa di approvazione o rifiutate non passano il check-in
 - Feedback visivo grande e chiaro: ✅ Presente, ⚠️ Già registrato, ❌ Non valido
 - Dopo check-in riuscito, lo scanner si riapre automaticamente
@@ -63,7 +64,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 ### 👥 Pagina pubblica partecipanti
 - **Pagina pubblica** accessibile da telefono senza login WordPress
 - Protetta dallo stesso PIN del check-in
-- Selettore evento, contatore presenti/iscritti, filtri per stato
+- Selettore con i soli eventi aperti dal PIN (con un solo evento si apre direttamente), contatore presenti/iscritti, filtri per stato
 - Tabella con nome, email, stato, orario assegnato
 - Azioni: approva, rifiuta, segna presente, annulla, reinvia email, modifica orario
 - **Iscrizione manuale**: il responsabile può iscrivere un partecipante direttamente (nome + email + orario opzionale), con generazione QR e invio email automatico
@@ -127,7 +128,8 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 ### ⚙️ Impostazioni
 - Pagina elenco eventi personalizzabile (pagina WP o archivio automatico)
 - Titolo pagina archivio configurabile
-- PIN obbligatorio per le pagine pubbliche (check-in e partecipanti): generato automaticamente, rigenerabile dalla pagina Impostazioni
+- PIN di sistema obbligatorio per le pagine pubbliche (check-in e partecipanti), da 4 a 10 cifre: generato automaticamente, rigenerabile dalla pagina Impostazioni. Apre gli eventi pubblicati senza un PIN proprio
+- PIN dedicato per evento (scheda Iscrizioni): da dare a chi gestisce solo quell'ingresso; l'evento si apre solo con quel PIN
 - Link check-in e partecipanti da condividere con lo staff
 - Opzione "Elimina tutti i dati alla disinstallazione" (disattivata di default)
 - Riepilogo shortcode disponibili
@@ -175,8 +177,8 @@ Per delegare la gestione operativa, vai in **Utenti**, apri l'utente desiderato 
 
 ### Check-in all'ingresso
 
-1. **Event Manager → Impostazioni** — imposta un PIN
-2. Condividi il link check-in con lo staff
+1. **Event Manager → Impostazioni** — imposta un PIN (oppure un PIN dedicato nella scheda Iscrizioni dell'evento)
+2. Condividi il link check-in e il PIN con lo staff
 3. All'ingresso: link sul telefono → PIN → scansiona QR
 4. Se qualcuno non ha il QR: cerca per nome nella barra di ricerca
 
@@ -338,10 +340,15 @@ La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5
 ## Changelog
 
 ### 1.9.0
-**Duplica evento**
+**Duplica evento, PIN per evento, correzioni di sicurezza e privacy**
 
-- Nuova azione «Duplica» nell'elenco eventi e link «Duplica evento» nel box Pubblica dell'editor:
-  crea una **bozza** con tutte le impostazioni dell'originale (nome, descrizione, date, luogo, posti,
+Minor: nuove funzioni (Duplica, PIN per evento, conferma delle opzioni rinominate) e cambia la
+risposta del modulo di iscrizione. Le correzioni vengono dall'analisi del codice in
+`TESTING-PLAN.md` (i numeri tra parentesi sono quelli del piano).
+
+**Duplica evento:**
+- Nuova azione «Duplica» nell'elenco eventi e riquadro «Duplica evento» nella colonna laterale
+  dell'editor (a blocchi e classico): crea una **bozza** con tutte le impostazioni dell'originale (nome, descrizione, date, luogo, posti,
   campi del form o collegamento a DB Form Builder, approvazione, privacy, email di conferma e
   promemoria, survey, aspetto, categorie, immagine in evidenza) e la apre nell'editor
 - **Non** vengono copiati partecipanti, check-in e risposte al survey: stanno nelle tabelle del plugin,
@@ -351,8 +358,60 @@ La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5
 - Promemoria e survey automatici non vengono programmati finché non si salva la copia, quindi con le
   date nuove
 - Permessi: serve poter creare eventi e modificare quello originale (link con nonce)
+- Non vengono copiati il PIN dedicato dell'evento né le rinomine di opzioni in attesa di decisione
 - Per gli sviluppatori: filtro `dbem_duplicate_skipped_meta` (meta da non copiare) e azione
   `dbem_event_duplicated` (`$new_id`, `$source_id`)
+
+**PIN per evento e pagine pubbliche (A4, D1):**
+- Ogni evento può avere un **PIN dedicato** (scheda Iscrizioni, 4-10 cifre). Se vuoto vale il PIN
+  di sistema delle Impostazioni. Un evento con PIN dedicato si apre solo con quello
+- Prima un solo PIN apriva i dati di **tutti** gli eventi, anche bozze, privati e nel cestino: con un
+  `event_id` qualsiasi si leggevano nomi, email e campi e si agiva sulle iscrizioni. Ora ogni chiamata
+  (lista, azioni, aggiunta, orario, ricerca, check-in da QR o da ricerca) verifica che l'evento sia
+  pubblicato e aperto da quel PIN; un QR di un altro evento risponde «non accessibile con questo PIN»
+- La pagina partecipanti riceve l'elenco degli eventi dopo il PIN (prima era stampato nell'HTML della
+  pagina per chiunque); con un solo evento lo apre direttamente
+- PIN validati al salvataggio: da 4 a 10 cifre. Prima si poteva salvare «1», o un PIN più lungo di
+  quanto il campo del telefono permettesse di digitare
+
+**Iscrizione (A1, A2, B10, D2):**
+- Il modulo **non rivela più chi è iscritto**: a un indirizzo nuovo e a uno già iscritto risponde
+  «Richiesta ricevuta! Ti abbiamo inviato un'email con i dettagli». Prima «Questo indirizzo email è già
+  registrato» o la domanda «vuoi sostituire la prenotazione?» dicevano a chiunque se una persona
+  partecipava. Ora chi è già iscritto riceve il link per confermare la modifica (reiscrizione attiva)
+  oppure un avviso che l'iscrizione esiste già (al massimo uno all'ora); lo stato dell'iscrizione non
+  viene mai indicato. Iscrizioni chiuse o posti esauriti valgono per tutti, anche per chi è già iscritto
+- L'endpoint di DB Form Builder accettava anche eventi con il form integrato: con un invio diretto ci
+  si iscriveva **senza consenso privacy** e senza i campi obbligatori. Ora ogni endpoint accetta solo
+  gli eventi con il proprio form
+- Iscrizioni solo a eventi **pubblicati**: prima si poteva iscriversi a bozze o eventi nel cestino, e
+  l'email di conferma ne rivelava i dati
+- Una modifica confermata senza nuovo consenso (GDPR disattivato nel frattempo, campo privacy DBFB non
+  mappato) non cancella più la **prova del consenso originale** (art. 7.1)
+
+**Opzioni rinominate (D5):**
+- Cambiare il testo di un'opzione scelta da qualche iscritto non riscrive più le iscrizioni da solo.
+  Nel riquadro del form, per ogni rinomina: «Aggiorna N iscrizioni» (stessa opzione, testo corretto) o
+  «Lascia com'è» (opzione nuova al posto di un'altra). Prima, sostituendo «Lab 10 ott» con «Lab 24 ott»
+  perché pieno, tutti gli iscritti del 10 passavano al 24 senza possibilità di tornare indietro.
+  Nell'editor a blocchi il riquadro si aggiorna dopo il salvataggio e compare un avviso
+
+**Altre correzioni:**
+- Export CSV: anche le intestazioni passano dalla neutralizzazione delle formule. I nomi delle colonne
+  dei campi vengono dai dati inviati con il form, e una chiave come `=HYPERLINK(...)` diventava una
+  formula all'apertura in Excel (A3)
+- Registro trattamenti di Privacy Hub: considera anche eventi in bozza, privati, programmati e nel
+  cestino (prima, senza eventi pubblicati, il registro restava vuoto con i dati ancora nel database);
+  dichiara sempre le email transazionali (prima solo con un testo di conferma personalizzato) e gli
+  invii dei dati agli approvatori e agli indirizzi di notifica (A5)
+- Attivazione: l'hook era registrato dentro `plugins_loaded` e non partiva mai, quindi su
+  un'installazione nuova le pagine evento e `/eventi/` davano 404 fino al salvataggio dei permalink (B6)
+- Azioni sulle iscrizioni (singole e in blocco) solo dagli stati di partenza ammessi: «Conferma» con
+  «seleziona tutti» riportava i presenti a confermati e rimandava loro l'email, «Rifiuta» rimandava
+  l'email ai già rifiutati, «Segna presente» marcava anche annullati e rifiutati. Le iscrizioni saltate
+  vengono indicate. «Reinvia email» solo alle iscrizioni confermate (B12, B13)
+- Email: gli indirizzi web scritti dall'iscritto (nel nome o nei campi) non diventano più link
+  cliccabili nelle email inviate dal sito, a lui o ai responsabili (B19)
 
 **Aggiornamento da GitHub (updater 1.1.0, lo stesso di DB Privacy Hub e DB Debug Manager):**
 - Dopo l'aggiornamento il plugin viene riattivato **solo se era attivo**, anche se attivo su tutta

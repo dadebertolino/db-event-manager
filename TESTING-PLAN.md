@@ -53,40 +53,46 @@ funzione rotta; **C** = robustezza e qualità.
 Colonna **Ver.**: ✔ = verificato leggendo il codice durante l'analisi; ○ =
 segnalato con percorso del codice, lo conferma (o lo smentisce) il test.
 
+Legenda del numero: ✅ = corretto nella 1.9.0 (2026-10-07); ◐ = corretto in parte.
+#25: formato del PIN (4-10 cifre) corretto; resta il contatore dei tentativi non
+atomico. #6 e #23 non hanno ancora un test automatico: arriva con integration ed
+E2E (Fase 2 e 3). #2, #12, #13 hanno unit test sulla logica; il percorso completo
+su database va in Fase 2.
+
 ### A
 
 | # | Ver. | Dove | Problema | Test che lo prova |
 |---|---|---|---|---|
-| 1 | ✔ | `class-registration.php:372-463` | `handle_dbfb_registration` non controlla che l'evento usi DB Form Builder. Su un evento con form integrato e GDPR attivo un POST diretto a `dbem_register_dbfb` iscrive **senza consenso** e senza campi obbligatori. | Integration: evento builtin + GDPR, POST a `dbem_register_dbfb` → errore. |
-| 2 | ✔ | `class-db.php:307-330` (`replace_registration`) | La modifica confermata di un'iscrizione sovrascrive sempre i campi `gdpr_*`: se nel frattempo il GDPR è stato disattivato (o la modifica arriva da DBFB senza campo mappato) la **prova del consenso originale** (art. 7.1) diventa NULL. | Integration: iscrizione con consenso, GDPR off, modifica → consenso originale conservato. |
-| 3 | ✔ | `class-export.php:46-61` | CSV admin: `csv_safe()` è applicato alle celle ma **non alle intestazioni**, che sono le chiavi JSON di `data` scelte dal client. `{"=HYPERLINK(...)":"a"}` diventa una formula nella prima riga. (Vedi anche #18: le chiavi andrebbero whitelistate.) | Unit: export con chiave che inizia per `=` → intestazione neutralizzata. |
-| 4 | ✔ | `class-checkin.php:296-339` e altri `handle_public_*` | Le pagine pubbliche con PIN accettano qualunque `event_id` senza controllare tipo e stato del post: con il PIN si leggono nomi, email e campi di **bozze, eventi privati e nel cestino**, e si agisce su iscrizioni di qualunque evento (anche il check-in per `registration_id`). | Integration: PIN corretto + id di una bozza / di un altro post → errore. |
-| 5 | ○ | `class-privacy-declarations.php:36-50, 117` | Registro trattamenti (art. 30) incoerente con i dati salvati: considera solo eventi `publish` (con eventi tutti in bozza il registro è vuoto ma la tabella contiene nomi, email, IP); dichiara il trattamento «email» solo con un template di conferma personalizzato; dichiara `transfers: Nessuno` ma notifica admin e richiesta di approvazione inviano i dati a indirizzi configurati. | Unit con stub: evento solo in bozza → registro presente; approvazione senza template → `dbem_email` presente. |
+| 1 ✅ | ✔ | `class-registration.php:372-463` | `handle_dbfb_registration` non controlla che l'evento usi DB Form Builder. Su un evento con form integrato e GDPR attivo un POST diretto a `dbem_register_dbfb` iscrive **senza consenso** e senza campi obbligatori. | Integration: evento builtin + GDPR, POST a `dbem_register_dbfb` → errore. |
+| 2 ✅ | ✔ | `class-db.php:307-330` (`replace_registration`) | La modifica confermata di un'iscrizione sovrascrive sempre i campi `gdpr_*`: se nel frattempo il GDPR è stato disattivato (o la modifica arriva da DBFB senza campo mappato) la **prova del consenso originale** (art. 7.1) diventa NULL. | Integration: iscrizione con consenso, GDPR off, modifica → consenso originale conservato. |
+| 3 ✅ | ✔ | `class-export.php:46-61` | CSV admin: `csv_safe()` è applicato alle celle ma **non alle intestazioni**, che sono le chiavi JSON di `data` scelte dal client. `{"=HYPERLINK(...)":"a"}` diventa una formula nella prima riga. (Vedi anche #18: le chiavi andrebbero whitelistate.) | Unit: export con chiave che inizia per `=` → intestazione neutralizzata. |
+| 4 ✅ | ✔ | `class-checkin.php:296-339` e altri `handle_public_*` | Le pagine pubbliche con PIN accettano qualunque `event_id` senza controllare tipo e stato del post: con il PIN si leggono nomi, email e campi di **bozze, eventi privati e nel cestino**, e si agisce su iscrizioni di qualunque evento (anche il check-in per `registration_id`). | Integration: PIN corretto + id di una bozza / di un altro post → errore. |
+| 5 ✅ | ○ | `class-privacy-declarations.php:36-50, 117` | Registro trattamenti (art. 30) incoerente con i dati salvati: considera solo eventi `publish` (con eventi tutti in bozza il registro è vuoto ma la tabella contiene nomi, email, IP); dichiara il trattamento «email» solo con un template di conferma personalizzato; dichiara `transfers: Nessuno` ma notifica admin e richiesta di approvazione inviano i dati a indirizzi configurati. | Unit con stub: evento solo in bozza → registro presente; approvazione senza template → `dbem_email` presente. |
 
 ### B
 
 | # | Ver. | Dove | Problema | Test che lo prova |
 |---|---|---|---|---|
-| 6 | ✔ | `db-event-manager.php:85, 490` | `register_activation_hook` è registrato dentro `plugins_loaded`: durante l'attivazione non esiste ancora, quindi `DBEM_DB::activate()` **non gira mai**. Tabelle e capability si salvano altrove, ma `flush_rewrite_rules()` no: su installazione nuova `/eventi/` e le pagine evento danno 404 finché non si salvano i permalink. La correzione deve registrare il CPT prima del flush. | Integration: attivazione → regole con `eventi/?$`; `has_action('activate_…')`. |
+| 6 ✅ | ✔ | `db-event-manager.php:85, 490` | `register_activation_hook` è registrato dentro `plugins_loaded`: durante l'attivazione non esiste ancora, quindi `DBEM_DB::activate()` **non gira mai**. Tabelle e capability si salvano altrove, ma `flush_rewrite_rules()` no: su installazione nuova `/eventi/` e le pagine evento danno 404 finché non si salvano i permalink. La correzione deve registrare il CPT prima del flush. | Integration: attivazione → regole con `eventi/?$`; `has_action('activate_…')`. |
 | 7 | ✔ | `class-admin.php:884,895`, `class-cron.php:49`, `class-cpt.php:178-196`, `class-checkin.php:55,61,125,157,222,228,276`, `templates/admin/participants.php:242-243`, `templates/admin/survey.php:145`, `templates/admin/checkin.php:27`, `db-event-manager.php:368-369` | **Fuso orario.** Le date sono in ora locale, ma `strtotime()` le legge come UTC (WordPress imposta il fuso di PHP a UTC) e `wp_date()` applica di nuovo l'offset. Con Europe/Rome in estate: promemoria 2 ore dopo il previsto (anche dopo l'inizio), survey automatico in ritardo, iscrizioni aperte 2 ore oltre la scadenza, stati «in corso/concluso» sfasati, orari di check-in e iscrizione mostrati +2 h. Pagine diverse mostrano orari diversi (`date()` vs `wp_date()`). Va introdotto un helper unico locale↔timestamp. | Integration con `timezone_string=Europe/Rome`: `wp_next_scheduled`, `are_registrations_open`, orari mostrati. |
 | 8 | ✔ | `class-db.php:121-135` | `count_registrations()` esclude solo `cancelled`: le iscrizioni **rifiutate** (e in attesa) occupano posti. Il cron chiude le iscrizioni scrivendo `_dbem_registration_open=0` in modo permanente: un posto liberato non le riapre. `email_exists_for_event` blocca anche la reiscrizione di chi era stato rifiutato. | Integration: max 10, 8 confermati + 2 rifiutati → iscrizioni aperte. |
 | 9 | ○ | `class-registration.php:77-84, 142, 407-408`, `class-db.php:41-45` | Overbooking ed email doppie con invii concorrenti: COUNT poi INSERT senza lock, nessun UNIQUE su `(event_id, email)`. | Integration: richieste parallele sull'ultimo posto. |
-| 10 | ✔ | `class-registration.php:23`, `class-cpt.php:189-216` | Ci si può iscrivere a eventi in **bozza, privati, programmati o nel cestino**: il server controlla solo `post_type`. L'email di conferma rivela dati dell'evento non pubblicato. | Integration: POST con id di una bozza → errore. |
+| 10 ✅ | ✔ | `class-registration.php:23`, `class-cpt.php:189-216` | Ci si può iscrivere a eventi in **bozza, privati, programmati o nel cestino**: il server controlla solo `post_type`. L'email di conferma rivela dati dell'evento non pubblicato. | Integration: POST con id di una bozza → errore. |
 | 11 | ○ | `templates/single-dbem_event.php:12,32`, `class-shortcodes.php:31-47` | Eventi protetti da password: contenuto e form stampati senza `post_password_required()`. | E2E. |
-| 12 | ✔ | `class-admin.php:1323-1352` | Azioni in blocco senza filtro sullo stato: «Conferma» riporta a `confirmed` chi era già **presente** (e gli rimanda la conferma); «Rifiuta» rimanda l'email a chi era già rifiutato; «Segna presente» marca anche annullati e rifiutati e sovrascrive l'orario di check-in. | Integration: mix di stati, conteggio di `wp_mail`. |
-| 13 | ○ | `class-admin.php:1365-1383`, `participants.php:255` | «Reinvia email» manda «iscrizione confermata» (con QR) anche a iscritti in attesa, rifiutati o annullati. | Integration. |
+| 12 ✅ | ✔ | `class-admin.php:1323-1352` | Azioni in blocco senza filtro sullo stato: «Conferma» riporta a `confirmed` chi era già **presente** (e gli rimanda la conferma); «Rifiuta» rimanda l'email a chi era già rifiutato; «Segna presente» marca anche annullati e rifiutati e sovrascrive l'orario di check-in. | Integration: mix di stati, conteggio di `wp_mail`. |
+| 13 ✅ | ○ | `class-admin.php:1365-1383`, `participants.php:255` | «Reinvia email» manda «iscrizione confermata» (con QR) anche a iscritti in attesa, rifiutati o annullati. | Integration. |
 | 14 | ○ | `class-checkin.php:362-371, 43, 211, 387` | Pagina partecipanti pubblica: le azioni accettano qualunque stato di partenza (`confirm` su `checked_in` lo declassa lasciando `checked_in_at`); riconfermare un rifiutato non invia QR né email e non controlla i posti. Gli UPDATE di check-in non hanno `AND status = …` (doppia scansione, annullamento concorrente). | Integration: matrice stato × azione. |
 | 15 | ○ | `class-checkin.php:19-58`, `assets/js/checkin.js:108-121` | Check-in admin: un QR di **un altro evento** dà «Check-in effettuato» in verde; il JS non invia `event_id` e non mostra l'evento della risposta. | E2E con due eventi. |
 | 16 | ○ | `class-cron.php:68-93`, `class-admin.php:879-899` | Promemoria e survey automatici partono anche per eventi **nel cestino** o tornati in bozza: gli invii si cancellano solo all'eliminazione definitiva e i callback non controllano lo stato del post. | Integration: `wp_trash_post`, poi l'hook → nessuna email. |
 | 17 | ○ | `class-cron.php:24-28` | Disattivare e riattivare il plugin cancella **tutti** i promemoria e survey programmati; tornano solo risalvando ogni evento. | Integration. |
 | 18 | ○ | `class-registration.php:57-72, 127, 418` | Campi custom senza whitelist né validazione di tipo: select/radio/checkbox accettano valori fuori elenco, email/number/url/date non validati, textarea perde gli a capo, `empty('0')` rifiuta un obbligatorio con valore 0, etichette duplicate o chiamate «nome»/«email» perse in silenzio, chiavi arbitrarie salvate in `data` (origine del #3). | Unit con stub. |
-| 19 | ✔ | `class-email.php:476-477` | Gli URL scritti dall'iscritto (es. nel nome) diventano **link cliccabili** nelle email inviate dal sito: il form diventa un relay di link verso indirizzi di terzi. Vale per `{nome}`, `{riepilogo_dati}`, notifica admin. | Unit su `build_html_email`: solo gli URL del template diventano link. |
+| 19 ✅ | ✔ | `class-email.php:476-477` | Gli URL scritti dall'iscritto (es. nel nome) diventano **link cliccabili** nelle email inviate dal sito: il form diventa un relay di link verso indirizzi di terzi. Vale per `{nome}`, `{riepilogo_dati}`, notifica admin. | Unit su `build_html_email`: solo gli URL del template diventano link. |
 | 20 | ○ | `class-db.php:33`, `db-event-manager.php:459-470`, `class-checkin.php:506-514` | `assigned_time` è `varchar(50)`: con un testo più lungo l'UPDATE fallisce in silenzio (stato resta `pending`) ma QR ed email di conferma partono e la pagina dice «approvata». | Integration con 60 caratteri. |
 | 21 | ○ | `class-survey.php:58-105` | Il survey si invia anche se disattivato e da iscritti in attesa, rifiutati o annullati (token del QR); nessun UNIQUE su `registration_id` (doppio invio concorrente). | Integration: POST diretto. |
 | 22 | ○ | `class-frontend.php:292-404` | Flusso DB Form Builder lato browser: l'iscrizione all'evento parte anche se DBFB mostra un errore (basta un messaggio ≥ 5 caratteri), poi `registered=true` blocca il secondo invio; con evento pieno o chiuso DBFB salva e invia le sue email prima del controllo. Markup reale di DBFB da verificare. | E2E con DBFB installato. |
-| 23 | ✔ | `class-duplicate.php:19-21` (1.9.0) | **Duplica evento** nell'editor a blocchi: il link nel box Pubblica (`post_submitbox_misc_actions`) e l'avviso `admin_notices` non compaiono, perché il CPT usa l'editor a blocchi (`show_in_rest`). Funziona solo l'azione nell'elenco eventi. Il titolo «(copia)» sparisce al primo salvataggio (ripreso da `_dbem_event_name`): due eventi omonimi nel menu Partecipanti. | E2E: duplica dall'editor, avviso visibile. |
+| 23 ✅ | ✔ | `class-duplicate.php:19-21` (1.9.0) | **Duplica evento** nell'editor a blocchi: il link nel box Pubblica (`post_submitbox_misc_actions`) e l'avviso `admin_notices` non compaiono, perché il CPT usa l'editor a blocchi (`show_in_rest`). Funziona solo l'azione nell'elenco eventi. Il titolo «(copia)» sparisce al primo salvataggio (ripreso da `_dbem_event_name`): due eventi omonimi nel menu Partecipanti. | E2E: duplica dall'editor, avviso visibile. |
 | 24 | ○ | `uninstall.php:54-62` | «Elimina tutti i dati» lascia gli eventi **nel cestino** (`post_status => 'any'` esclude `trash` e `auto-draft`) con i meta (testi email, destinatari). | Integration. |
-| 25 | ✔ | `class-security.php:69-87`, `class-admin.php:1129-1133`, template check-in/partecipanti | PIN: contatore dei tentativi non atomico (una raffica parallela supera i 10 tentativi); l'admin può salvare un PIN come `1`; un PIN > 10 caratteri non si può digitare (`maxlength="10"`). | Integration (richieste parallele) + unit sul salvataggio. |
+| 25 ◐ | ✔ | `class-security.php:69-87`, `class-admin.php:1129-1133`, template check-in/partecipanti | PIN: contatore dei tentativi non atomico (una raffica parallela supera i 10 tentativi); l'admin può salvare un PIN come `1`; un PIN > 10 caratteri non si può digitare (`maxlength="10"`). | Integration (richieste parallele) + unit sul salvataggio. |
 | 26 | ○ | `templates/frontend/participants.php:308-325` | Cambiando evento in fretta la lista mostra (ed esporta) i dati dell'evento precedente sotto il nome del nuovo: le risposte in ritardo non vengono scartate. | E2E con rete rallentata. |
 | 27 | ○ | `class-db.php:231-241` | Ricerca pubblica: massimo 10 risultati su **tutti** gli eventi, passati compresi; la persona giusta all'evento di oggi può non comparire. | Integration. |
 
@@ -140,10 +146,23 @@ generato con `random_int`, confrontato con `hash_equals`; token
 
 ---
 
-## 3. Decisioni da prendere
+## 3. Decisioni
 
 Comportamenti che non sono errori di codice ma scelte, con impatto su privacy o
-uso reale. Vanno decise prima di correggere i bug collegati.
+uso reale.
+
+**Prese il 2026-10-07:**
+- **D1 ✅** PIN per evento, con il PIN di sistema come ripiego; pagine pubbliche
+  limitate agli eventi pubblicati aperti dal PIN (1.9.0).
+- **D2 ✅** Risposta neutra: stesso messaggio per indirizzi nuovi e già iscritti,
+  le differenze solo nell'email (1.9.0).
+- **D3** Rate limit per IP invariato (5 iscrizioni/minuto, filtro
+  `dbem_registration_rate_limit` per chi ne ha bisogno).
+- **D4 ✅** Conseguenza di D2: iscrizioni chiuse o posti esauriti valgono anche per
+  chi è già iscritto, che non può più modificare i dati dopo la chiusura
+  (altrimenti la differenza di risposta rivelerebbe l'iscrizione).
+- **D5 ✅** Rinomina delle opzioni solo dopo conferma, per ogni rinomina (1.9.0).
+- **D6, D7** da decidere.
 
 | # | Tema | Situazione | Opzioni |
 |---|---|---|---|
@@ -215,10 +234,9 @@ Bug coperti: #11, #15, #22, #23, #26, #42, accessibilità #45–#48.
 
 ## 8. Ordine proposto delle correzioni
 
-1. **1.9.0 (prima del rilascio):** gli A (#1–#5), #6 attivazione, #10 eventi non
+1. ✅ **1.9.0 (prima del rilascio):** gli A (#1–#5), #6 attivazione, #10 eventi non
    pubblicati, #23 Duplica nell'editor a blocchi, #12–#13 stati nelle azioni
-   admin, #19 link nelle email. Correzioni piccole e localizzate, ciascuna con
-   il suo test (unit dove basta, altrimenti in Fase 2).
+   admin, #19 link nelle email, più D1, D2, D5.
 2. **Fuso orario (#7)** in una PR dedicata: tocca cron, scadenze, stati e tutte
    le visualizzazioni; serve l'integration test con Europe/Rome.
 3. Il resto dei B e i C seguendo le fasi, dopo le decisioni D1–D7.

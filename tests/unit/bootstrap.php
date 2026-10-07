@@ -1,7 +1,7 @@
 <?php
 
 if (!defined('ABSPATH')) {
-    define('ABSPATH', dirname(__DIR__) . '/');
+    define('ABSPATH', dirname(__DIR__, 2) . '/');
 }
 
 // PHP 7.4: in WordPress lo fornisce il core (dalla 5.9), qui no
@@ -629,16 +629,16 @@ if (!class_exists('wpdb')) {
     $GLOBALS['wpdb'] = new wpdb();
 }
 
-require_once dirname(__DIR__) . '/inc/class-security.php';
-require_once dirname(__DIR__) . '/inc/class-db.php';
-require_once dirname(__DIR__) . '/inc/class-email.php';
-require_once dirname(__DIR__) . '/inc/class-cpt.php';
-require_once dirname(__DIR__) . '/inc/class-appearance.php';
-require_once dirname(__DIR__) . '/inc/class-admin.php';
-require_once dirname(__DIR__) . '/inc/class-registration.php';
-require_once dirname(__DIR__) . '/inc/class-qrcode.php';
-require_once dirname(__DIR__) . '/inc/class-checkin.php';
-require_once dirname(__DIR__) . '/inc/class-duplicate.php';
-require_once dirname(__DIR__) . '/inc/class-updater.php';
-require_once dirname(__DIR__) . '/inc/class-export.php';
-require_once dirname(__DIR__) . '/inc/class-privacy-declarations.php';
+require_once dirname(__DIR__, 2) . '/inc/class-security.php';
+require_once dirname(__DIR__, 2) . '/inc/class-db.php';
+require_once dirname(__DIR__, 2) . '/inc/class-email.php';
+require_once dirname(__DIR__, 2) . '/inc/class-cpt.php';
+require_once dirname(__DIR__, 2) . '/inc/class-appearance.php';
+require_once dirname(__DIR__, 2) . '/inc/class-admin.php';
+require_once dirname(__DIR__, 2) . '/inc/class-registration.php';
+require_once dirname(__DIR__, 2) . '/inc/class-qrcode.php';
+require_once dirname(__DIR__, 2) . '/inc/class-checkin.php';
+require_once dirname(__DIR__, 2) . '/inc/class-duplicate.php';
+require_once dirname(__DIR__, 2) . '/inc/class-updater.php';
+require_once dirname(__DIR__, 2) . '/inc/class-export.php';
+require_once dirname(__DIR__, 2) . '/inc/class-privacy-declarations.php';

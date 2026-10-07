@@ -317,11 +317,14 @@ La costante segnala al Privacy Hub che il plugin supporta DSAR, permettendo di m
 
 ### Sviluppo
 Dopo `composer install`:
-- `composer test` — test PHPUnit, senza WordPress
+- `composer test` — unit test PHPUnit, senza WordPress (`tests/unit/`)
+- `composer test:integration` — test con WordPress e MySQL veri (`tests/integration/`), dopo `bin/install-wp-tests.sh`
 - `composer phpcs` — regole `WordPress.Security` e compatibilità con PHP 7.4+ (PHPCompatibilityWP) su tutto il PHP del plugin, template compresi; ogni violazione è un errore
 - `composer check-js` — sintassi dei file in `assets/js` e degli script inline nei file PHP
 
-La CI esegue a ogni push `php -l` e PHPUnit su ogni versione di PHP da 7.4 a 8.5, PHPCS e il controllo JavaScript. PHPUnit è fermo alla 9.6 e `composer.json` fissa la piattaforma a PHP 7.4, così le dipendenze si installano anche sulla versione minima dichiarata. Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
+Test nel browser (wp-env + Playwright): `npm ci`, `npx wp-env start`, `npm run env:setup`, `npx playwright test`.
+
+La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il controllo JavaScript, gli integration test (WordPress 6.0 e latest, anche multisite) e gli E2E; ogni notte gli stessi contro WordPress in sviluppo. Dettagli in [TESTING.md](TESTING.md). Un tag `vX.Y.Z` pubblica la release solo se tag, header `Version` e `DBEM_VERSION` coincidono e il README ha la voce `### X.Y.Z`; lo ZIP allegato contiene la cartella `db-event-manager/` senza test e file di sviluppo.
 
 ---
 

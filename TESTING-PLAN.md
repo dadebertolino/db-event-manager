@@ -177,21 +177,25 @@ uso reale.
 
 ---
 
-## 4. Fase 0 — Infrastruttura
+## 4. Fase 0 — Infrastruttura (2026-10-07)
 
-- [ ] `tests/` → `tests/unit/` (bootstrap e testsuite aggiornati)
-- [ ] Integration: `bin/install-wp-tests.sh`, `phpunit-integration.xml.dist`,
+- [x] `tests/` → `tests/unit/` (bootstrap e testsuite aggiornati)
+- [x] Integration: `bin/install-wp-tests.sh`, `phpunit-integration.xml.dist`,
       `tests/integration/bootstrap.php`, `yoast/phpunit-polyfills`; job CI con
-      MySQL 8 (WordPress 6.0 minimo e `latest`)
-- [ ] E2E: `package.json` + lockfile (`@wordpress/env`, `@playwright/test`,
+      MySQL 8 (WordPress 6.0, latest, latest multisite). Smoke test
+      `InfraIntegrationTest`, compreso il test dell'attivazione (#6)
+- [x] E2E: `package.json` + lockfile (`@wordpress/env`, `@playwright/test`,
       `@axe-core/playwright`), `.wp-env.json` (con DB Form Builder e DB Privacy
-      Hub), `playwright.config.js` (desktop + Pixel 7), `bin/setup-e2e.sh`
-- [ ] mu-plugin di test: cattura di `wp_mail`, fuso `Europe/Rome`, pagine fixture
-      con shortcode e blocchi, cache di pagina simulata
-- [ ] Workflow `e2e.yml` riutilizzabile, `nightly.yml` (WordPress trunk, PHP più
-      recente), dipendenze tra job come nel Cookie Manager
-- [ ] `.gitattributes`: `export-ignore` per i nuovi file (lo ZIP nasce da `git archive`)
-- [ ] `TESTING.md`
+      Hub da GitHub), `playwright.config.js` (desktop + Pixel 7), `bin/setup-e2e.sh`
+- [x] mu-plugin di test: cattura di `wp_mail`, reset con creazione degli eventi,
+      stato per le asserzioni; fuso `Europe/Rome` nel setup. Smoke test
+      `infra.spec.js` (anche #6 lato browser e un'iscrizione completa) e
+      `infra.mobile.spec.js` (PIN sulle pagine pubbliche)
+- [ ] Cache di pagina simulata: rimandata alla Fase 3, con lo spec che la usa
+- [x] Workflow `e2e.yml` riutilizzabile, `nightly.yml` (WordPress trunk, PHP 8.4),
+      job `integration` ed `e2e` nella CI
+- [x] `.gitattributes`: `export-ignore` per i nuovi file
+- [x] `TESTING.md`
 
 ## 5. Fase 1 — Unit test
 

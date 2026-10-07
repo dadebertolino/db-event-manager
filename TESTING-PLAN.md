@@ -117,6 +117,7 @@ su database va in Fase 2.
 | 42 | ○ | `templates/frontend/checkin.php:333-338`, `checkin.js:146`, `participants.php:444` | Lo scanner pubblico riaccende la fotocamera dopo ogni check-in (anche da ricerca); i timer degli avvisi non vengono azzerati. |
 | 43 | ○ | `admin.js:87, 96-110` | `Sortable.create` richiamato a ogni render: istanze che si accumulano. Da verificare l'effetto. |
 | 44 | ○ | vari | Invii doppi non tracciati (promemoria/survey manuale + automatico, nessun indicatore «inviato»). |
+| 49 | ✔ | `inc/lib/phpqrcode.php:957, 3551` | Libreria QR: parametri opzionali prima di uno obbligatorio in `QRimage::png()` e `QRvect::svg()`, avviso di deprecazione su PHP 8.0+ al caricamento del file. Con `display_errors` attivo l'avviso può finire in una risposta AJAX (JSON non valido) o in un PNG. Trovato il 2026-10-07 con `php -l` su PHP 8.5. |
 
 ### Accessibilità (WCAG 2.1 AA) — da trattare in un blocco unico
 

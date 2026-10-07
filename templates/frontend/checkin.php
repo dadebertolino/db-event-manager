@@ -11,7 +11,7 @@ $site_name = get_bloginfo('name');
 <html <?php language_attributes(); ?>>
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo esc_html(sprintf(__('Check-in — %s', 'db-event-manager'), $site_name)); ?></title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,7 +30,7 @@ $site_name = get_bloginfo('name');
             position: sticky; top: 0; z-index: 100;
         }
         .ci-header h1 { font-size: 20px; margin: 0; }
-        .ci-header small { opacity: 0.8; font-size: 13px; }
+        .ci-header small { font-size: 13px; }
 
         /* Container */
         .ci-body { flex: 1; padding: 16px; max-width: 500px; margin: 0 auto; width: 100%; }
@@ -51,7 +51,7 @@ $site_name = get_bloginfo('name');
             border: none; border-radius: 10px; font-size: 18px; font-weight: 600;
             cursor: pointer;
         }
-        .ci-pin-error { color: #d63638; margin-top: 12px; font-weight: 600; }
+        .ci-pin-error { color: #b32d2e; margin-top: 12px; font-weight: 600; }
 
         /* Scanner area */
         .ci-scanner { text-align: center; margin-bottom: 16px; }
@@ -80,7 +80,7 @@ $site_name = get_bloginfo('name');
         .ci-feedback-msg { font-size: 18px; display: block; margin-top: 8px; }
         .ci-fb-success { background: #d4edda; border: 3px solid #1d6e3f; color: #1d6e3f; }
         .ci-fb-warning { background: #fff3cd; border: 3px solid #856404; color: #856404; }
-        .ci-fb-error { background: #f8d7da; border: 3px solid #d63638; color: #d63638; }
+        .ci-fb-error { background: #f8d7da; border: 3px solid #d63638; color: #8a1f21; }
 
         @keyframes ci-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
@@ -111,7 +111,7 @@ $site_name = get_bloginfo('name');
         .ci-result-detail { font-size: 13px; color: #666; }
 
         /* Separator */
-        .ci-or { text-align: center; color: #999; margin: 16px 0; font-size: 14px; }
+        .ci-or { text-align: center; color: #595959; margin: 16px 0; font-size: 14px; }
 
         @media (prefers-reduced-motion: reduce) {
             .ci-feedback { animation: none; }
@@ -141,7 +141,7 @@ $site_name = get_bloginfo('name');
         <input type="tel" id="ci-pin-input" maxlength="10" autocomplete="off" autofocus
                aria-label="<?php esc_attr_e('PIN di accesso', 'db-event-manager'); ?>">
         <button type="button" class="ci-pin-btn" id="ci-pin-btn"><?php esc_html_e('Accedi', 'db-event-manager'); ?></button>
-        <p class="ci-pin-error" id="ci-pin-error" style="display:none;"></p>
+        <p class="ci-pin-error" id="ci-pin-error" role="alert" style="display:none;"></p>
     </div>
     <?php endif; ?>
 
@@ -400,15 +400,22 @@ $site_name = get_bloginfo('name');
                 var statusText = r.status === 'checked_in' ? ' (' + T.present_at.replace('%s', r.time || '').trim() + ')' : '';
                 var div = document.createElement('div');
                 div.className = 'ci-result';
-                div.setAttribute('role', 'button');
-                div.setAttribute('tabindex', '0');
                 div.innerHTML = '<span class="ci-result-icon">' + statusIcon + '</span>'
                     + '<div><span class="ci-result-name">' + escHtml(r.name) + '</span>'
                     + '<span class="ci-result-detail">' + escHtml(r.email) + ' — ' + escHtml(r.event) + escHtml(statusText) + '</span></div>';
 
+                // Solo i risultati con un'azione sono pulsanti (focus, Invio e Spazio)
                 if (r.status === 'confirmed') {
+                    div.setAttribute('role', 'button');
+                    div.setAttribute('tabindex', '0');
                     div.addEventListener('click', function() { processRegistration(r.id); resultsDiv.innerHTML = ''; });
-                    div.addEventListener('keydown', function(e) { if (e.key === 'Enter') { processRegistration(r.id); resultsDiv.innerHTML = ''; } });
+                    div.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            processRegistration(r.id);
+                            resultsDiv.innerHTML = '';
+                        }
+                    });
                 }
                 resultsDiv.appendChild(div);
             });

@@ -19,7 +19,7 @@ $site_name = get_bloginfo('name');
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333;min-height:100vh}
         .pp-header{background:#2271b1;color:#fff;padding:16px 20px;text-align:center;position:sticky;top:0;z-index:100}
         .pp-header h1{font-size:20px;margin:0}
-        .pp-header small{opacity:.8;font-size:13px}
+        .pp-header small{font-size:13px}
         .pp-body{padding:16px;max-width:800px;margin:0 auto;width:100%}
 
         /* PIN */
@@ -28,7 +28,7 @@ $site_name = get_bloginfo('name');
         .pp-pin input{font-size:32px;text-align:center;letter-spacing:12px;width:200px;padding:12px;border:2px solid #ccc;border-radius:12px;-webkit-text-security:disc}
         .pp-pin input:focus{border-color:#2271b1;outline:none}
         .pp-pin-btn{display:block;width:200px;margin:16px auto 0;padding:14px;background:#2271b1;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer}
-        .pp-pin-error{color:#d63638;margin-top:12px;font-weight:600;display:none}
+        .pp-pin-error{color:#b32d2e;margin-top:12px;font-weight:600;display:none}
 
         /* Selettore evento */
         .pp-select{margin-bottom:20px}
@@ -113,7 +113,7 @@ $site_name = get_bloginfo('name');
         <input type="tel" id="pp-pin-input" maxlength="10" autocomplete="off" autofocus
                aria-label="<?php esc_attr_e('PIN di accesso', 'db-event-manager'); ?>">
         <button type="button" class="pp-pin-btn" id="pp-pin-btn"><?php esc_html_e('Accedi', 'db-event-manager'); ?></button>
-        <p class="pp-pin-error" id="pp-pin-error"></p>
+        <p class="pp-pin-error" id="pp-pin-error" role="alert"></p>
     </div>
     <?php endif; ?>
 
@@ -177,9 +177,9 @@ $site_name = get_bloginfo('name');
         </div>
 
         <!-- Modal modifica orario -->
-        <div id="pp-time-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;justify-content:center;align-items:center">
+        <div id="pp-time-modal" role="dialog" aria-modal="true" aria-labelledby="pp-time-modal-title" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;justify-content:center;align-items:center">
             <div style="background:#fff;padding:24px;border-radius:12px;width:90%;max-width:400px;text-align:center">
-                <h3 style="margin:0 0 8px;font-size:18px">🕐 <?php esc_html_e('Modifica orario', 'db-event-manager'); ?></h3>
+                <h3 id="pp-time-modal-title" style="margin:0 0 8px;font-size:18px"><span aria-hidden="true">🕐</span> <?php esc_html_e('Modifica orario', 'db-event-manager'); ?></h3>
                 <p id="pp-time-modal-name" style="color:#666;margin-bottom:16px"></p>
                 <input type="text" id="pp-time-modal-input" maxlength="<?php echo esc_attr(DBEM_DB::ASSIGNED_TIME_MAX); ?>" placeholder="<?php esc_attr_e('Es. 10:30, 14:00-14:30', 'db-event-manager'); ?>" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:16px;text-align:center;margin-bottom:16px">
                 <input type="hidden" id="pp-time-modal-id">
@@ -439,6 +439,7 @@ $site_name = get_bloginfo('name');
             document.getElementById('pp-time-modal-id').value = regId;
             document.getElementById('pp-time-modal-name').textContent = btn ? btn.dataset.name : '';
             document.getElementById('pp-time-modal-input').value = btn ? btn.dataset.time : '';
+            timeModalOpener = btn;
             modal.style.display = 'flex';
             document.getElementById('pp-time-modal-input').focus();
             return;
@@ -602,15 +603,28 @@ $site_name = get_bloginfo('name');
 
     /* === Modal modifica orario === */
     var timeModal = document.getElementById('pp-time-modal');
-    document.getElementById('pp-time-cancel').addEventListener('click', function() {
+    var timeModalOpener = null;
+    // Chiusura: il focus torna al pulsante che ha aperto la finestra
+    function closeTimeModal() {
         timeModal.style.display = 'none';
-    });
+        if (timeModalOpener && document.body.contains(timeModalOpener)) timeModalOpener.focus();
+        timeModalOpener = null;
+    }
+    document.getElementById('pp-time-cancel').addEventListener('click', closeTimeModal);
     timeModal.addEventListener('click', function(e) {
-        if (e.target === timeModal) timeModal.style.display = 'none';
+        if (e.target === timeModal) closeTimeModal();
+    });
+    // Esc chiude; Tab resta dentro la finestra
+    timeModal.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { closeTimeModal(); return; }
+        if (e.key !== 'Tab') return;
+        var focusable = timeModal.querySelectorAll('input:not([type="hidden"]), button');
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
     document.getElementById('pp-time-modal-input').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') document.getElementById('pp-time-save').click();
-        if (e.key === 'Escape') timeModal.style.display = 'none';
     });
     document.getElementById('pp-time-save').addEventListener('click', function() {
         var regId = document.getElementById('pp-time-modal-id').value;
@@ -623,7 +637,7 @@ $site_name = get_bloginfo('name');
 
         post(body)
         .then(function(resp) {
-            timeModal.style.display = 'none';
+            closeTimeModal();
             if (resp.success) {
                 showFeedback('success', resp.data.message);
                 loadParticipants();

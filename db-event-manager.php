@@ -220,7 +220,7 @@ final class DB_Event_Manager {
 
     public function handle_endpoints() {
         // Approvazione/rifiuto via link email
-        $action = isset($_GET['dbem_action']) ? sanitize_key($_GET['dbem_action']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
+        $action = sanitize_key(DBEM_Security::input('dbem_action', '', 'get')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- link dalle email, protetto dalla chiave HMAC
         if ($action && in_array($action, array('approve', 'reject'))) {
             $this->handle_approval_action($action);
             exit;
@@ -406,8 +406,8 @@ final class DB_Event_Manager {
     private function handle_approve_confirm() {
         $token = sanitize_text_field(wp_unslash($_POST['token'] ?? ''));
         $key = sanitize_text_field(wp_unslash($_POST['key'] ?? ''));
-        $confirm_action = sanitize_key($_POST['confirm_action'] ?? 'approve');
-        $link_action = sanitize_key($_POST['link_action'] ?? 'approve');
+        $confirm_action = sanitize_key(DBEM_Security::input('confirm_action', 'approve'));
+        $link_action = sanitize_key(DBEM_Security::input('link_action', 'approve'));
         if (!in_array($confirm_action, array('approve', 'reject'), true) || !in_array($link_action, array('approve', 'reject'), true)) {
             wp_die(esc_html__('Dati mancanti.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 403));
         }

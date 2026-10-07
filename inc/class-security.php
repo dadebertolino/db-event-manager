@@ -105,6 +105,20 @@ class DBEM_Security {
     }
 
     /**
+     * Parametro di $_POST (o $_GET) come stringa ripulita. Un array (dbem_email[]=x)
+     * diventa $default: sanitize_email() e, su WordPress 6.0, sanitize_key() vanno in
+     * TypeError con un array e la richiesta finirebbe con un errore 500.
+     * Nonce e origine li verificano i chiamanti.
+     */
+    public static function input($key, $default = '', $method = 'post') {
+        // phpcs:disable WordPress.Security.NonceVerification -- verificati dai chiamanti
+        $source = $method === 'get' ? $_GET : $_POST;
+        $value = isset($source[$key]) ? wp_unslash($source[$key]) : $default; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- ripulito sotto
+        // phpcs:enable WordPress.Security.NonceVerification
+        return is_scalar($value) ? sanitize_text_field((string) $value) : $default;
+    }
+
+    /**
      * IP del client (solo REMOTE_ADDR: gli header proxy sono falsificabili)
      */
     public static function client_ip() {

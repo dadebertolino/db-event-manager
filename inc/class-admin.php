@@ -135,7 +135,7 @@ class DBEM_Admin {
         // Solo nelle pagine del plugin
         $is_plugin_page = (
             $screen->post_type === 'dbem_event' ||
-            (isset($_GET['page']) && strpos(sanitize_key(wp_unslash($_GET['page'])), 'dbem') !== false) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
+            (isset($_GET['page']) && strpos(sanitize_key(DBEM_Security::input('page', '', 'get')), 'dbem') !== false) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- parametro di navigazione in sola lettura
         );
 
         if (!$is_plugin_page) return;
@@ -795,12 +795,12 @@ class DBEM_Admin {
 
         // Form source (builtin / dbfb)
         if (isset($_POST['_dbem_form_source'])) {
-            update_post_meta($post_id, '_dbem_form_source', wp_slash(sanitize_key($_POST['_dbem_form_source'])));
+            update_post_meta($post_id, '_dbem_form_source', wp_slash(sanitize_key(DBEM_Security::input('_dbem_form_source'))));
         }
 
         // Modalità approvazione
         if (isset($_POST['_dbem_approval_mode'])) {
-            update_post_meta($post_id, '_dbem_approval_mode', wp_slash(sanitize_key($_POST['_dbem_approval_mode'])));
+            update_post_meta($post_id, '_dbem_approval_mode', wp_slash(sanitize_key(DBEM_Security::input('_dbem_approval_mode'))));
         }
         if (isset($_POST['_dbem_approver_email'])) {
             $emails_raw = sanitize_text_field(wp_unslash($_POST['_dbem_approver_email']));
@@ -835,13 +835,13 @@ class DBEM_Admin {
             update_post_meta($post_id, '_dbem_dbfb_form_id', wp_slash(absint($_POST['_dbem_dbfb_form_id'])));
         }
         if (isset($_POST['_dbem_dbfb_name_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_name_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_name_field'])));
+            update_post_meta($post_id, '_dbem_dbfb_name_field', wp_slash(sanitize_key(DBEM_Security::input('_dbem_dbfb_name_field'))));
         }
         if (isset($_POST['_dbem_dbfb_email_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_email_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_email_field'])));
+            update_post_meta($post_id, '_dbem_dbfb_email_field', wp_slash(sanitize_key(DBEM_Security::input('_dbem_dbfb_email_field'))));
         }
         if (isset($_POST['_dbem_dbfb_privacy_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_privacy_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_privacy_field'])));
+            update_post_meta($post_id, '_dbem_dbfb_privacy_field', wp_slash(sanitize_key(DBEM_Security::input('_dbem_dbfb_privacy_field'))));
         }
 
         // Deadline
@@ -1169,7 +1169,7 @@ class DBEM_Admin {
         $label    = sanitize_text_field(wp_unslash($_POST['label'] ?? ''));
         $from     = sanitize_text_field(wp_unslash($_POST['from'] ?? ''));
         $to       = sanitize_text_field(wp_unslash($_POST['to'] ?? ''));
-        $decision = sanitize_key($_POST['decision'] ?? '');
+        $decision = sanitize_key(DBEM_Security::input('decision', ''));
 
         $pending = self::get_pending_option_renames($event_id);
         $found = null;
@@ -1240,7 +1240,7 @@ class DBEM_Admin {
             }
             update_option('dbem_delete_data_on_uninstall', isset($_POST['dbem_delete_data_on_uninstall']) ? '1' : '0');
             update_option('dbem_from_name', str_replace(array('"', '<', '>'), '', sanitize_text_field(wp_unslash($_POST['dbem_from_name'] ?? ''))));
-            $from_email = sanitize_email(wp_unslash($_POST['dbem_from_email'] ?? ''));
+            $from_email = sanitize_email(DBEM_Security::input('dbem_from_email'));
             update_option('dbem_from_email', is_email($from_email) ? $from_email : '');
             update_option(DBEM_Appearance::OPTION, DBEM_Appearance::sanitize_colors(wp_unslash($_POST['dbem_appearance'] ?? array()))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
             echo '<div class="notice notice-success"><p>' . esc_html__('Impostazioni salvate.', 'db-event-manager') . '</p></div>';
@@ -1418,7 +1418,7 @@ class DBEM_Admin {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
         if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
-        $action = sanitize_key($_POST['bulk_action'] ?? '');
+        $action = sanitize_key(DBEM_Security::input('bulk_action', ''));
         $ids = array_map('absint', (array)($_POST['ids'] ?? array()));
 
         if (empty($ids) || !$action) wp_send_json_error(__('Parametri mancanti', 'db-event-manager'));

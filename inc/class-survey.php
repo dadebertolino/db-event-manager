@@ -147,7 +147,7 @@ class DBEM_Survey {
         if (!DBEM_Admin::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
         $event_id = absint($_POST['event_id'] ?? 0);
-        $target = sanitize_key($_POST['target'] ?? 'checked_in'); // checked_in | all
+        $target = sanitize_key(DBEM_Security::input('target', 'checked_in')); // checked_in | all
 
         if (!$event_id || get_post_type($event_id) !== 'dbem_event') wp_send_json_error(__('Evento mancante', 'db-event-manager'));
 

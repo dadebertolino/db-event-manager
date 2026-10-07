@@ -378,7 +378,7 @@ class DBEM_Checkin {
     public static function handle_public_participant_action() {
         $allowed = DBEM_Security::verify_public_request();
 
-        $action   = sanitize_key($_POST['participant_action'] ?? ''); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $action   = sanitize_key(DBEM_Security::input('participant_action', '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $reg_id   = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (!$action || !$reg_id || !$event_id) wp_send_json_error(array('message' => __('Parametri mancanti', 'db-event-manager')));
@@ -449,7 +449,7 @@ class DBEM_Checkin {
 
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $name = sanitize_text_field(wp_unslash($_POST['name'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
-        $email = sanitize_email(wp_unslash($_POST['email'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $email = sanitize_email(DBEM_Security::input('email')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $assigned_time = DBEM_DB::clean_assigned_time(sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''))); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
 
         if (!$event_id || !$name || !$email) {

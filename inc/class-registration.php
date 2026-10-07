@@ -24,7 +24,7 @@ class DBEM_Registration {
 
         // Valida campi obbligatori
         $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
-        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
+        $email = strtolower(sanitize_email(DBEM_Security::input('dbem_email')));
 
         if (empty($name)) {
             wp_send_json_error(__('Il nome è obbligatorio.', 'db-event-manager'));
@@ -459,7 +459,7 @@ class DBEM_Registration {
         self::require_event($event_id, 'dbfb');
 
         $name = sanitize_text_field(wp_unslash($_POST['dbem_name'] ?? ''));
-        $email = strtolower(sanitize_email(wp_unslash($_POST['dbem_email'] ?? '')));
+        $email = strtolower(sanitize_email(DBEM_Security::input('dbem_email')));
 
         if (empty($name) || !is_email($email)) {
             wp_send_json_error(__('Nome e email sono obbligatori.', 'db-event-manager'));

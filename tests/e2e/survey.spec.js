@@ -82,12 +82,13 @@ test.describe( 'Survey', () => {
 			const [ anna, bruno ] = events.a.registrations;
 			// Le risposte arrivano da visitatori anonimi: la sessione admin di questo blocco
 			// richiederebbe il nonce
-			const anon = await playwright.request.newContext( { baseURL: BASE } );
+			const anon = await playwright.request.newContext( { baseURL: BASE, storageState: { cookies: [], origins: [] } } );
 			for ( const [ token, answers ] of [
 				[ anna.token, { dbem_survey_0: 'Ottimo', 'dbem_survey_1[]': 'Robotica', dbem_survey_2: 'Tutto bene' } ],
 				[ bruno.token, { dbem_survey_0: 'Ottimo' } ],
 			] ) {
-				expect( ( await ( await submitSurvey( anon, token, answers ) ).json() ).success ).toBe( true );
+				const body = await ( await submitSurvey( anon, token, answers ) ).json();
+				expect( body.success, JSON.stringify( body ) ).toBe( true );
 			}
 			await anon.dispose();
 

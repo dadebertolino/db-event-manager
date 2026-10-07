@@ -1414,8 +1414,6 @@ class DBEM_Admin {
         check_ajax_referer('dbem_admin_nonce', 'nonce');
         if (!self::can_manage_events()) wp_send_json_error(__('Accesso negato', 'db-event-manager'));
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'dbem_registrations';
         $action = sanitize_key($_POST['bulk_action'] ?? '');
         $ids = array_map('absint', (array)($_POST['ids'] ?? array()));
 
@@ -1426,39 +1424,8 @@ class DBEM_Admin {
             wp_send_json_success(array('message' => __('Operazione completata', 'db-event-manager'), 'skipped' => 0));
         }
 
-        // Ogni azione vale solo dagli stati di partenza sensati: con "seleziona tutti" una
-        // conferma non deve declassare i presenti né rimandare loro l'email, un rifiuto non
-        // deve ripartire verso chi era già rifiutato, "presente" non deve toccare gli annullati
-        $transitions = self::bulk_transitions();
-        if (!isset($transitions[$action])) wp_send_json_error(__('Azione non valida', 'db-event-manager'));
-        list($from, $to) = $transitions[$action];
-
-        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
-        $status_placeholders = implode(',', array_fill(0, count($from), '%s'));
-        $targets = array_map('absint', $wpdb->get_col($wpdb->prepare(
-            "SELECT id FROM $table WHERE id IN ($placeholders) AND status IN ($status_placeholders)",
-            ...array_merge($ids, $from)
-        )));
-
-        if ($targets) {
-            $target_placeholders = implode(',', array_fill(0, count($targets), '%d'));
-            if ($to === 'checked_in') {
-                $wpdb->query($wpdb->prepare("UPDATE $table SET status = 'checked_in', checked_in_at = %s WHERE id IN ($target_placeholders)", current_time('mysql'), ...$targets));
-            } else {
-                $wpdb->query($wpdb->prepare("UPDATE $table SET status = %s WHERE id IN ($target_placeholders)", $to, ...$targets));
-            }
-        }
-
-        foreach ($targets as $rid) {
-            $r = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $rid));
-            if (!$r) continue;
-            if ($to === 'confirmed') {
-                DBEM_QRCode::generate($r->token);
-                DBEM_Email::send_confirmation($r->event_id, $r);
-            } elseif ($to === 'rejected') {
-                DBEM_Email::send_rejection($r->event_id, $r);
-            }
-        }
+        if (!isset(self::bulk_transitions()[$action])) wp_send_json_error(__('Azione non valida', 'db-event-manager'));
+        $targets = self::apply_transition($ids, $action);
 
         $skipped = count(array_unique($ids)) - count($targets);
         $message = $skipped
@@ -1470,6 +1437,46 @@ class DBEM_Admin {
             )
             : __('Operazione completata', 'db-event-manager');
         wp_send_json_success(array('message' => $message, 'skipped' => $skipped));
+    }
+
+    /**
+     * Applica un'azione alle iscrizioni che sono in uno stato di partenza ammesso e invia
+     * le email collegate (conferma con QR, rifiuto). Ogni UPDATE ricontrolla lo stato: con
+     * "seleziona tutti" una conferma non declassa i presenti e due operatori che agiscono
+     * insieme (o due scansioni dello stesso QR) non applicano l'azione due volte.
+     *
+     * @param int[]  $ids
+     * @param string $action Chiave di bulk_transitions()
+     * @return int[] Iscrizioni effettivamente modificate
+     */
+    public static function apply_transition($ids, $action) {
+        $transitions = self::bulk_transitions();
+        if (!isset($transitions[$action])) return array();
+        list($from, $to) = $transitions[$action];
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbem_registrations';
+        $status_placeholders = implode(',', array_fill(0, count($from), '%s'));
+        $changed = array();
+        foreach (array_unique(array_filter(array_map('absint', (array) $ids))) as $id) {
+            $set = $to === 'checked_in' ? $wpdb->prepare('status = %s, checked_in_at = %s', $to, current_time('mysql')) : $wpdb->prepare('status = %s', $to);
+            $updated = $wpdb->query($wpdb->prepare(
+                "UPDATE $table SET $set WHERE id = %d AND status IN ($status_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $set preparato sopra
+                $id, ...$from
+            ));
+            if (!$updated) continue;
+            $changed[] = $id;
+
+            $reg = DBEM_DB::get_registration($id);
+            if (!$reg) continue;
+            if ($to === 'confirmed') {
+                DBEM_QRCode::generate($reg->token);
+                DBEM_Email::send_confirmation($reg->event_id, $reg);
+            } elseif ($to === 'rejected') {
+                DBEM_Email::send_rejection($reg->event_id, $reg);
+            }
+        }
+        return $changed;
     }
 
     /**

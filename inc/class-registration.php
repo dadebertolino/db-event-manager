@@ -56,10 +56,11 @@ class DBEM_Registration {
                 } else {
                     $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
                 }
-                if ($field['required'] && empty($value)) {
+                // "0" è un valore valido; il messaggio va a .text(), niente esc_html
+                if ($field['required'] && ($value === '' || $value === array())) {
                     wp_send_json_error(sprintf(
                         __('Il campo "%s" è obbligatorio.', 'db-event-manager'),
-                        esc_html($field['label'])
+                        $field['label']
                     ));
                 }
                 $custom_data[$field['label']] = $value;

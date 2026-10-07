@@ -119,6 +119,19 @@ class DBEM_DB {
     }
 
     /**
+     * Lunghezza della colonna assigned_time: un valore più lungo farebbe fallire l'UPDATE
+     */
+    const ASSIGNED_TIME_MAX = 50;
+
+    /**
+     * Orario assegnato ripulito; false se più lungo della colonna
+     */
+    public static function clean_assigned_time($raw) {
+        $time = trim(sanitize_text_field((string) $raw));
+        return mb_strlen($time) > self::ASSIGNED_TIME_MAX ? false : $time;
+    }
+
+    /**
      * Conta iscritti per evento
      */
     public static function count_registrations($event_id, $status = null) {

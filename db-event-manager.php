@@ -383,7 +383,7 @@ final class DB_Event_Manager {
             $html .= '
                 <div class="dbem-f">
                     <label for="assigned_time">🕐 ' . esc_html__('Orario assegnato', 'db-event-manager') . '</label>
-                    <input type="text" id="assigned_time" name="assigned_time"
+                    <input type="text" id="assigned_time" name="assigned_time" maxlength="' . esc_attr(DBEM_DB::ASSIGNED_TIME_MAX) . '"
                         placeholder="' . esc_attr__('Es. 10:30, 14:00-14:30, Turno A ore 9:00', 'db-event-manager') . '">
                     <p class="dbem-hint">' . esc_html__('Inserisci l\'orario da comunicare al partecipante. Lascia vuoto per approvare senza orario.', 'db-event-manager') . '</p>
                 </div>';
@@ -454,7 +454,13 @@ final class DB_Event_Manager {
         }
 
         // Approvazione con orario
-        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''));
+        $assigned_time = DBEM_DB::clean_assigned_time(sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')));
+        if ($assigned_time === false) {
+            wp_die(
+                esc_html(sprintf(__('L\'orario può avere al massimo %d caratteri. Torna indietro e accorcialo: l\'iscrizione non è stata approvata.', 'db-event-manager'), DBEM_DB::ASSIGNED_TIME_MAX)),
+                esc_html__('Orario troppo lungo', 'db-event-manager'), array('response' => 400, 'back_link' => true)
+            );
+        }
         $update_data = array('status' => 'confirmed');
         $update_format = array('%s');
         if (!empty($assigned_time)) {
@@ -462,7 +468,10 @@ final class DB_Event_Manager {
             $update_format[] = '%s';
         }
 
-        $wpdb->update($table, $update_data, array('id' => $reg->id), $update_format, array('%d'));
+        // Senza salvataggio niente QR né email: prima partivano anche con l'UPDATE fallito
+        if ($wpdb->update($table, $update_data, array('id' => $reg->id), $update_format, array('%d')) === false) {
+            wp_die(esc_html__('Errore nel salvataggio: l\'iscrizione non è stata approvata. Riprova.', 'db-event-manager'), esc_html__('Errore', 'db-event-manager'), array('response' => 500, 'back_link' => true));
+        }
         $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg->id));
         DBEM_QRCode::generate($reg->token);
         DBEM_Email::send_confirmation($reg->event_id, $reg);

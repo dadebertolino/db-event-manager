@@ -37,15 +37,20 @@ class DBEM_Checkin {
 
         switch ($reg->status) {
             case 'confirmed':
-                global $wpdb;
-                $table = $wpdb->prefix . 'dbem_registrations';
                 $now = current_time('mysql');
-                $wpdb->update($table,
-                    array('status' => 'checked_in', 'checked_in_at' => $now),
-                    array('id' => $reg->id),
-                    array('%s', '%s'),
-                    array('%d')
-                );
+                // Due scansioni nello stesso momento: solo la prima registra il check-in
+                if (!DBEM_Admin::apply_transition(array($reg->id), 'checkin')) {
+                    $fresh = DBEM_DB::get_registration($reg->id);
+                    $time = $fresh && $fresh->checked_in_at ? DBEM_Time::format('H:i', $fresh->checked_in_at) : '—';
+                    wp_send_json_success(array(
+                        'status'  => 'already',
+                        'message' => sprintf(__('Già registrato alle %s', 'db-event-manager'), $time),
+                        'name'    => $reg->name,
+                        'event'   => $event_title,
+                        'time'    => $time,
+                        'icon'    => '⚠️',
+                    ));
+                }
                 wp_send_json_success(array(
                     'status'  => 'checked_in',
                     'message' => sprintf(__('Check-in effettuato per %s', 'db-event-manager'), $reg->name),
@@ -214,15 +219,20 @@ class DBEM_Checkin {
 
         switch ($reg->status) {
             case 'confirmed':
-                global $wpdb;
-                $table = $wpdb->prefix . 'dbem_registrations';
                 $now = current_time('mysql');
-                $wpdb->update($table,
-                    array('status' => 'checked_in', 'checked_in_at' => $now),
-                    array('id' => $reg->id),
-                    array('%s', '%s'),
-                    array('%d')
-                );
+                // Due scansioni nello stesso momento: solo la prima registra il check-in
+                if (!DBEM_Admin::apply_transition(array($reg->id), 'checkin')) {
+                    $fresh = DBEM_DB::get_registration($reg->id);
+                    $time = $fresh && $fresh->checked_in_at ? DBEM_Time::format('H:i', $fresh->checked_in_at) : '—';
+                    wp_send_json_success(array(
+                        'status'  => 'already',
+                        'message' => sprintf(__('Già registrato alle %s', 'db-event-manager'), $time),
+                        'name'    => $reg->name,
+                        'event'   => $event_title,
+                        'time'    => $time,
+                        'icon'    => '⚠️',
+                    ));
+                }
                 wp_send_json_success(array(
                     'status'  => 'checked_in',
                     'message' => sprintf(__('Check-in effettuato', 'db-event-manager')),
@@ -369,41 +379,36 @@ class DBEM_Checkin {
         ));
         if (!$reg) wp_send_json_error(array('message' => __('Iscrizione non trovata', 'db-event-manager')));
 
+        $messages = array(
+            /* translators: %s: nome dell'iscritto */
+            'confirm' => __('%s approvato', 'db-event-manager'),
+            /* translators: %s: nome dell'iscritto */
+            'reject'  => __('%s rifiutato', 'db-event-manager'),
+            /* translators: %s: nome dell'iscritto */
+            'checkin' => __('%s — check-in effettuato', 'db-event-manager'),
+            /* translators: %s: nome dell'iscritto */
+            'cancel'  => __('%s annullato', 'db-event-manager'),
+        );
+
         switch ($action) {
             case 'confirm':
-                $wpdb->update($table, array('status' => 'confirmed'), array('id' => $reg_id), array('%s'), array('%d'));
-                // Genera QR + email se era pending
-                if ($reg->status === 'pending') {
-                    DBEM_QRCode::generate($reg->token);
-                    $reg_updated = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
-                    DBEM_Email::send_confirmation($reg->event_id, $reg_updated);
-                }
-                wp_send_json_success(array('message' => sprintf(__('%s approvato', 'db-event-manager'), $reg->name)));
-                break;
-
             case 'reject':
-                $wpdb->update($table, array('status' => 'rejected'), array('id' => $reg_id), array('%s'), array('%d'));
-                $reg_updated = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reg_id));
-                DBEM_Email::send_rejection($reg->event_id, $reg_updated);
-                wp_send_json_success(array('message' => sprintf(__('%s rifiutato', 'db-event-manager'), $reg->name)));
-                break;
-
             case 'checkin':
-                if ($reg->status === 'checked_in') {
+            case 'cancel':
+                if ($action === 'checkin' && $reg->status === 'checked_in') {
                     wp_send_json_success(array('message' => sprintf(__('%s è già presente', 'db-event-manager'), $reg->name)));
                 }
-                if ($reg->status !== 'confirmed') {
-                    wp_send_json_error(array('message' => __('Check-in non consentito: l\'iscrizione non è confermata', 'db-event-manager')));
+                // Riconfermare un annullato o un rifiutato occupa di nuovo un posto
+                if ($action === 'confirm' && in_array($reg->status, array('cancelled', 'rejected'), true)) {
+                    $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
+                    if ($max > 0 && DBEM_DB::count_registrations($event_id) >= $max) {
+                        wp_send_json_error(array('message' => __('Posti esauriti', 'db-event-manager')));
+                    }
                 }
-                $wpdb->update($table,
-                    array('status' => 'checked_in', 'checked_in_at' => current_time('mysql')),
-                    array('id' => $reg_id), array('%s', '%s'), array('%d'));
-                wp_send_json_success(array('message' => sprintf(__('%s — check-in effettuato', 'db-event-manager'), $reg->name)));
-                break;
-
-            case 'cancel':
-                $wpdb->update($table, array('status' => 'cancelled'), array('id' => $reg_id), array('%s'), array('%d'));
-                wp_send_json_success(array('message' => sprintf(__('%s annullato', 'db-event-manager'), $reg->name)));
+                if (!DBEM_Admin::apply_transition(array($reg_id), $action)) {
+                    wp_send_json_error(array('message' => __('Azione non consentita per lo stato attuale dell\'iscrizione: aggiorna la lista.', 'db-event-manager')));
+                }
+                wp_send_json_success(array('message' => sprintf($messages[$action], $reg->name)));
                 break;
 
             case 'resend':
@@ -431,10 +436,13 @@ class DBEM_Checkin {
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $name = sanitize_text_field(wp_unslash($_POST['name'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $email = sanitize_email(wp_unslash($_POST['email'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
-        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $assigned_time = DBEM_DB::clean_assigned_time(sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''))); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
 
         if (!$event_id || !$name || !$email) {
             wp_send_json_error(array('message' => __('Nome, email e evento sono obbligatori', 'db-event-manager')));
+        }
+        if ($assigned_time === false) {
+            wp_send_json_error(array('message' => sprintf(__('L\'orario può avere al massimo %d caratteri', 'db-event-manager'), DBEM_DB::ASSIGNED_TIME_MAX)));
         }
         DBEM_Security::require_event_access($event_id, $allowed);
         if (!is_email($email)) {
@@ -495,10 +503,13 @@ class DBEM_Checkin {
 
         $reg_id = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
-        $assigned_time = sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
+        $assigned_time = DBEM_DB::clean_assigned_time(sanitize_text_field(wp_unslash($_POST['assigned_time'] ?? ''))); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
 
         if (!$reg_id || !$event_id) {
             wp_send_json_error(array('message' => __('ID iscrizione mancante', 'db-event-manager')));
+        }
+        if ($assigned_time === false) {
+            wp_send_json_error(array('message' => sprintf(__('L\'orario può avere al massimo %d caratteri', 'db-event-manager'), DBEM_DB::ASSIGNED_TIME_MAX)));
         }
         DBEM_Security::require_event_access($event_id, $allowed);
 
@@ -513,12 +524,9 @@ class DBEM_Checkin {
             wp_send_json_error(array('message' => __('Iscrizione non trovata', 'db-event-manager')));
         }
 
-        $wpdb->update($table,
-            array('assigned_time' => $assigned_time),
-            array('id' => $reg_id),
-            array('%s'),
-            array('%d')
-        );
+        if ($wpdb->update($table, array('assigned_time' => $assigned_time), array('id' => $reg_id), array('%s'), array('%d')) === false) {
+            wp_send_json_error(array('message' => __('Errore nel salvataggio', 'db-event-manager')));
+        }
 
         $label = $assigned_time ? $assigned_time : __('rimosso', 'db-event-manager');
         wp_send_json_success(array('message' => sprintf(__('Orario di %s aggiornato: %s  — per notificare, premi 📧', 'db-event-manager'), $reg->name, $label)));

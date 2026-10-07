@@ -165,7 +165,7 @@ $site_name = get_bloginfo('name');
                 </div>
                 <div style="flex:0 0 140px">
                     <label for="pp-add-time" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px"><?php esc_html_e('Orario', 'db-event-manager'); ?></label>
-                    <input type="text" id="pp-add-time" placeholder="<?php esc_attr_e('Es. 10:30', 'db-event-manager'); ?>" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px">
+                    <input type="text" id="pp-add-time" maxlength="<?php echo esc_attr(DBEM_DB::ASSIGNED_TIME_MAX); ?>" placeholder="<?php esc_attr_e('Es. 10:30', 'db-event-manager'); ?>" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px">
                 </div>
                 <div style="flex:0 0 auto;display:flex;gap:6px">
                     <button type="button" id="pp-add-submit" style="padding:10px 20px;background:#1d6e3f;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">✅ <?php esc_html_e('Iscrivere', 'db-event-manager'); ?></button>
@@ -179,7 +179,7 @@ $site_name = get_bloginfo('name');
             <div style="background:#fff;padding:24px;border-radius:12px;width:90%;max-width:400px;text-align:center">
                 <h3 style="margin:0 0 8px;font-size:18px">🕐 <?php esc_html_e('Modifica orario', 'db-event-manager'); ?></h3>
                 <p id="pp-time-modal-name" style="color:#666;margin-bottom:16px"></p>
-                <input type="text" id="pp-time-modal-input" placeholder="<?php esc_attr_e('Es. 10:30, 14:00-14:30', 'db-event-manager'); ?>" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:16px;text-align:center;margin-bottom:16px">
+                <input type="text" id="pp-time-modal-input" maxlength="<?php echo esc_attr(DBEM_DB::ASSIGNED_TIME_MAX); ?>" placeholder="<?php esc_attr_e('Es. 10:30, 14:00-14:30', 'db-event-manager'); ?>" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:16px;text-align:center;margin-bottom:16px">
                 <input type="hidden" id="pp-time-modal-id">
                 <div style="display:flex;gap:10px;justify-content:center">
                     <button type="button" id="pp-time-save" style="padding:12px 24px;background:#2271b1;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">💾 <?php esc_html_e('Salva', 'db-event-manager'); ?></button>

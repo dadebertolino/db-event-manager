@@ -655,3 +655,4 @@ require_once dirname(__DIR__, 2) . '/inc/class-duplicate.php';
 require_once dirname(__DIR__, 2) . '/inc/class-updater.php';
 require_once dirname(__DIR__, 2) . '/inc/class-export.php';
 require_once dirname(__DIR__, 2) . '/inc/class-privacy-declarations.php';
+require_once dirname(__DIR__, 2) . '/inc/class-survey.php';

@@ -573,3 +573,4 @@ require_once dirname(__DIR__) . '/inc/class-admin.php';
 require_once dirname(__DIR__) . '/inc/class-registration.php';
 require_once dirname(__DIR__) . '/inc/class-qrcode.php';
 require_once dirname(__DIR__) . '/inc/class-checkin.php';
+require_once dirname(__DIR__) . '/inc/class-duplicate.php';

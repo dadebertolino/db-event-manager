@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.8.0
+**Versione:** 1.9.0
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 5.8+, PHP 7.4+  
@@ -19,6 +19,7 @@ Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 - Chiusura automatica iscrizioni (posti esauriti o deadline)
 - Stato evento automatico: bozza, in programma, in corso, concluso
 - Pagina singola evento e archivio generati automaticamente dal plugin
+- **Duplica evento**: copia impostazioni, form, email, survey, categorie e immagine in una nuova bozza, senza partecipanti
 
 ### 📝 Iscrizione frontend
 - Due modalità form:
@@ -335,6 +336,23 @@ La CI esegue questi controlli e `php -l` con PHP 7.4 e 8.3 a ogni push. Un tag `
 ---
 
 ## Changelog
+
+### 1.9.0
+**Duplica evento**
+
+- Nuova azione «Duplica» nell'elenco eventi e link «Duplica evento» nel box Pubblica dell'editor:
+  crea una **bozza** con tutte le impostazioni dell'originale (nome, descrizione, date, luogo, posti,
+  campi del form o collegamento a DB Form Builder, approvazione, privacy, email di conferma e
+  promemoria, survey, aspetto, categorie, immagine in evidenza) e la apre nell'editor
+- **Non** vengono copiati partecipanti, check-in e risposte al survey: stanno nelle tabelle del plugin,
+  legate all'evento originale
+- Le iscrizioni della copia ripartono **aperte**, anche se sull'originale le aveva chiuse il cron per
+  scadenza o posti esauriti. Un avviso ricorda di aggiornare date, luogo e scadenza prima di pubblicare
+- Promemoria e survey automatici non vengono programmati finché non si salva la copia, quindi con le
+  date nuove
+- Permessi: serve poter creare eventi e modificare quello originale (link con nonce)
+- Per gli sviluppatori: filtro `dbem_duplicate_skipped_meta` (meta da non copiare) e azione
+  `dbem_event_duplicated` (`$new_id`, `$source_id`)
 
 ### 1.8.0
 **Iscrizioni compatibili con la cache di pagina + dichiarazioni privacy accurate**

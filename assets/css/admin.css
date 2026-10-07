@@ -347,3 +347,8 @@
 
 /* Spunta "avvisa via email" accanto alle azioni sulle iscrizioni */
 .dbem-notify-cancel { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; }
+
+/* Registro degli invii di promemoria e survey */
+.dbem-send-log { margin: 8px 0 16px; }
+.dbem-send-log summary { cursor: pointer; }
+.dbem-send-log ul { margin: 6px 0 0 18px; list-style: disc; }

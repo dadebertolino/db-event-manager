@@ -74,6 +74,7 @@ if ($selected_event) {
             </a>
             <span id="dbem-survey-feedback" style="margin-left:10px;"></span>
         </div>
+        <?php echo DBEM_Admin::render_send_log($selected_event, 'survey'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con esc_html ?>
 
         <?php if (empty($responses)): ?>
             <p><?php esc_html_e('Nessuna risposta ricevuta.', 'db-event-manager'); ?></p>

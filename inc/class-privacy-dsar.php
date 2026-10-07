@@ -98,6 +98,12 @@ class DBEM_Privacy_DSAR {
                 array('name' => __('Orario assegnato', 'db-event-manager'), 'value' => (isset($reg->assigned_time) && $reg->assigned_time) ? $reg->assigned_time : '—'),
                 array('name' => __('IP', 'db-event-manager'), 'value' => $reg->ip_address),
             );
+            if (!empty($reg->reminder_sent_at)) {
+                $export_data[] = array('name' => __('Promemoria inviato', 'db-event-manager'), 'value' => $reg->reminder_sent_at);
+            }
+            if (!empty($reg->survey_sent_at)) {
+                $export_data[] = array('name' => __('Invito al survey inviato', 'db-event-manager'), 'value' => $reg->survey_sent_at);
+            }
 
             // Campi custom del form
             if (is_array($fields)) {

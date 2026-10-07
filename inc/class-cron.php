@@ -108,9 +108,20 @@ class DBEM_Cron {
         DBEM_DB::ensure_tables();
         $regs = DBEM_DB::get_reminder_registrations($event_id);
 
+        // Chi ha già ricevuto il promemoria (inviato a mano) non lo riceve di nuovo
+        $sent = 0;
+        $skipped = 0;
         foreach ($regs as $reg) {
-            DBEM_Email::send_reminder($event_id, $reg);
+            if (DBEM_DB::was_sent($reg, 'reminder')) {
+                $skipped++;
+                continue;
+            }
+            if (DBEM_Email::send_reminder($event_id, $reg)) {
+                DBEM_DB::mark_sent($reg->id, 'reminder');
+                $sent++;
+            }
         }
+        DBEM_DB::log_send($event_id, 'reminder', 'auto', $sent, $skipped);
     }
 
     /**
@@ -126,10 +137,20 @@ class DBEM_Cron {
         // Invia solo a chi ha fatto check-in
         $regs = DBEM_DB::get_registrations($event_id, 'checked_in');
 
+        $sent = 0;
+        $skipped = 0;
         foreach ($regs as $reg) {
-            if (!DBEM_DB::has_survey_response($reg->id)) {
-                DBEM_Email::send_survey_email($event_id, $reg);
+            if (DBEM_DB::has_survey_response($reg->id)) continue;
+            // Già invitato a mano: niente secondo invito
+            if (DBEM_DB::was_sent($reg, 'survey')) {
+                $skipped++;
+                continue;
+            }
+            if (DBEM_Email::send_survey_email($event_id, $reg)) {
+                DBEM_DB::mark_sent($reg->id, 'survey');
+                $sent++;
             }
         }
+        DBEM_DB::log_send($event_id, 'survey', 'auto', $sent, $skipped);
     }
 }

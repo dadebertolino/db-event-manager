@@ -256,14 +256,21 @@ class DBEM_Survey {
         }
 
         $sent = 0;
+        $already = 0;
         foreach ($regs as $reg) {
             // Skip se ha già risposto
             if (DBEM_DB::has_survey_response($reg->id)) continue;
-            if (DBEM_Email::send_survey_email($event_id, $reg)) $sent++;
+            if (DBEM_DB::was_sent($reg, 'survey')) $already++;
+            if (DBEM_Email::send_survey_email($event_id, $reg)) {
+                DBEM_DB::mark_sent($reg->id, 'survey');
+                $sent++;
+            }
         }
+        DBEM_DB::log_send($event_id, 'survey', 'manual', $sent, $already);
 
         wp_send_json_success(array(
-            'message' => sprintf(__('Email inviate: %d', 'db-event-manager'), $sent),
+            'message' => sprintf(__('Email inviate: %d', 'db-event-manager'), $sent)
+                . ($already ? ' ' . sprintf(_n('%d aveva già ricevuto l\'invito.', '%d avevano già ricevuto l\'invito.', $already, 'db-event-manager'), $already) : ''),
         ));
     }
 }

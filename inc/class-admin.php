@@ -153,6 +153,8 @@ class DBEM_Admin {
                 'confirm_cancel'   => __('Sei sicuro di voler annullare questa iscrizione?', 'db-event-manager'),
                 'confirm_reminder' => __('Inviare il reminder a tutti i partecipanti confermati e presenti?', 'db-event-manager'),
                 'confirm_reminder_visible' => __('Inviare il reminder solo ai partecipanti visualizzati?', 'db-event-manager'),
+                /* translators: %d: destinatari che hanno già ricevuto un promemoria */
+                'reminder_already' => __('%d di loro hanno già ricevuto un promemoria e lo riceveranno di nuovo.', 'db-event-manager'),
                 'confirm_reset'    => __('Tornare al testo predefinito del reminder?', 'db-event-manager'),
                 /* translators: 1: posizione del partecipante in anteprima, 2: totale */
                 'preview_of'       => __('%1$d di %2$d', 'db-event-manager'),
@@ -1136,6 +1138,49 @@ class DBEM_Admin {
         return ob_get_clean();
     }
 
+    /**
+     * Registro degli invii di promemoria o survey di un evento, dal più recente
+     *
+     * @param string $type 'reminder' o 'survey'
+     */
+    public static function render_send_log($event_id, $type) {
+        $log = array_reverse(DBEM_DB::get_send_log($event_id, $type));
+        ob_start();
+        ?>
+        <details class="dbem-send-log">
+            <summary><?php echo esc_html($type === 'survey' ? __('Inviti al survey già inviati', 'db-event-manager') : __('Promemoria già inviati', 'db-event-manager')); ?> (<?php echo (int) count($log); ?>)</summary>
+            <?php if (!$log): ?>
+                <p class="description"><?php esc_html_e('Nessun invio finora.', 'db-event-manager'); ?></p>
+            <?php else: ?>
+                <ul>
+                    <?php foreach ($log as $row):
+                        $mode = ($row['mode'] ?? '') === 'auto' ? __('automatico', 'db-event-manager') : __('manuale', 'db-event-manager');
+                        $already = (int) ($row['already'] ?? 0);
+                        $note = '';
+                        if ($already) {
+                            $note = ($row['mode'] ?? '') === 'auto'
+                                /* translators: %d: destinatari saltati */
+                                ? sprintf(_n('%d saltato perché già raggiunto', '%d saltati perché già raggiunti', $already, 'db-event-manager'), $already)
+                                /* translators: %d: destinatari che l'avevano già ricevuto */
+                                : sprintf(_n('%d lo aveva già ricevuto', '%d lo avevano già ricevuto', $already, 'db-event-manager'), $already);
+                        } ?>
+                        <li>
+                            <?php echo esc_html(sprintf(
+                                /* translators: 1: data e ora, 2: manuale/automatico, 3: email inviate */
+                                _n('%1$s — %2$s, %3$d email', '%1$s — %2$s, %3$d email', (int) ($row['sent'] ?? 0), 'db-event-manager'),
+                                DBEM_Time::format('d/m/Y H:i', $row['at'] ?? ''),
+                                $mode,
+                                (int) ($row['sent'] ?? 0)
+                            ) . ($note !== '' ? ' (' . $note . ')' : '')); ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </details>
+        <?php
+        return ob_get_clean();
+    }
+
     private static function option_renames_hint() {
         return __('Per avvisare i partecipanti: in Partecipanti filtra per la nuova opzione, scegli "solo quelli visualizzati", controlla l\'anteprima e invia il reminder.', 'db-event-manager');
     }
@@ -1619,21 +1664,26 @@ class DBEM_Admin {
         DBEM_DB::ensure_tables();
         $sent = 0;
         $failed = 0;
+        $already = 0;
         $registration_ids = isset($_POST['registration_ids']) ? array_map('absint', (array) wp_unslash($_POST['registration_ids'])) : null;
         foreach (DBEM_DB::get_reminder_registrations($event_id, $registration_ids) as $reg) {
+            // L'invio manuale raggiunge anche chi l'ha già ricevuto: è una scelta di chi invia
+            if (DBEM_DB::was_sent($reg, 'reminder')) $already++;
             if (DBEM_Email::send_reminder($event_id, $reg)) {
+                DBEM_DB::mark_sent($reg->id, 'reminder');
                 $sent++;
             } else {
                 $failed++;
             }
         }
+        DBEM_DB::log_send($event_id, 'reminder', 'manual', $sent, $already);
 
         wp_send_json_success(array(
             'message' => sprintf(
                 __('Promemoria inviati: %1$d. Non inviati: %2$d.', 'db-event-manager'),
                 $sent,
                 $failed
-            ),
+            ) . ($already ? ' ' . sprintf(_n('%d lo aveva già ricevuto.', '%d lo avevano già ricevuto.', $already, 'db-event-manager'), $already) : ''),
             'sent'   => $sent,
             'failed' => $failed,
         ));

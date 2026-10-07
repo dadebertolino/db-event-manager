@@ -157,11 +157,13 @@ $status_labels = array(
             <button type="button" class="button" id="dbem-preview-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
                 👁 <?php esc_html_e('Anteprima', 'db-event-manager'); ?>
             </button>
-            <button type="button" class="button" id="dbem-send-reminder" data-event="<?php echo esc_attr($selected_event); ?>">
+            <?php $reminder_already = count(array_filter(DBEM_DB::get_reminder_registrations($selected_event), function ($r) { return DBEM_DB::was_sent($r, 'reminder'); })); ?>
+            <button type="button" class="button" id="dbem-send-reminder" data-event="<?php echo esc_attr($selected_event); ?>" data-already="<?php echo esc_attr($reminder_already); ?>">
                 📧 <?php esc_html_e('Invia reminder a tutti', 'db-event-manager'); ?>
             </button>
             <span id="dbem-reminder-feedback" aria-live="polite"></span>
         </div>
+        <?php echo DBEM_Admin::render_send_log($selected_event, 'reminder'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML costruito con esc_html ?>
 
         <dialog id="dbem-reminder-preview" class="dbem-preview-dialog" aria-labelledby="dbem-preview-title">
             <div class="dbem-preview-header">
@@ -226,7 +228,7 @@ $status_labels = array(
                         $s = $status_labels[$reg->status] ?? $status_labels['confirmed'];
                         $choices = $get_registration_choices($reg);
                     ?>
-                    <tr data-id="<?php echo esc_attr($reg->id); ?>">
+                    <tr data-id="<?php echo esc_attr($reg->id); ?>" data-reminder-sent="<?php echo DBEM_DB::was_sent($reg, 'reminder') ? '1' : '0'; ?>">
                         <td><input type="checkbox" class="dbem-row-check" value="<?php echo esc_attr($reg->id); ?>"></td>
                         <td>
                             <span class="dbem-status-badge dbem-status-<?php echo esc_attr($s['class']); ?>">

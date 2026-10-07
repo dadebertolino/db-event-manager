@@ -32,6 +32,8 @@ class DBEM_DB {
             token varchar(64) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'confirmed',
             checked_in_at datetime DEFAULT NULL,
+            reminder_sent_at datetime DEFAULT NULL,
+            survey_sent_at datetime DEFAULT NULL,
             assigned_time varchar(50) DEFAULT '',
             registered_at datetime NOT NULL,
             ip_address varchar(45) DEFAULT '',
@@ -78,7 +80,7 @@ class DBEM_DB {
     /**
      * Versione dello schema: va incrementata quando cambia create_tables()
      */
-    const DB_VERSION = '3';
+    const DB_VERSION = '4';
     const DB_VERSION_OPTION = 'dbem_db_version';
 
     /**
@@ -114,6 +116,50 @@ class DBEM_DB {
         if (get_option(self::DB_VERSION_OPTION) !== self::DB_VERSION) {
             self::maybe_upgrade();
         }
+    }
+
+    /**
+     * Invii di promemoria e survey (#44): l'ora dell'ultimo invio sull'iscrizione, così
+     * l'invio automatico salta chi ha già ricevuto quello manuale, e un registro per evento
+     */
+    const SEND_LOG_META = '_dbem_send_log';
+    const SEND_LOG_MAX  = 50;
+
+    /**
+     * @param string $type 'reminder' o 'survey'
+     */
+    public static function mark_sent($registration_id, $type) {
+        global $wpdb;
+        $column = $type === 'survey' ? 'survey_sent_at' : 'reminder_sent_at';
+        $wpdb->update($wpdb->prefix . 'dbem_registrations', array($column => current_time('mysql')), array('id' => (int) $registration_id), array('%s'), array('%d'));
+    }
+
+    public static function was_sent($reg, $type) {
+        $column = $type === 'survey' ? 'survey_sent_at' : 'reminder_sent_at';
+        return !empty($reg->$column);
+    }
+
+    /**
+     * Aggiunge una riga al registro degli invii dell'evento (le ultime SEND_LOG_MAX)
+     *
+     * @param string $type    'reminder' o 'survey'
+     * @param string $mode    'manual' o 'auto'
+     * @param int    $sent    Email inviate
+     * @param int    $already Destinatari che l'avevano già ricevuto (reinviati se manuale, saltati se automatico)
+     */
+    public static function log_send($event_id, $type, $mode, $sent, $already) {
+        $log = self::get_send_log($event_id);
+        $log[] = array('at' => current_time('mysql'), 'type' => $type, 'mode' => $mode, 'sent' => (int) $sent, 'already' => (int) $already);
+        update_post_meta($event_id, self::SEND_LOG_META, array_slice($log, -self::SEND_LOG_MAX));
+    }
+
+    public static function get_send_log($event_id, $type = null) {
+        $log = get_post_meta($event_id, self::SEND_LOG_META, true);
+        $log = is_array($log) ? $log : array();
+        if ($type !== null) {
+            $log = array_values(array_filter($log, function ($row) use ($type) { return ($row['type'] ?? '') === $type; }));
+        }
+        return $log;
     }
 
     /**

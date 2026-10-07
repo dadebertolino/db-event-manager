@@ -20,9 +20,11 @@ class DBEM_Duplicate {
 
     public static function init() {
         add_filter('post_row_actions', array(__CLASS__, 'add_row_action'), 10, 2);
-        add_action('post_submitbox_misc_actions', array(__CLASS__, 'render_submitbox_link'));
+        // Riquadro laterale: il box Pubblica classico non esiste nell'editor a blocchi
+        add_action('add_meta_boxes_dbem_event', array(__CLASS__, 'add_metabox'));
         add_action('admin_action_' . self::ACTION, array(__CLASS__, 'handle'));
         add_action('admin_notices', array(__CLASS__, 'render_notice'));
+        add_action('admin_footer-post.php', array(__CLASS__, 'render_block_editor_notice'));
     }
 
     public static function url($event_id) {
@@ -51,14 +53,15 @@ class DBEM_Duplicate {
         return $actions;
     }
 
-    public static function render_submitbox_link($post) {
-        if ($post->post_type !== 'dbem_event' || $post->post_status === 'auto-draft' || !self::can_duplicate($post->ID)) return;
+    public static function add_metabox($post) {
+        if ($post->post_status === 'auto-draft' || !self::can_duplicate($post->ID)) return;
+        add_meta_box('dbem_duplicate', __('Duplica evento', 'db-event-manager'), array(__CLASS__, 'render_metabox'), 'dbem_event', 'side', 'low');
+    }
+
+    public static function render_metabox($post) {
         ?>
-        <div class="misc-pub-section">
-            <span class="dashicons dashicons-admin-page" aria-hidden="true" style="color:#8c8f94"></span>
-            <a href="<?php echo esc_url(self::url($post->ID)); ?>"><?php esc_html_e('Duplica evento', 'db-event-manager'); ?></a>
-            <p class="description"><?php esc_html_e('Copia impostazioni, form ed email, senza partecipanti.', 'db-event-manager'); ?></p>
-        </div>
+        <p><a class="button" href="<?php echo esc_url(self::url($post->ID)); ?>"><?php esc_html_e('Duplica evento', 'db-event-manager'); ?></a></p>
+        <p class="description"><?php esc_html_e('Crea una bozza con impostazioni, form ed email di questo evento, senza partecipanti. Le modifiche non salvate qui non vengono copiate.', 'db-event-manager'); ?></p>
         <?php
     }
 
@@ -137,14 +140,37 @@ class DBEM_Duplicate {
         return $copy;
     }
 
-    public static function render_notice() {
-        if (empty($_GET['dbem_duplicated'])) return; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- solo visualizzazione
+    private static function notice_text() {
+        return __('Evento duplicato in bozza. Aggiorna date, luogo e scadenza iscrizioni prima di pubblicarlo. I partecipanti non sono stati copiati.', 'db-event-manager');
+    }
+
+    private static function is_duplicated_screen() {
+        if (empty($_GET['dbem_duplicated'])) return false; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- solo visualizzazione
         $screen = get_current_screen();
-        if (!$screen || $screen->post_type !== 'dbem_event') return;
+        return $screen && $screen->post_type === 'dbem_event';
+    }
+
+    /**
+     * Editor a blocchi: gli avvisi classici non si vedono, si usa il suo sistema di notifiche
+     */
+    public static function render_block_editor_notice() {
+        if (!self::is_duplicated_screen() || !get_current_screen()->is_block_editor()) return;
+        ?>
+        <script>
+        window.addEventListener('load', function() {
+            if (window.wp && wp.data && wp.data.dispatch('core/notices')) {
+                wp.data.dispatch('core/notices').createNotice('success', <?php echo wp_json_encode(self::notice_text()); ?>, { isDismissible: true, id: 'dbem-duplicated' });
+            }
+        });
+        </script>
+        <?php
+    }
+
+    public static function render_notice() {
+        if (!self::is_duplicated_screen() || get_current_screen()->is_block_editor()) return;
         ?>
         <div class="notice notice-success is-dismissible">
-            <p><strong><?php esc_html_e('Evento duplicato in bozza.', 'db-event-manager'); ?></strong>
-            <?php esc_html_e('Aggiorna date, luogo e scadenza iscrizioni prima di pubblicarlo. I partecipanti non sono stati copiati.', 'db-event-manager'); ?></p>
+            <p><?php echo esc_html(self::notice_text()); ?></p>
         </div>
         <?php
     }

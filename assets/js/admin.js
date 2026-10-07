@@ -172,7 +172,8 @@
                 action: 'dbem_bulk_action',
                 nonce: dbem_admin.nonce,
                 bulk_action: action,
-                ids: ids
+                ids: ids,
+                notify: $('#dbem-notify-cancel').is(':checked') ? '1' : ''
             }, function(resp) {
                 if (resp.success) {
                     if (resp.data.skipped) alert(resp.data.message);
@@ -195,7 +196,8 @@
                 action: 'dbem_bulk_action',
                 nonce: dbem_admin.nonce,
                 bulk_action: act,
-                ids: [id]
+                ids: [id],
+                notify: $('#dbem-notify-cancel').is(':checked') ? '1' : ''
             }, function(resp) {
                 if (resp.success) location.reload();
                 else alert(resp.data || i18n.error);

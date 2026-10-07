@@ -19,16 +19,27 @@
 
         // Validazione base
         var valid = true;
-        $form.find('[required]').each(function() {
+        var radioGroups = {};
+        function markRequired($el) {
+            $el.attr('aria-invalid', 'true');
+            $el.closest('.dbem-field, .dbem-field-checkbox').find('.dbem-error').text(i18n.required);
+            valid = false;
+        }
+        $form.find('[required], fieldset[data-required]').each(function() {
             var $el = $(this);
-            if ($el.is(':checkbox') && !$el.is(':checked')) {
-                $el.closest('.dbem-field, .dbem-field-checkbox').find('.dbem-error').text(i18n.required);
-                $el.attr('aria-invalid', 'true');
-                valid = false;
+            if ($el.is('fieldset')) {
+                // Gruppo di checkbox obbligatorio: almeno una scelta
+                if (!$el.find(':checkbox:checked').length) markRequired($el.find(':checkbox').first());
+            } else if ($el.is(':radio')) {
+                // .val() di un radio non scelto non è vuoto: si controlla il gruppo, una volta
+                var name = $el.attr('name');
+                if (radioGroups[name]) return;
+                radioGroups[name] = true;
+                if (!$form.find('input[type="radio"]').filter(function() { return this.name === name && this.checked; }).length) markRequired($el);
+            } else if ($el.is(':checkbox')) {
+                if (!$el.is(':checked')) markRequired($el);
             } else if (!$el.val() || !$el.val().trim()) {
-                $el.attr('aria-invalid', 'true');
-                $el.closest('.dbem-field').find('.dbem-error').text(i18n.required);
-                valid = false;
+                markRequired($el);
             }
         });
 

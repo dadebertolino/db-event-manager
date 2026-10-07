@@ -106,7 +106,7 @@ class DBEM_Frontend {
                         <?php esc_html_e('iscritti', 'db-event-manager'); ?>
                     </span>
                 </div>
-                <div class="dbem-progress-bar" role="progressbar" aria-valuenow="<?php echo esc_attr($count); ?>" aria-valuemin="0" aria-valuemax="<?php echo esc_attr($max); ?>">
+                <div class="dbem-progress-bar" role="progressbar" aria-label="<?php esc_attr_e('Posti occupati', 'db-event-manager'); ?>" aria-valuenow="<?php echo esc_attr($count); ?>" aria-valuemin="0" aria-valuemax="<?php echo esc_attr($max); ?>">
                     <div class="dbem-progress-fill" style="width: <?php echo esc_attr(min(100, ($count / max(1, $max)) * 100)); ?>%"></div>
                 </div>
                 <?php endif; ?>
@@ -184,16 +184,16 @@ class DBEM_Frontend {
                 <label for="dbem_name_<?php echo esc_attr($event_id); ?>" class="dbem-label">
                     <?php esc_html_e('Nome e Cognome', 'db-event-manager'); ?> <span class="dbem-required" aria-hidden="true">*</span>
                 </label>
-                <input type="text" id="dbem_name_<?php echo esc_attr($event_id); ?>" name="dbem_name" class="dbem-input" required aria-required="true" autocomplete="name">
-                <span class="dbem-error" role="alert" aria-live="polite"></span>
+                <input type="text" id="dbem_name_<?php echo esc_attr($event_id); ?>" name="dbem_name" class="dbem-input" required aria-required="true" autocomplete="name" aria-describedby="dbem_name_<?php echo esc_attr($event_id); ?>-error">
+                <span class="dbem-error" id="dbem_name_<?php echo esc_attr($event_id); ?>-error"></span>
             </div>
 
             <div class="dbem-field">
                 <label for="dbem_email_<?php echo esc_attr($event_id); ?>" class="dbem-label">
                     <?php esc_html_e('Email', 'db-event-manager'); ?> <span class="dbem-required" aria-hidden="true">*</span>
                 </label>
-                <input type="email" id="dbem_email_<?php echo esc_attr($event_id); ?>" name="dbem_email" class="dbem-input" required aria-required="true" autocomplete="email">
-                <span class="dbem-error" role="alert" aria-live="polite"></span>
+                <input type="email" id="dbem_email_<?php echo esc_attr($event_id); ?>" name="dbem_email" class="dbem-input" required aria-required="true" autocomplete="email" aria-describedby="dbem_email_<?php echo esc_attr($event_id); ?>-error">
+                <span class="dbem-error" id="dbem_email_<?php echo esc_attr($event_id); ?>-error"></span>
             </div>
 
             <?php foreach ($custom_fields as $i => $field): ?>
@@ -215,7 +215,7 @@ class DBEM_Frontend {
             ?>
             <div class="dbem-field dbem-field-checkbox dbem-field-privacy">
                 <label class="dbem-checkbox-label">
-                    <input type="checkbox" name="dbem_privacy" value="1" required aria-required="true">
+                    <input type="checkbox" name="dbem_privacy" value="1" required aria-required="true" aria-describedby="dbem_privacy_<?php echo esc_attr($event_id); ?>-error">
                     <span>
                         <?php echo esc_html($gdpr_text); ?> <span class="dbem-required" aria-hidden="true">*</span>
                         <?php if ($gdpr_link): ?>
@@ -223,18 +223,20 @@ class DBEM_Frontend {
                         <?php endif; ?>
                     </span>
                 </label>
-                <span class="dbem-error" role="alert" aria-live="polite"></span>
+                <span class="dbem-error" id="dbem_privacy_<?php echo esc_attr($event_id); ?>-error"></span>
             </div>
             <?php endif; ?>
 
             <div class="dbem-field">
                 <button type="submit" class="dbem-submit">
                     <span class="dbem-submit-text"><?php esc_html_e('Iscriviti', 'db-event-manager'); ?></span>
-                    <span class="dbem-submit-loading" style="display:none;" aria-hidden="true">⏳ <?php esc_html_e('Invio in corso...', 'db-event-manager'); ?></span>
+                    <?php // Visibile ai lettori di schermo: durante l'invio è il nome del pulsante ?>
+                    <span class="dbem-submit-loading" style="display:none;"><span aria-hidden="true">⏳</span> <?php esc_html_e('Invio in corso...', 'db-event-manager'); ?></span>
                 </button>
             </div>
 
-            <div class="dbem-message" role="alert" aria-live="polite" style="display:none;"></div>
+            <?php // Una sola regione annunciata; gli errori dei campi sono collegati con aria-describedby ?>
+            <div class="dbem-message" role="status" aria-live="polite" style="display:none;"></div>
         </form>
         <?php
         return ob_get_clean();
@@ -384,7 +386,10 @@ class DBEM_Frontend {
         $field_id = 'dbem_custom_' . $index . '_' . $event_id;
         $field_name = 'dbem_custom_' . $index;
         $required = !empty($field['required']);
-        $req_attr = $required ? ' required aria-required="true"' : '';
+        $error_id = $field_id . '-error';
+        $req_attr = ($required ? ' required aria-required="true"' : '') . ' aria-describedby="' . esc_attr($error_id) . '"';
+        // Gruppi: l'asterisco è aria-hidden, i lettori di schermo leggono «obbligatorio»
+        $req_group = $required ? '<span class="dbem-sr-only"> ' . esc_html__('(obbligatorio)', 'db-event-manager') . '</span>' : '';
         $req_star = $required ? ' <span class="dbem-required" aria-hidden="true">*</span>' : '';
 
         ob_start();
@@ -431,8 +436,8 @@ class DBEM_Frontend {
 
             case 'radio':
                 ?>
-                <fieldset>
-                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
+                <fieldset aria-describedby="<?php echo esc_attr($error_id); ?>">
+                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star . $req_group; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                     <?php foreach (($field['options'] ?? array()) as $j => $opt): ?>
                         <label class="dbem-radio-label">
                             <input type="radio" name="<?php echo esc_attr($field_name); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $req_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attributi fissi ?>>
@@ -445,8 +450,9 @@ class DBEM_Frontend {
 
             case 'checkbox':
                 ?>
-                <fieldset>
-                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
+                <?php // Più checkbox non possono usare required: lo dice data-required (validazione JS) ?>
+                <fieldset aria-describedby="<?php echo esc_attr($error_id); ?>"<?php echo $required ? ' data-required="1"' : ''; ?>>
+                    <legend class="dbem-label"><?php echo esc_html($field['label']); ?><?php echo $req_star . $req_group; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup fisso ?></legend>
                     <?php foreach (($field['options'] ?? array()) as $j => $opt): ?>
                         <label class="dbem-checkbox-label">
                             <input type="checkbox" name="<?php echo esc_attr($field_name); ?>[]" value="<?php echo esc_attr($opt); ?>">
@@ -458,7 +464,7 @@ class DBEM_Frontend {
                 break;
         }
         ?>
-            <span class="dbem-error" role="alert" aria-live="polite"></span>
+            <span class="dbem-error" id="<?php echo esc_attr($error_id); ?>"></span>
         </div>
         <?php
         return ob_get_clean();

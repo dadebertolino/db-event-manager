@@ -130,6 +130,10 @@ $status_labels = array(
                     <option value="delete"><?php esc_html_e('Elimina', 'db-event-manager'); ?></option>
                 </select>
                 <button type="button" class="button" id="dbem-bulk-apply"><?php esc_html_e('Applica', 'db-event-manager'); ?></button>
+                <label class="dbem-notify-cancel">
+                    <input type="checkbox" id="dbem-notify-cancel" checked>
+                    <?php esc_html_e('Avvisa via email chi viene annullato', 'db-event-manager'); ?>
+                </label>
             </div>
 
             <?php $export_url = wp_nonce_url(admin_url('admin-ajax.php?action=dbem_export_csv&event_id=' . $selected_event), 'dbem_admin_nonce', 'nonce'); ?>

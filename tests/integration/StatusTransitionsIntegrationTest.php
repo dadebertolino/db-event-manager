@@ -94,4 +94,17 @@ class StatusTransitionsIntegrationTest extends WP_UnitTestCase {
         $this->assertFalse(DBEM_DB::clean_assigned_time(str_repeat('x', DBEM_DB::ASSIGNED_TIME_MAX + 1)));
         $this->assertSame(str_repeat('è', DBEM_DB::ASSIGNED_TIME_MAX), DBEM_DB::clean_assigned_time(str_repeat('è', DBEM_DB::ASSIGNED_TIME_MAX)));
     }
+
+    public function test_annullamento_avvisa_solo_con_la_spunta(): void {
+        $silent = $this->add_registration('confirmed');
+        DBEM_Admin::apply_transition(array($silent), 'cancel');
+        $this->assertSame(array(), $this->sent_to());
+
+        global $wpdb;
+        $wpdb->update($wpdb->prefix . 'dbem_registrations', array('email' => 'avvisato@example.com'), array('id' => $this->add_registration('pending')));
+        $notified = (int) $wpdb->get_var("SELECT id FROM {$wpdb->prefix}dbem_registrations WHERE email = 'avvisato@example.com'");
+        DBEM_Admin::apply_transition(array($notified), 'cancel', true);
+        $this->assertSame(array('avvisato@example.com'), $this->sent_to());
+        $this->assertSame('cancelled', $this->status($notified));
+    }
 }

@@ -344,3 +344,6 @@
 .dbem-pending-renames li { margin-bottom: 8px; }
 .dbem-pending-rename-actions { display: inline-flex; gap: 8px; margin-left: 8px; vertical-align: middle; }
 .dbem-pending-renames-status:empty { display: none; }
+
+/* Spunta "avvisa via email" accanto alle azioni sulle iscrizioni */
+.dbem-notify-cancel { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; }

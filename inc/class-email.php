@@ -9,7 +9,8 @@ class DBEM_Email {
     public static function send_confirmation($event_id, $reg) {
         $reg = self::without_links($reg);
         $email_data = get_post_meta($event_id, '_dbem_confirmation_email', true);
-        if (!$email_data || empty($email_data['subject']) || empty($email_data['message'])) return false;
+        if (!is_array($email_data) || empty($email_data['subject']) || empty($email_data['message'])) return false;
+        $email_data['message'] = self::plain_text($email_data['message']);
 
         $placeholders = self::get_placeholders($event_id, $reg);
         $subject = self::replace_placeholders($email_data['subject'], $placeholders);
@@ -84,7 +85,8 @@ class DBEM_Email {
     public static function send_survey_email($event_id, $reg) {
         $reg = self::without_links($reg);
         $survey_email = get_post_meta($event_id, '_dbem_survey_email', true);
-        if (!$survey_email || empty($survey_email['subject'])) return false;
+        if (!is_array($survey_email) || empty($survey_email['subject'])) return false;
+        $survey_email['message'] = self::plain_text($survey_email['message'] ?? '');
 
         $survey_link = home_url('/?dbem_survey=' . $reg->token);
         $placeholders = self::get_placeholders($event_id, $reg);
@@ -456,6 +458,15 @@ class DBEM_Email {
     /**
      * Oggetto su una riga sola
      */
+    /**
+     * Testi salvati prima della 1.9.1 con wp_kses_post(): HTML e entità diventano testo
+     * semplice, gli a capo restano (<br> e fine paragrafo compresi)
+     */
+    public static function plain_text($text) {
+        $text = preg_replace(array('#<br\s*/?>#i', '#</p>\s*#i'), array("\n", "\n\n"), (string) $text);
+        return trim(html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES, 'UTF-8'));
+    }
+
     private static function clean_subject($subject) {
         return trim(preg_replace('/[\r\n]+/', ' ', (string) $subject));
     }

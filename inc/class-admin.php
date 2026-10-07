@@ -551,7 +551,8 @@ class DBEM_Admin {
 
     public static function render_email_metabox($post) {
         $email_data = get_post_meta($post->ID, '_dbem_confirmation_email', true);
-        if (!$email_data) {
+        // Un meta malformato (stringa) non deve impedire di aprire l'evento
+        if (!is_array($email_data) || !isset($email_data['subject'], $email_data['message'])) {
             $email_data = array(
                 'subject' => __('Conferma iscrizione a {evento}', 'db-event-manager'),
                 'message' => __("Ciao {nome},\n\nla tua iscrizione all'evento \"{evento}\" è confermata!\n\n📅 Data: {data_evento}\n📍 Luogo: {luogo}\n\n{riepilogo_dati}\n\nPresenta il QR code allegato all'ingresso dell'evento.\n\nA presto!", 'db-event-manager'),
@@ -621,7 +622,7 @@ class DBEM_Admin {
         $survey_fields = get_post_meta($post->ID, '_dbem_survey_fields', true);
         if (!$survey_fields) $survey_fields = array();
         $survey_email = get_post_meta($post->ID, '_dbem_survey_email', true);
-        if (!$survey_email) {
+        if (!is_array($survey_email) || !isset($survey_email['subject'], $survey_email['message'])) {
             $survey_email = array(
                 'subject' => __('Com\'è andato {evento}? Dicci la tua!', 'db-event-manager'),
                 'message' => __("Ciao {nome},\n\ngrazie per aver partecipato a \"{evento}\"!\nCi farebbe piacere sapere cosa ne pensi.\n\nCompila il breve questionario:\n{survey_link}\n\nGrazie!", 'db-event-manager'),
@@ -866,7 +867,8 @@ class DBEM_Admin {
         if (isset($_POST['_dbem_confirmation_email'])) {
             $email_data = array(
                 'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_confirmation_email']['subject'] ?? '')),
-                'message' => wp_kses_post(wp_unslash($_POST['_dbem_confirmation_email']['message'] ?? '')),
+                // Testo semplice: le email lo inviano con esc_html(), l'HTML comparirebbe letterale
+                'message' => sanitize_textarea_field(wp_unslash($_POST['_dbem_confirmation_email']['message'] ?? '')),
             );
             update_post_meta($post_id, '_dbem_confirmation_email', wp_slash($email_data));
         }
@@ -883,7 +885,7 @@ class DBEM_Admin {
         if (isset($_POST['_dbem_survey_email'])) {
             $email_data = array(
                 'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_survey_email']['subject'] ?? '')),
-                'message' => wp_kses_post(wp_unslash($_POST['_dbem_survey_email']['message'] ?? '')),
+                'message' => sanitize_textarea_field(wp_unslash($_POST['_dbem_survey_email']['message'] ?? '')),
             );
             update_post_meta($post_id, '_dbem_survey_email', wp_slash($email_data));
         }

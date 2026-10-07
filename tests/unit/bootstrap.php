@@ -94,6 +94,12 @@ if (!function_exists('update_post_meta')) {
     }
 }
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text, $remove_breaks = false) {
+        return trim(strip_tags(preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', (string) $text)));
+    }
+}
+
 if (!function_exists('_n')) {
     function _n($single, $plural, $number, $domain = 'default') {
         return $number == 1 ? $single : $plural;

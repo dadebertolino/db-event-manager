@@ -4,7 +4,6 @@ if (!defined('ABSPATH')) exit;
 class DBEM_DB {
 
     public static function activate() {
-        self::create_tables();
         self::maybe_upgrade();
         self::create_upload_dir();
         DBEM_CPT::ensure_event_capabilities();
@@ -44,8 +43,10 @@ class DBEM_DB {
             PRIMARY KEY (id),
             UNIQUE KEY token (token),
             KEY event_id (event_id),
-            KEY email (email),
-            KEY status (status)
+            KEY email (email(191)),
+            KEY status (status),
+            KEY gdpr_consent (gdpr_consent_given, gdpr_consent_timestamp),
+            KEY gdpr_consent_policy_version (gdpr_consent_policy_version)
         ) $charset;";
 
         $sql_survey = "CREATE TABLE $survey_table (
@@ -75,47 +76,39 @@ class DBEM_DB {
     }
 
     /**
-     * Aggiorna schema DB per nuove colonne (safe per esecuzioni multiple)
+     * Versione dello schema: va incrementata quando cambia create_tables()
+     */
+    const DB_VERSION = '2';
+    const DB_VERSION_OPTION = 'dbem_db_version';
+
+    /**
+     * Porta le tabelle alla versione corrente: dbDelta aggiunge tabelle, colonne e indici
+     * mancanti (anche la tabella dei survey se manca da sola). Gira solo quando la versione
+     * salvata è diversa: prima ogni richiesta eseguiva SHOW TABLES e SHOW COLUMNS, e una
+     * colonna o un indice nuovi non arrivavano a chi aggiornava il plugin.
      */
     public static function maybe_upgrade() {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
-        $col = $wpdb->get_results("SHOW COLUMNS FROM $table LIKE 'assigned_time'");
-        if (empty($col)) {
-            $wpdb->query("ALTER TABLE $table ADD COLUMN assigned_time varchar(50) DEFAULT '' AFTER checked_in_at");
+
+        // 2: l'indice sull'email diventa sui primi 191 caratteri (utf8mb4 su MySQL 5.6 /
+        // MariaDB 10.1 supera il limite di 767 byte). dbDelta non modifica un indice
+        // esistente: quello vecchio si toglie e lo ricrea dbDelta
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) === $table) {
+            $email_index = $wpdb->get_row("SHOW INDEX FROM $table WHERE Key_name = 'email'");
+            if ($email_index && $email_index->Sub_part === null) {
+                $wpdb->query("ALTER TABLE $table DROP INDEX email");
+            }
         }
 
-        // v1.3.0: colonne consent GDPR
-        $consent_col = $wpdb->get_results("SHOW COLUMNS FROM $table LIKE 'gdpr_consent_given'");
-        if (empty($consent_col)) {
-            $consent_cols = array(
-                'gdpr_consent_given'          => "tinyint(1) DEFAULT NULL AFTER ip_address",
-                'gdpr_consent_text'           => "text AFTER gdpr_consent_given",
-                'gdpr_consent_timestamp'      => "datetime DEFAULT NULL AFTER gdpr_consent_text",
-                'gdpr_consent_privacy_url'    => "varchar(500) DEFAULT NULL AFTER gdpr_consent_timestamp",
-                'gdpr_consent_policy_version' => "bigint(20) unsigned DEFAULT 0 AFTER gdpr_consent_privacy_url",
-            );
-            foreach ($consent_cols as $ccol => $cdef) {
-                $exists = $wpdb->get_var("SHOW COLUMNS FROM $table LIKE '$ccol'");
-                if (!$exists) {
-                    $wpdb->query("ALTER TABLE $table ADD COLUMN $ccol $cdef");
-                }
-            }
-            // Index per query Hub Consent Register
-            $idx = $wpdb->get_var("SHOW INDEX FROM $table WHERE Key_name = 'gdpr_consent_policy_version'");
-            if (!$idx) {
-                $wpdb->query("ALTER TABLE $table ADD INDEX gdpr_consent_policy_version (gdpr_consent_policy_version)");
-            }
-        }
+        self::create_tables();
+        update_option(self::DB_VERSION_OPTION, self::DB_VERSION, true);
     }
 
     public static function ensure_tables() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dbem_registrations';
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
-            self::create_tables();
+        if (get_option(self::DB_VERSION_OPTION) !== self::DB_VERSION) {
+            self::maybe_upgrade();
         }
-        self::maybe_upgrade();
     }
 
     /**

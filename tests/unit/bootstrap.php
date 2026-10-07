@@ -23,7 +23,8 @@ function dbem_call_private($class, $method, ...$args) {
     return $reflection->invoke(null, ...$args);
 }
 
-$GLOBALS['__dbem_options'] = array();
+// Schema già alla versione corrente: gli unit test non hanno dbDelta
+$GLOBALS['__dbem_options'] = array('dbem_db_version' => '2');
 $GLOBALS['__dbem_transients'] = array();
 
 $GLOBALS['__dbem_roles'] = array();

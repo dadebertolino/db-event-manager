@@ -42,7 +42,6 @@ function _dbem_manually_load_plugin() {
 tests_add_filter('muplugins_loaded', '_dbem_manually_load_plugin');
 
 tests_add_filter('plugins_loaded', function () {
-    DBEM_DB::create_tables();
     DBEM_DB::maybe_upgrade();
 }, 20);
 

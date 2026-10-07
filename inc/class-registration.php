@@ -120,9 +120,17 @@ class DBEM_Registration {
             'ip_address'    => $ip,
         );
 
+        // Da qui al salvataggio un'iscrizione per volta per evento: due invii insieme non
+        // superano i posti né creano due iscrizioni con la stessa email
+        if (!DBEM_DB::lock_event($event_id)) {
+            wp_send_json_error(__('Troppe iscrizioni in questo momento. Riprova tra qualche secondo.', 'db-event-manager'));
+        }
+        $existing = $existing ?: DBEM_DB::get_registration_by_email($event_id, $email);
         if ($existing) {
+            DBEM_DB::unlock_event($event_id);
             self::handle_existing($event_id, $existing, $registration_data);
         }
+        self::require_seat($event_id);
 
         $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
@@ -154,6 +162,7 @@ class DBEM_Registration {
             '%s', // ip_address
         ));
         $reg_id = $wpdb->insert_id;
+        DBEM_DB::unlock_event($event_id);
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione. Riprova.', 'db-event-manager'));
@@ -248,6 +257,17 @@ class DBEM_Registration {
     public static function require_open($event_id) {
         if (!DBEM_CPT::are_registrations_open($event_id)) {
             wp_send_json_error(__('Le iscrizioni per questo evento sono chiuse.', 'db-event-manager'));
+        }
+    }
+
+    /**
+     * Ultimo controllo dei posti, dentro il lock dell'evento (DBEM_DB::lock_event)
+     */
+    private static function require_seat($event_id) {
+        $max = (int) get_post_meta($event_id, '_dbem_max_participants', true);
+        if ($max > 0 && DBEM_DB::count_registrations($event_id) >= $max) {
+            DBEM_DB::unlock_event($event_id);
+            wp_send_json_error(__('I posti sono esauriti.', 'db-event-manager'));
         }
     }
 
@@ -522,9 +542,17 @@ class DBEM_Registration {
             'ip_address'    => $ip,
         );
 
+        // Da qui al salvataggio un'iscrizione per volta per evento: due invii insieme non
+        // superano i posti né creano due iscrizioni con la stessa email
+        if (!DBEM_DB::lock_event($event_id)) {
+            wp_send_json_error(__('Troppe iscrizioni in questo momento. Riprova tra qualche secondo.', 'db-event-manager'));
+        }
+        $existing = $existing ?: DBEM_DB::get_registration_by_email($event_id, $email);
         if ($existing) {
+            DBEM_DB::unlock_event($event_id);
             self::handle_existing($event_id, $existing, $registration_data);
         }
+        self::require_seat($event_id);
 
         $result = $wpdb->insert($table, array(
             'event_id'      => $event_id,
@@ -556,6 +584,7 @@ class DBEM_Registration {
             '%s', // ip_address
         ));
         $reg_id = $wpdb->insert_id;
+        DBEM_DB::unlock_event($event_id);
 
         if ($result === false) {
             wp_send_json_error(__('Errore durante la registrazione.', 'db-event-manager'));

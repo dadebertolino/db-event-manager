@@ -132,6 +132,29 @@ class DBEM_DB {
     }
 
     /**
+     * Lock MySQL per evento (GET_LOCK, legato alla connessione): serializza controllo dei
+     * posti, controllo dell'email e salvataggio di un'iscrizione. Funziona su ogni MySQL e
+     * MariaDB senza vincoli UNIQUE, che fallirebbero sulle installazioni con doppioni già
+     * presenti. Si libera anche da solo a fine richiesta, quando la connessione si chiude.
+     *
+     * @return bool false se non si ottiene entro 10 secondi
+     */
+    public static function lock_event($event_id) {
+        global $wpdb;
+        return (string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 10)', self::lock_name($event_id))) === '1';
+    }
+
+    public static function unlock_event($event_id) {
+        global $wpdb;
+        $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', self::lock_name($event_id)));
+    }
+
+    private static function lock_name($event_id) {
+        global $wpdb;
+        return $wpdb->prefix . 'dbem_registration_' . (int) $event_id;
+    }
+
+    /**
      * Conta iscritti per evento
      */
     public static function count_registrations($event_id, $status = null) {

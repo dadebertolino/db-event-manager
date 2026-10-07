@@ -465,8 +465,15 @@ class DBEM_Checkin {
 
         DBEM_DB::ensure_tables();
 
+        // Come il modulo pubblico: email in minuscolo, controlli e salvataggio sotto il lock dell'evento
+        $email = strtolower($email);
+        if (!DBEM_DB::lock_event($event_id)) {
+            wp_send_json_error(array('message' => __('Troppe iscrizioni in questo momento. Riprova tra qualche secondo.', 'db-event-manager')));
+        }
+
         // Controlla duplicato
         if (DBEM_DB::email_exists_for_event($event_id, $email)) {
+            DBEM_DB::unlock_event($event_id);
             wp_send_json_error(array('message' => sprintf(__('%s è già iscritto a questo evento', 'db-event-manager'), $email)));
         }
 
@@ -475,6 +482,7 @@ class DBEM_Checkin {
         if ($max > 0) {
             $count = DBEM_DB::count_registrations($event_id);
             if ($count >= $max) {
+                DBEM_DB::unlock_event($event_id);
                 wp_send_json_error(array('message' => __('Posti esauriti', 'db-event-manager')));
             }
         }
@@ -495,6 +503,7 @@ class DBEM_Checkin {
             'registered_at' => current_time('mysql'),
             'ip_address'    => 'manual',
         ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+        DBEM_DB::unlock_event($event_id);
 
         if (!$wpdb->insert_id) {
             wp_send_json_error(array('message' => __('Errore nel salvataggio', 'db-event-manager')));

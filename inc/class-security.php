@@ -131,10 +131,14 @@ class DBEM_Security {
             __('Richiesta non valida: apri la pagina dal sito.', 'db-event-manager')
         );
 
+        // Lettura del contatore, confronto e incremento sotto lock: una raffica di richieste
+        // parallele leggerebbe tutta lo stesso contatore e supererebbe i 10 tentativi
         $fail_key = 'dbem_pinfail_' . md5(self::client_ip());
+        $lock     = self::lock_pin_check($fail_key);
         $fails    = (int) get_transient($fail_key);
 
         if ($fails >= self::MAX_PIN_FAILS) {
+            self::unlock_pin_check($lock);
             wp_send_json_error(array(
                 'message' => __('Troppi tentativi errati. Riprova tra 15 minuti.', 'db-event-manager'),
                 'status'  => 'pin_error',
@@ -146,6 +150,7 @@ class DBEM_Security {
         $allowed = self::events_for_pin($pin_sent);
         if (!$allowed && !hash_equals(self::get_pin(), $pin_sent)) {
             set_transient($fail_key, $fails + 1, self::PIN_LOCK_WINDOW);
+            self::unlock_pin_check($lock);
             wp_send_json_error(array(
                 'message' => __('PIN non valido', 'db-event-manager'),
                 'status'  => 'pin_error',
@@ -153,7 +158,26 @@ class DBEM_Security {
         }
 
         delete_transient($fail_key);
+        self::unlock_pin_check($lock);
         return $allowed;
+    }
+
+    /**
+     * Lock MySQL sul contatore dei tentativi di un IP; null se non disponibile (si
+     * procede comunque: il lock rende esatto il conteggio, non è l'autorizzazione)
+     */
+    private static function lock_pin_check($fail_key) {
+        global $wpdb;
+        if (!isset($wpdb) || !method_exists($wpdb, 'get_var')) return null;
+        $name = substr($wpdb->prefix . $fail_key, 0, 64);
+        return (string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 5)', $name)) === '1' ? $name : null;
+    }
+
+    private static function unlock_pin_check($name) {
+        global $wpdb;
+        if ($name !== null) {
+            $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
+        }
     }
 
     /**

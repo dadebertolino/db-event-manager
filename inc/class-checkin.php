@@ -419,7 +419,7 @@ class DBEM_Checkin {
                         wp_send_json_error(array('message' => __('Posti esauriti', 'db-event-manager')));
                     }
                 }
-                if (!DBEM_Admin::apply_transition(array($reg_id), $action)) {
+                if (!DBEM_Admin::apply_transition(array($reg_id), $action, DBEM_Security::input('notify') === '1')) {
                     wp_send_json_error(array('message' => __('Azione non consentita per lo stato attuale dell\'iscrizione: aggiorna la lista.', 'db-event-manager')));
                 }
                 wp_send_json_success(array('message' => sprintf($messages[$action], $reg->name)));

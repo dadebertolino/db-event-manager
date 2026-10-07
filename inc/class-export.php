@@ -43,7 +43,9 @@ class DBEM_Export {
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
 
         // Header
-        $headers = array('ID', 'Nome', 'Email', 'Stato', 'Data Iscrizione', 'Check-in', 'Orario assegnato', 'IP');
+        // Niente IP: resta nel database come prova dell'iscrizione (e nell'export DSAR), ma
+        // non serve a chi gestisce l'evento e non deve finire nei file scaricati
+        $headers = array('ID', 'Nome', 'Email', 'Stato', 'Data Iscrizione', 'Check-in', 'Orario assegnato');
 
         // Determina campi custom dalle iscrizioni
         $custom_keys = array();
@@ -79,7 +81,6 @@ class DBEM_Export {
                 $reg->registered_at,
                 $reg->checked_in_at ?: '',
                 self::csv_safe(isset($reg->assigned_time) ? $reg->assigned_time : ''),
-                $reg->ip_address,
             );
             foreach ($custom_keys as $ck) {
                 $row[] = self::csv_safe($data[$ck] ?? '');

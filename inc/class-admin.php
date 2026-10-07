@@ -1429,7 +1429,7 @@ class DBEM_Admin {
         }
 
         if (!isset(self::bulk_transitions()[$action])) wp_send_json_error(__('Azione non valida', 'db-event-manager'));
-        $targets = self::apply_transition($ids, $action);
+        $targets = self::apply_transition($ids, $action, DBEM_Security::input('notify') === '1');
 
         $skipped = count(array_unique($ids)) - count($targets);
         $message = $skipped
@@ -1450,10 +1450,11 @@ class DBEM_Admin {
      * insieme (o due scansioni dello stesso QR) non applicano l'azione due volte.
      *
      * @param int[]  $ids
-     * @param string $action Chiave di bulk_transitions()
+     * @param string $action        Chiave di bulk_transitions()
+     * @param bool   $notify_cancel Annullamento: email al partecipante (spunta nelle pagine partecipanti)
      * @return int[] Iscrizioni effettivamente modificate
      */
-    public static function apply_transition($ids, $action) {
+    public static function apply_transition($ids, $action, $notify_cancel = false) {
         $transitions = self::bulk_transitions();
         if (!isset($transitions[$action])) return array();
         list($from, $to) = $transitions[$action];
@@ -1478,6 +1479,8 @@ class DBEM_Admin {
                 DBEM_Email::send_confirmation($reg->event_id, $reg);
             } elseif ($to === 'rejected') {
                 DBEM_Email::send_rejection($reg->event_id, $reg);
+            } elseif ($to === 'cancelled' && $notify_cancel) {
+                DBEM_Email::send_cancellation($reg->event_id, $reg);
             }
         }
         return $changed;

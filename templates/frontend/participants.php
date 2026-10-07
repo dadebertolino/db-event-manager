@@ -68,7 +68,8 @@ $site_name = get_bloginfo('name');
         .pp-action:disabled{opacity:.4;cursor:default}
 
         /* Toolbar (export) */
-        .pp-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px}
+        .pp-toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;margin-bottom:12px}
+        .pp-notify{display:flex;align-items:center;gap:6px;font-size:14px;min-height:44px}
         .pp-toolbar-btn{padding:10px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
         .pp-toolbar-btn:hover{border-color:#2271b1;color:#2271b1}
 
@@ -149,6 +150,7 @@ $site_name = get_bloginfo('name');
         <div class="pp-toolbar" id="pp-toolbar" style="display:none">
             <button type="button" class="pp-toolbar-btn" id="pp-add-btn">➕ <?php esc_html_e('Aggiungi', 'db-event-manager'); ?></button>
             <button type="button" class="pp-toolbar-btn" id="pp-export-btn">📥 <?php esc_html_e('Export CSV', 'db-event-manager'); ?></button>
+            <label class="pp-notify"><input type="checkbox" id="pp-notify-cancel" checked> <?php esc_html_e('Avvisa via email chi viene annullato', 'db-event-manager'); ?></label>
         </div>
 
         <!-- Form iscrizione manuale -->
@@ -218,6 +220,15 @@ $site_name = get_bloginfo('name');
             __('Check-in', 'db-event-manager'),
         ),
         'csv_file'      => __('partecipanti', 'db-event-manager'),
+        'approve'       => __('Approva', 'db-event-manager'),
+        'reject'        => __('Rifiuta', 'db-event-manager'),
+        'checkin'       => __('Segna presente', 'db-event-manager'),
+        'cancel'        => __('Annulla iscrizione', 'db-event-manager'),
+        'reconfirm'     => __('Riconferma', 'db-event-manager'),
+        'resend'        => __('Reinvia email', 'db-event-manager'),
+        'edit_time'     => __('Modifica orario', 'db-event-manager'),
+        /* translators: %s: nome dell'iscritto */
+        'confirm_cancel' => __('Annullare l\'iscrizione di %s?', 'db-event-manager'),
     )); ?>;
 
     // POST ad admin-ajax. Le risposte non 2xx (403 origine/sessione, 429 troppe
@@ -395,19 +406,28 @@ $site_name = get_bloginfo('name');
         });
     }
 
+    // Pulsanti con un nome accessibile che dice azione e persona: le sole emoji non bastano
+    // (✅ vale sia «approva» sia «presente»)
+    function actionButton(action, r, icon, label, extra) {
+        var text = label + ' — ' + r.name;
+        return '<button type="button" class="pp-action" data-action="' + action + '" data-id="' + r.id + '"'
+            + ' data-name="' + escAttr(r.name) + '"' + (extra || '')
+            + ' title="' + escAttr(label) + '" aria-label="' + escAttr(text) + '"><span aria-hidden="true">' + icon + '</span></button>';
+    }
+
     function getActions(r) {
         var btns = '';
         if (r.status === 'pending') {
-            btns += '<button class="pp-action" data-action="confirm" data-id="' + r.id + '" title="<?php echo esc_js(__('Approva', 'db-event-manager')); ?>">✅</button>';
-            btns += '<button class="pp-action" data-action="reject" data-id="' + r.id + '" title="<?php echo esc_js(__('Rifiuta', 'db-event-manager')); ?>">🚫</button>';
+            btns += actionButton('confirm', r, '✅', T.approve);
+            btns += actionButton('reject', r, '🚫', T.reject);
         } else if (r.status === 'confirmed') {
-            btns += '<button class="pp-action" data-action="checkin" data-id="' + r.id + '" title="<?php echo esc_js(__('Segna presente', 'db-event-manager')); ?>">✅</button>';
-            btns += '<button class="pp-action" data-action="cancel" data-id="' + r.id + '" title="<?php echo esc_js(__('Annulla', 'db-event-manager')); ?>">❌</button>';
+            btns += actionButton('checkin', r, '☑️', T.checkin);
+            btns += actionButton('cancel', r, '❌', T.cancel);
         } else if (r.status === 'cancelled' || r.status === 'rejected') {
-            btns += '<button class="pp-action" data-action="confirm" data-id="' + r.id + '" title="<?php echo esc_js(__('Riconferma', 'db-event-manager')); ?>">🔄</button>';
+            btns += actionButton('confirm', r, '🔄', T.reconfirm);
         }
-        btns += '<button class="pp-action" data-action="resend" data-id="' + r.id + '" title="<?php echo esc_js(__('Reinvia email', 'db-event-manager')); ?>">📧</button>';
-        btns += '<button class="pp-action" data-action="edit_time" data-id="' + r.id + '" data-name="' + escAttr(r.name) + '" data-time="' + escAttr(r.assigned_time || '') + '" title="<?php echo esc_js(__('Modifica orario', 'db-event-manager')); ?>">🕐</button>';
+        btns += actionButton('resend', r, '📧', T.resend);
+        btns += actionButton('edit_time', r, '🕐', T.edit_time, ' data-time="' + escAttr(r.assigned_time || '') + '"');
         return btns;
     }
 
@@ -424,8 +444,12 @@ $site_name = get_bloginfo('name');
             return;
         }
 
+        // L'annullamento non si fa con un tocco sbagliato
+        if (action === 'cancel' && !window.confirm(T.confirm_cancel.replace('%s', btn ? btn.dataset.name : ''))) return;
+
         var body = 'action=dbem_public_participant_action&participant_action=' + action
-            + '&registration_id=' + regId + '&event_id=' + currentEvent;
+            + '&registration_id=' + regId + '&event_id=' + currentEvent
+            + '&notify=' + (document.getElementById('pp-notify-cancel').checked ? '1' : '');
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         post(body)

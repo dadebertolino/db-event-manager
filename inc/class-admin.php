@@ -403,7 +403,7 @@ class DBEM_Admin {
                         <input type="checkbox" id="dbem_allow_registration_update" name="_dbem_allow_registration_update" value="1" <?php checked($allow_registration_update, '1'); ?>>
                         <?php esc_html_e('Consenti di sostituire l\'iscrizione esistente quando l\'utente invia nuovamente il form', 'db-event-manager'); ?>
                     </label>
-                    <p class="description"><?php esc_html_e('Prima di sostituire, il form chiede conferma all\'utente e poi invia un link di conferma all\'indirizzo già iscritto: la modifica vale solo dopo il clic. La nuova richiesta aggiorna nome, campi compilati e consenso, mantenendo il QR code e lo stato dell\'iscrizione. Chi è stato rifiutato non può reiscriversi.', 'db-event-manager'); ?></p>
+                    <p class="description"><?php esc_html_e('All\'indirizzo già iscritto arriva un link di conferma: la modifica vale solo dopo il clic. La nuova richiesta aggiorna nome e campi compilati (e il consenso, se dato di nuovo), mantenendo il QR code e lo stato dell\'iscrizione. Chi è stato rifiutato non può reiscriversi. Il modulo risponde allo stesso modo a nuovi iscritti e a indirizzi già iscritti, così non rivela chi partecipa; con l\'opzione disattivata l\'indirizzo già iscritto riceve solo un avviso.', 'db-event-manager'); ?></p>
                 </td>
             </tr>
 

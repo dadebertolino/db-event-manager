@@ -318,24 +318,30 @@ class DBEM_DB {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
 
-        return $wpdb->update(
-            $table,
-            array(
-                'data'                        => $data['data'],
-                'email'                       => $data['email'],
-                'name'                        => $data['name'],
-                'registered_at'               => current_time('mysql'),
+        $fields = array(
+            'data'          => $data['data'],
+            'email'         => $data['email'],
+            'name'          => $data['name'],
+            'registered_at' => current_time('mysql'),
+            'ip_address'    => $data['ip_address'],
+        );
+        $formats = array('%s', '%s', '%s', '%s', '%s');
+
+        // Un nuovo consenso sostituisce il precedente; una modifica senza consenso (GDPR
+        // disattivato nel frattempo, campo privacy DBFB non mappato) non cancella la prova
+        // di quello originale (art. 7.1)
+        if (!empty($data['gdpr_consent_given'])) {
+            $fields += array(
                 'gdpr_consent_given'          => $data['gdpr_consent_given'],
                 'gdpr_consent_text'           => $data['gdpr_consent_text'],
                 'gdpr_consent_timestamp'      => $data['gdpr_consent_timestamp'],
                 'gdpr_consent_privacy_url'    => $data['gdpr_consent_privacy_url'],
                 'gdpr_consent_policy_version' => $data['gdpr_consent_policy_version'],
-                'ip_address'                  => $data['ip_address'],
-            ),
-            array('id' => $registration_id),
-            array('%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s'),
-            array('%d')
-        );
+            );
+            $formats = array_merge($formats, array('%d', '%s', '%s', '%s', '%d'));
+        }
+
+        return $wpdb->update($table, $fields, array('id' => $registration_id), $formats, array('%d'));
     }
 
     /**

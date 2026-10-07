@@ -62,22 +62,6 @@ final class SecurityFixesTest extends TestCase {
         $this->assertSame(array('Content-Type: text/html; charset=UTF-8'), DBEM_Email::get_headers());
     }
 
-    public function testRejectedRegistrationCannotRegisterAgain(): void {
-        try {
-            DBEM_Registration::reject_duplicate((object) array('id' => 5, 'status' => 'rejected'), true);
-            $this->fail('Un iscritto rifiutato ha potuto reiscriversi');
-        } catch (RuntimeException $e) {
-            $this->assertStringContainsString('già registrato', $GLOBALS['__dbem_json_error']);
-        }
-    }
-
-    public function testActiveRegistrationCanBeUpdatedWhenAllowed(): void {
-        DBEM_Registration::reject_duplicate((object) array('id' => 1, 'status' => 'confirmed'), true);
-        DBEM_Registration::reject_duplicate(null, false);
-
-        $this->addToAssertionCount(1);
-    }
-
     public function testUpdateWaitsForEmailConfirmation(): void {
         $existing = (object) array('id' => 1, 'event_id' => 10, 'email' => 'alice@example.com', 'name' => 'Alice', 'status' => 'confirmed');
         $data = array('name' => 'Intruso', 'email' => 'alice@example.com', 'data' => '{}');

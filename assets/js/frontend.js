@@ -6,10 +6,7 @@
     var i18n = $.extend({
         error: 'Errore. Riprova.',
         required: 'Questo campo è obbligatorio.',
-        invalid_email: 'Inserisci un indirizzo email valido.',
-        replace_yes: 'Sì, sostituisci',
-        replace_no: 'No, mantieni la precedente',
-        replace_kept: 'Nessuna modifica: la prenotazione precedente resta valida.'
+        invalid_email: 'Inserisci un indirizzo email valido.'
     }, (window.dbem_front && dbem_front.i18n) || {});
 
     $(document).on('submit', '.dbem-form', function(e) {
@@ -51,10 +48,10 @@
             return;
         }
 
-        sendRegistration($form, false);
+        sendRegistration($form);
     });
 
-    function sendRegistration($form, confirmReplace) {
+    function sendRegistration($form) {
         var $btn = $form.find('.dbem-submit');
         var $msg = $form.find('.dbem-message');
         var $btnText = $form.find('.dbem-submit-text');
@@ -69,10 +66,9 @@
         $btn.prop('disabled', true);
         $btnText.hide();
         $btnLoading.show();
-        $msg.hide().empty().removeClass('dbem-message-success dbem-message-error dbem-message-confirm');
+        $msg.hide().empty().removeClass('dbem-message-success dbem-message-error');
 
         var data = $form.serialize();
-        if (confirmReplace) data += '&dbem_confirm_replace=1';
 
         $.ajax({
             url: dbem_front.ajax_url,
@@ -89,11 +85,6 @@
                     $btn.hide();
                     // Focus messaggio
                     $msg.attr('tabindex', '-1').focus();
-                } else if (resp.data && resp.data.code === 'confirm_replace') {
-                    resetButton();
-                    askReplace($msg, resp.data.message, function() {
-                        sendRegistration($form, true);
-                    });
                 } else {
                     var d = resp && resp.data;
                     $msg.addClass('dbem-message-error').text((d && d.message) || (typeof d === 'string' && d) || i18n.error).show();
@@ -113,26 +104,6 @@
                 resetButton();
             }
         });
-    }
-
-    // Domanda di conferma dentro il riquadro messaggi, con le due risposte possibili
-    function askReplace($msg, question, onConfirm) {
-        var $yes = $('<button type="button" class="dbem-confirm-yes"></button>').text(i18n.replace_yes);
-        var $no = $('<button type="button" class="dbem-confirm-no"></button>').text(i18n.replace_no);
-
-        $yes.on('click', function() {
-            onConfirm();
-        });
-        $no.on('click', function() {
-            $msg.empty().removeClass('dbem-message-confirm').addClass('dbem-message-success')
-                .text(i18n.replace_kept).attr('tabindex', '-1').focus();
-        });
-
-        $msg.empty().addClass('dbem-message-confirm')
-            .append($('<p class="dbem-confirm-question"></p>').text(question))
-            .append($('<div class="dbem-confirm-actions"></div>').append($yes, $no))
-            .show();
-        $yes.focus();
     }
 
 })(jQuery);

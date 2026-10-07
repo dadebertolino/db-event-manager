@@ -12,9 +12,6 @@ class DBEM_Frontend {
                 'error'         => __('Errore. Riprova.', 'db-event-manager'),
                 'required'      => __('Questo campo è obbligatorio.', 'db-event-manager'),
                 'invalid_email' => __('Inserisci un indirizzo email valido.', 'db-event-manager'),
-                'replace_yes'   => __('Sì, sostituisci', 'db-event-manager'),
-                'replace_no'    => __('No, mantieni la precedente', 'db-event-manager'),
-                'replace_kept'  => __('Nessuna modifica: la prenotazione precedente resta valida.', 'db-event-manager'),
             ),
         ));
 
@@ -337,38 +334,6 @@ class DBEM_Frontend {
                     dbemMsg.style.display = 'block';
                 }
 
-                // Iscrizione già presente: chiede se sostituirla prima di reinviare
-                function askReplace(question) {
-                    dbemMsg.className = 'dbem-message dbem-dbfb-message dbem-message-confirm';
-                    dbemMsg.textContent = '';
-                    var p = document.createElement('p');
-                    p.className = 'dbem-confirm-question';
-                    p.textContent = question;
-                    var actions = document.createElement('div');
-                    actions.className = 'dbem-confirm-actions';
-                    var yes = document.createElement('button');
-                    yes.type = 'button';
-                    yes.className = 'dbem-confirm-yes';
-                    yes.textContent = <?php echo wp_json_encode(__('Sì, sostituisci', 'db-event-manager')); ?>;
-                    var no = document.createElement('button');
-                    no.type = 'button';
-                    no.className = 'dbem-confirm-no';
-                    no.textContent = <?php echo wp_json_encode(__('No, mantieni la precedente', 'db-event-manager')); ?>;
-                    yes.addEventListener('click', function() {
-                        body.set('dbem_confirm_replace', '1');
-                        send();
-                    });
-                    no.addEventListener('click', function() {
-                        showResult(true, <?php echo wp_json_encode(__('Nessuna modifica: la prenotazione precedente resta valida.', 'db-event-manager')); ?>);
-                    });
-                    actions.appendChild(yes);
-                    actions.appendChild(no);
-                    dbemMsg.appendChild(p);
-                    dbemMsg.appendChild(actions);
-                    dbemMsg.style.display = 'block';
-                    yes.focus();
-                }
-
                 var genericError = <?php echo wp_json_encode(__('Errore durante l\'iscrizione all\'evento.', 'db-event-manager')); ?>;
 
                 function send() {
@@ -387,8 +352,6 @@ class DBEM_Frontend {
                     .then(function(resp) {
                         if (resp && resp.success) {
                             showResult(true, resp.data.message);
-                        } else if (resp && resp.data && resp.data.code === 'confirm_replace') {
-                            askReplace(resp.data.message);
                         } else {
                             var d = resp && resp.data;
                             showResult(false, (d && d.message) || (typeof d === 'string' && d) || genericError);

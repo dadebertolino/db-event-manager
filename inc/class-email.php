@@ -471,6 +471,23 @@ class DBEM_Email {
         return wp_mail($reg->email, self::clean_subject($subject), self::build_html_email($message), self::get_headers());
     }
 
+    /**
+     * Nuova richiesta con un indirizzo già iscritto (reiscrizione non attiva o iscrizione
+     * rifiutata). Il modulo risponde come a una nuova iscrizione: lo stato vero lo sa solo
+     * chi legge questa casella. Non dice se l'iscrizione è confermata, in attesa o rifiutata.
+     */
+    public static function send_already_registered($event_id, $reg) {
+        $event_title = DBEM_CPT::get_event_name($event_id);
+        $subject = sprintf(__('La tua iscrizione: %s', 'db-event-manager'), $event_title);
+        $message = sprintf(
+            __("Ciao %s,\n\nabbiamo ricevuto una nuova richiesta di iscrizione all'evento \"%s\" con questo indirizzo email, per il quale esiste già un'iscrizione. Non ne abbiamo creata un'altra e non devi fare nulla: la tua iscrizione resta com'è.\n\nSe non hai inviato tu la richiesta, ignora questa email.", 'db-event-manager'),
+            $reg->name,
+            $event_title
+        );
+
+        return wp_mail($reg->email, self::clean_subject($subject), self::build_html_email($message), self::get_headers());
+    }
+
     private static function build_html_email($message, $qr_url = '') {
         $site_name = get_bloginfo('name');
         $message_html = nl2br(esc_html($message));

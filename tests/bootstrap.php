@@ -351,6 +351,16 @@ if (!function_exists('get_posts')) {
     }
 }
 
+if (!function_exists('get_post_status')) {
+    function get_post_status($post_id) {
+        return $GLOBALS['__dbem_posts'][$post_id] ?? 'publish';
+    }
+}
+
+if (!defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
+
 if (!function_exists('get_post_type')) {
     function get_post_type($post_id) {
         return 'dbem_event';

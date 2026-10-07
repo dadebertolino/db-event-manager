@@ -17,12 +17,13 @@ class DBEM_Privacy_Declarations {
     }
 
     /**
-     * Analizza la configurazione degli eventi pubblicati
+     * Analizza la configurazione degli eventi. Contano anche bozze, eventi privati,
+     * programmati e nel cestino: le loro iscrizioni restano nel database
      */
     private static function analyze_events() {
         $features = array(
             'has_published_events' => false,
-            'has_email'            => false,
+            'has_notify_admin'     => false,
             'has_survey'           => false,
             'has_approval_mode'    => false,
             'has_time_slot'        => false,
@@ -35,19 +36,19 @@ class DBEM_Privacy_Declarations {
 
         $events = get_posts(array(
             'post_type'      => 'dbem_event',
-            'post_status'    => 'publish',
+            'post_status'    => array('publish', 'future', 'draft', 'pending', 'private', 'trash'),
             'posts_per_page' => -1,
             'fields'         => 'ids',
         ));
 
         if (empty($events)) return $features;
 
+        // Nome storico della chiave: vale per qualunque evento con dati
         $features['has_published_events'] = true;
 
         foreach ($events as $event_id) {
-            $email_data = get_post_meta($event_id, '_dbem_confirmation_email', true);
-            if (!empty($email_data['subject']) || !empty($email_data['message'])) {
-                $features['has_email'] = true;
+            if (get_post_meta($event_id, '_dbem_notify_admin', true) === '1') {
+                $features['has_notify_admin'] = true;
             }
 
             $survey_enabled = get_post_meta($event_id, '_dbem_survey_enabled', true);
@@ -114,25 +115,24 @@ class DBEM_Privacy_Declarations {
             'legal_basis'    => __('Consenso esplicito (art. 6.1.a GDPR) tramite checkbox privacy nel form di iscrizione, oppure esecuzione della richiesta di partecipazione (art. 6.1.b GDPR).', 'db-event-manager'),
             'data_collected' => implode(' ', $collected),
             'retention'      => $features['retention_text'],
-            'transfers'      => __('Nessuno. Tutti i dati sono salvati nel database WordPress locale.', 'db-event-manager'),
+            'transfers'      => self::registration_transfers($features),
         );
 
-        // Condizionale: email
-        if ($features['has_email']) {
-            $register[] = array(
-                'id'             => 'dbem_email',
-                'label'          => __('Email transazionali eventi (DB Event Manager)', 'db-event-manager'),
-                'status'         => 'active',
-                'purpose'        => __('Inviare email di conferma iscrizione con QR code, promemoria evento, notifiche di approvazione/rifiuto, inviti survey post-evento.', 'db-event-manager'),
-                'legal_basis'    => __('Esecuzione della richiesta di partecipazione (art. 6.1.b GDPR). L\'utente ha fornito l\'email al momento dell\'iscrizione.', 'db-event-manager'),
-                'data_collected' => sprintf(
-                    __('Nome, email del partecipante. Il QR code allegato contiene un token univoco (non dati personali in chiaro). Mittente configurato: %s. Le email vengono inviate via wp_mail() — il trasporto effettivo dipende dalla configurazione SMTP del sito.', 'db-event-manager'),
-                    DBEM_Email::from_email()
-                ),
-                'retention'      => __('Le email inviate non sono conservate nel sito. I log di invio dipendono dalla configurazione del server SMTP.', 'db-event-manager'),
-                'transfers'      => __('L\'email transita attraverso il server SMTP configurato nel sito WordPress. Nessun servizio email terzo è integrato nel plugin.', 'db-event-manager'),
-            );
-        }
+        // Sempre: ogni iscrizione genera email (conferma, attesa, approvazione, rifiuto,
+        // modifica, avviso di iscrizione già presente), anche senza un testo personalizzato
+        $register[] = array(
+            'id'             => 'dbem_email',
+            'label'          => __('Email transazionali eventi (DB Event Manager)', 'db-event-manager'),
+            'status'         => 'active',
+            'purpose'        => __('Inviare all\'iscritto email di conferma con QR code, attesa, approvazione o rifiuto, conferma delle modifiche, promemoria e inviti al survey; inviare ai responsabili indicati per l\'evento le notifiche di nuova iscrizione e le richieste di approvazione.', 'db-event-manager'),
+            'legal_basis'    => __('Esecuzione della richiesta di partecipazione (art. 6.1.b GDPR). L\'utente ha fornito l\'email al momento dell\'iscrizione.', 'db-event-manager'),
+            'data_collected' => sprintf(
+                __('Nome, email del partecipante. Le email ai responsabili contengono anche i campi compilati nel form. Il QR code allegato contiene un token univoco (non dati personali in chiaro). Mittente configurato: %s. Le email vengono inviate via wp_mail() — il trasporto effettivo dipende dalla configurazione SMTP del sito.', 'db-event-manager'),
+                DBEM_Email::from_email() ?: __('quello predefinito del sito', 'db-event-manager')
+            ),
+            'retention'      => __('Le email inviate non sono conservate nel sito. I log di invio dipendono dalla configurazione del server SMTP.', 'db-event-manager'),
+            'transfers'      => __('L\'email transita attraverso il server SMTP configurato nel sito WordPress. Nessun servizio email terzo è integrato nel plugin.', 'db-event-manager'),
+        );
 
         // Condizionale: survey
         if ($features['has_survey']) {
@@ -151,6 +151,28 @@ class DBEM_Privacy_Declarations {
         return $register;
     }
 
+
+    /**
+     * I dati restano nel database del sito, ma nome, email e campi compilati partono via
+     * email verso gli indirizzi configurati per l'evento (approvatori, notifiche)
+     */
+    private static function registration_transfers($features) {
+        $recipients = array();
+        if ($features['has_approval_mode']) {
+            $recipients[] = __('richiesta di approvazione agli approvatori indicati per l\'evento', 'db-event-manager');
+        }
+        if ($features['has_notify_admin']) {
+            $recipients[] = __('notifica di nuova iscrizione agli indirizzi indicati per l\'evento', 'db-event-manager');
+        }
+        if (!$recipients) {
+            return __('Nessuno. Tutti i dati sono salvati nel database WordPress locale.', 'db-event-manager');
+        }
+        return sprintf(
+            /* translators: %s: elenco degli invii */
+            __('I dati sono salvati nel database WordPress locale. Nome, email e campi compilati vengono inoltre inviati via email ai destinatari configurati: %s. Se un destinatario non appartiene all\'organizzazione, è un trasferimento da valutare.', 'db-event-manager'),
+            implode('; ', $recipients)
+        );
+    }
 
     /**
      * Esponi consensi al Privacy Hub Registro consensi

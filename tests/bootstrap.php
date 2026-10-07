@@ -641,3 +641,4 @@ require_once dirname(__DIR__) . '/inc/class-checkin.php';
 require_once dirname(__DIR__) . '/inc/class-duplicate.php';
 require_once dirname(__DIR__) . '/inc/class-updater.php';
 require_once dirname(__DIR__) . '/inc/class-export.php';
+require_once dirname(__DIR__) . '/inc/class-privacy-declarations.php';

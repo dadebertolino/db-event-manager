@@ -740,6 +740,8 @@ class DBEM_Admin {
      * Salva metabox
      */
     public static function save_metabox($post_id, $post) {
+        // update_post_meta() e wp_update_post() tolgono un livello di barre: i valori, già
+        // ripuliti da wp_unslash(), passano da wp_slash() o "Aula B\2" diventerebbe "Aula B2"
         if (!isset($_POST['dbem_event_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_event_nonce'])), 'dbem_save_event')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
@@ -747,12 +749,12 @@ class DBEM_Admin {
         // Nome evento e descrizione
         if (isset($_POST['_dbem_event_name'])) {
             $event_name = sanitize_text_field(wp_unslash($_POST['_dbem_event_name']));
-            update_post_meta($post_id, '_dbem_event_name', $event_name);
+            update_post_meta($post_id, '_dbem_event_name', wp_slash($event_name));
 
             // Auto-genera titolo WP dal nome evento (per lista admin leggibile)
             if ($event_name && $post->post_title !== $event_name) {
                 remove_action('save_post_dbem_event', array(__CLASS__, 'save_metabox'), 10);
-                wp_update_post(array('ID' => $post_id, 'post_title' => $event_name));
+                wp_update_post(wp_slash(array('ID' => $post_id, 'post_title' => $event_name)));
                 add_action('save_post_dbem_event', array(__CLASS__, 'save_metabox'), 10, 2);
             }
         }
@@ -761,49 +763,49 @@ class DBEM_Admin {
         $text_fields = array('_dbem_date_start', '_dbem_date_end', '_dbem_location');
         foreach ($text_fields as $field) {
             if (isset($_POST[$field])) {
-                update_post_meta($post_id, $field, sanitize_text_field(wp_unslash($_POST[$field])));
+                update_post_meta($post_id, $field, wp_slash(sanitize_text_field(wp_unslash($_POST[$field]))));
             }
         }
 
         $int_fields = array('_dbem_max_participants');
         foreach ($int_fields as $field) {
             if (isset($_POST[$field])) {
-                update_post_meta($post_id, $field, absint($_POST[$field]));
+                update_post_meta($post_id, $field, wp_slash(absint($_POST[$field])));
             }
         }
 
         if (isset($_POST[DBEM_Appearance::META])) {
-            update_post_meta($post_id, DBEM_Appearance::META, DBEM_Appearance::sanitize_colors(wp_unslash($_POST[DBEM_Appearance::META]))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
+            update_post_meta($post_id, DBEM_Appearance::META, wp_slash(DBEM_Appearance::sanitize_colors(wp_unslash($_POST[DBEM_Appearance::META])))); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_colors() tiene solo colori esadecimali
         }
 
         // Checkbox
-        update_post_meta($post_id, '_dbem_hide_card_day', isset($_POST['_dbem_hide_card_day']) ? '1' : '0');
-        update_post_meta($post_id, '_dbem_registration_open', isset($_POST['_dbem_registration_open']) ? '1' : '0');
-        update_post_meta($post_id, '_dbem_survey_enabled', isset($_POST['_dbem_survey_enabled']) ? '1' : '0');
-        update_post_meta($post_id, '_dbem_notify_admin', isset($_POST['_dbem_notify_admin']) ? '1' : '0');
+        update_post_meta($post_id, '_dbem_hide_card_day', wp_slash(isset($_POST['_dbem_hide_card_day']) ? '1' : '0'));
+        update_post_meta($post_id, '_dbem_registration_open', wp_slash(isset($_POST['_dbem_registration_open']) ? '1' : '0'));
+        update_post_meta($post_id, '_dbem_survey_enabled', wp_slash(isset($_POST['_dbem_survey_enabled']) ? '1' : '0'));
+        update_post_meta($post_id, '_dbem_notify_admin', wp_slash(isset($_POST['_dbem_notify_admin']) ? '1' : '0'));
 
         // Email admin personalizzata
         if (isset($_POST['_dbem_admin_email'])) {
             $emails_raw = sanitize_text_field(wp_unslash($_POST['_dbem_admin_email']));
             $emails = array_map('trim', explode(',', $emails_raw));
             $emails = array_filter($emails, 'is_email');
-            update_post_meta($post_id, '_dbem_admin_email', implode(', ', $emails));
+            update_post_meta($post_id, '_dbem_admin_email', wp_slash(implode(', ', $emails)));
         }
 
         // Form source (builtin / dbfb)
         if (isset($_POST['_dbem_form_source'])) {
-            update_post_meta($post_id, '_dbem_form_source', sanitize_key($_POST['_dbem_form_source']));
+            update_post_meta($post_id, '_dbem_form_source', wp_slash(sanitize_key($_POST['_dbem_form_source'])));
         }
 
         // Modalità approvazione
         if (isset($_POST['_dbem_approval_mode'])) {
-            update_post_meta($post_id, '_dbem_approval_mode', sanitize_key($_POST['_dbem_approval_mode']));
+            update_post_meta($post_id, '_dbem_approval_mode', wp_slash(sanitize_key($_POST['_dbem_approval_mode'])));
         }
         if (isset($_POST['_dbem_approver_email'])) {
             $emails_raw = sanitize_text_field(wp_unslash($_POST['_dbem_approver_email']));
             $emails = array_map('trim', explode(',', $emails_raw));
             $emails = array_filter($emails, 'is_email');
-            update_post_meta($post_id, '_dbem_approver_email', implode(', ', $emails));
+            update_post_meta($post_id, '_dbem_approver_email', wp_slash(implode(', ', $emails)));
         }
 
         // PIN dell'evento: vuoto = PIN di sistema; un valore non valido lascia quello precedente
@@ -812,38 +814,38 @@ class DBEM_Admin {
             if ($event_pin === '') {
                 delete_post_meta($post_id, DBEM_Security::EVENT_PIN_META);
             } elseif (DBEM_Security::is_valid_pin($event_pin)) {
-                update_post_meta($post_id, DBEM_Security::EVENT_PIN_META, $event_pin);
+                update_post_meta($post_id, DBEM_Security::EVENT_PIN_META, wp_slash($event_pin));
             }
         }
 
         // Assegnazione orario
-        update_post_meta($post_id, '_dbem_time_slot_enabled', isset($_POST['_dbem_time_slot_enabled']) ? '1' : '0');
-        update_post_meta($post_id, '_dbem_allow_registration_update', isset($_POST['_dbem_allow_registration_update']) ? '1' : '0');
+        update_post_meta($post_id, '_dbem_time_slot_enabled', wp_slash(isset($_POST['_dbem_time_slot_enabled']) ? '1' : '0'));
+        update_post_meta($post_id, '_dbem_allow_registration_update', wp_slash(isset($_POST['_dbem_allow_registration_update']) ? '1' : '0'));
 
         // GDPR
-        update_post_meta($post_id, '_dbem_gdpr_enabled', isset($_POST['_dbem_gdpr_enabled']) ? '1' : '0');
+        update_post_meta($post_id, '_dbem_gdpr_enabled', wp_slash(isset($_POST['_dbem_gdpr_enabled']) ? '1' : '0'));
         if (isset($_POST['_dbem_gdpr_text'])) {
-            update_post_meta($post_id, '_dbem_gdpr_text', sanitize_text_field(wp_unslash($_POST['_dbem_gdpr_text'])));
+            update_post_meta($post_id, '_dbem_gdpr_text', wp_slash(sanitize_text_field(wp_unslash($_POST['_dbem_gdpr_text']))));
         }
         if (isset($_POST['_dbem_gdpr_link'])) {
-            update_post_meta($post_id, '_dbem_gdpr_link', esc_url_raw(wp_unslash($_POST['_dbem_gdpr_link'])));
+            update_post_meta($post_id, '_dbem_gdpr_link', wp_slash(esc_url_raw(wp_unslash($_POST['_dbem_gdpr_link']))));
         }
         if (isset($_POST['_dbem_dbfb_form_id'])) {
-            update_post_meta($post_id, '_dbem_dbfb_form_id', absint($_POST['_dbem_dbfb_form_id']));
+            update_post_meta($post_id, '_dbem_dbfb_form_id', wp_slash(absint($_POST['_dbem_dbfb_form_id'])));
         }
         if (isset($_POST['_dbem_dbfb_name_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_name_field', sanitize_key($_POST['_dbem_dbfb_name_field']));
+            update_post_meta($post_id, '_dbem_dbfb_name_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_name_field'])));
         }
         if (isset($_POST['_dbem_dbfb_email_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_email_field', sanitize_key($_POST['_dbem_dbfb_email_field']));
+            update_post_meta($post_id, '_dbem_dbfb_email_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_email_field'])));
         }
         if (isset($_POST['_dbem_dbfb_privacy_field'])) {
-            update_post_meta($post_id, '_dbem_dbfb_privacy_field', sanitize_key($_POST['_dbem_dbfb_privacy_field']));
+            update_post_meta($post_id, '_dbem_dbfb_privacy_field', wp_slash(sanitize_key($_POST['_dbem_dbfb_privacy_field'])));
         }
 
         // Deadline
         if (isset($_POST['_dbem_registration_deadline'])) {
-            update_post_meta($post_id, '_dbem_registration_deadline', sanitize_text_field(wp_unslash($_POST['_dbem_registration_deadline'])));
+            update_post_meta($post_id, '_dbem_registration_deadline', wp_slash(sanitize_text_field(wp_unslash($_POST['_dbem_registration_deadline']))));
         }
 
         // Campi custom (JSON)
@@ -866,7 +868,7 @@ class DBEM_Admin {
                 'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_confirmation_email']['subject'] ?? '')),
                 'message' => wp_kses_post(wp_unslash($_POST['_dbem_confirmation_email']['message'] ?? '')),
             );
-            update_post_meta($post_id, '_dbem_confirmation_email', $email_data);
+            update_post_meta($post_id, '_dbem_confirmation_email', wp_slash($email_data));
         }
 
         // Survey
@@ -874,7 +876,7 @@ class DBEM_Admin {
             $fields = json_decode(wp_unslash($_POST['_dbem_survey_fields']), true); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitizzato da sanitize_fields_array()
             if (is_array($fields)) {
                 $fields = self::sanitize_fields_array($fields);
-                update_post_meta($post_id, '_dbem_survey_fields', $fields);
+                update_post_meta($post_id, '_dbem_survey_fields', wp_slash($fields));
             }
         }
 
@@ -883,20 +885,20 @@ class DBEM_Admin {
                 'subject' => sanitize_text_field(wp_unslash($_POST['_dbem_survey_email']['subject'] ?? '')),
                 'message' => wp_kses_post(wp_unslash($_POST['_dbem_survey_email']['message'] ?? '')),
             );
-            update_post_meta($post_id, '_dbem_survey_email', $email_data);
+            update_post_meta($post_id, '_dbem_survey_email', wp_slash($email_data));
         }
 
         if (isset($_POST['_dbem_survey_auto_hours'])) {
-            update_post_meta($post_id, '_dbem_survey_auto_hours', absint($_POST['_dbem_survey_auto_hours']));
+            update_post_meta($post_id, '_dbem_survey_auto_hours', wp_slash(absint($_POST['_dbem_survey_auto_hours'])));
         }
 
         if (isset($_POST['_dbem_reminder_content'])) {
             $reminder_content = $_POST['_dbem_reminder_content'] === 'options' ? 'options' : 'date';
-            update_post_meta($post_id, '_dbem_reminder_content', $reminder_content);
+            update_post_meta($post_id, '_dbem_reminder_content', wp_slash($reminder_content));
         }
 
         if (isset($_POST['_dbem_reminder_hours'])) {
-            update_post_meta($post_id, '_dbem_reminder_hours', absint($_POST['_dbem_reminder_hours']));
+            update_post_meta($post_id, '_dbem_reminder_hours', wp_slash(absint($_POST['_dbem_reminder_hours'])));
         }
 
         // Promemoria e survey automatico con le date appena salvate
@@ -1590,7 +1592,7 @@ class DBEM_Admin {
             wp_send_json_error(__('Oggetto e messaggio non possono essere vuoti.', 'db-event-manager'));
         }
 
-        update_post_meta($event_id, '_dbem_reminder_email', $template);
+        update_post_meta($event_id, '_dbem_reminder_email', wp_slash($template));
         wp_send_json_success(array(
             'message'  => __('Testo del reminder salvato per questo evento.', 'db-event-manager'),
             'template' => DBEM_Email::get_reminder_template($event_id),

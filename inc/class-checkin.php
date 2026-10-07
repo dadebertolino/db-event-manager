@@ -295,7 +295,8 @@ class DBEM_Checkin {
         }
 
         DBEM_DB::ensure_tables();
-        $results = $allowed ? DBEM_DB::search_registrations_global($search, 10, $allowed) : array();
+        // Solo gli eventi aperti dal PIN; 25 risultati perché un cognome comune non nasconda la persona cercata
+        $results = $allowed ? DBEM_DB::search_registrations_global($search, 25, $allowed) : array();
 
         $items = array();
         foreach ($results as $r) {

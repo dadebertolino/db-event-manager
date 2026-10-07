@@ -309,11 +309,14 @@ $site_name = get_bloginfo('name');
     function loadParticipants() {
         document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-loading">⏳ <?php echo esc_js(__('Caricamento...', 'db-event-manager')); ?></div>';
 
-        var body = 'action=dbem_public_participants&event_id=' + currentEvent;
+        var requested = currentEvent;
+        var body = 'action=dbem_public_participants&event_id=' + requested;
         body += '&pin=' + encodeURIComponent(pin) + '&_ajax_nonce=' + encodeURIComponent(nonce);
 
         post(body)
         .then(function(resp) {
+            // Risposta arrivata dopo un cambio di evento: mostrerebbe i dati di quello precedente
+            if (requested !== currentEvent) return;
             if (!resp.success) {
                 document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml((resp.data && resp.data.message) || T.error) + '</div>';
                 return;
@@ -328,6 +331,7 @@ $site_name = get_bloginfo('name');
         })
         .catch(function(err) {
             console.warn('[DB Event Manager] errore di rete', err);
+            if (requested !== currentEvent) return;
             document.getElementById('pp-table-wrap').innerHTML = '<div class="pp-empty">❌ ' + escHtml(T.network_error) + '</div>';
         });
     }

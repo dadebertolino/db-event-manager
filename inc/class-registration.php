@@ -50,20 +50,12 @@ class DBEM_Registration {
         if (is_array($custom_fields)) {
             foreach ($custom_fields as $i => $field) {
                 $field_key = 'dbem_custom_' . $i;
-                $value = '';
-                if ($field['type'] === 'checkbox') {
-                    $value = isset($_POST[$field_key]) ? array_map('sanitize_text_field', (array)wp_unslash($_POST[$field_key])) : array();
-                } else {
-                    $value = sanitize_text_field(wp_unslash($_POST[$field_key] ?? ''));
+                $raw = isset($_POST[$field_key]) ? wp_unslash($_POST[$field_key]) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitizzato e validato da field_value()
+                $result = self::field_value($field, $raw);
+                if ($result['error'] !== '') {
+                    wp_send_json_error($result['error']);
                 }
-                // "0" è un valore valido; il messaggio va a .text(), niente esc_html
-                if ($field['required'] && ($value === '' || $value === array())) {
-                    wp_send_json_error(sprintf(
-                        __('Il campo "%s" è obbligatorio.', 'db-event-manager'),
-                        $field['label']
-                    ));
-                }
-                $custom_data[$field['label']] = $value;
+                $custom_data[$field['label']] = $result['value'];
             }
         }
 
@@ -177,6 +169,52 @@ class DBEM_Registration {
             'message' => self::received_message(),
         ));
         // phpcs:enable WordPress.Security.NonceVerification.Missing
+    }
+
+    /**
+     * Valore di un campo del form integrato, sanitizzato e validato sul tipo: le scelte
+     * solo tra le opzioni definite, email, numeri e date nel loro formato. Il browser fa
+     * gli stessi controlli, ma un invio diretto all'endpoint li salterebbe.
+     *
+     * @param array        $field Campo come salvato in _dbem_custom_fields
+     * @param string|array $raw   Valore inviato, già unslash
+     * @return array{value: string|string[], error: string} error vuoto se valido
+     */
+    public static function field_value($field, $raw) {
+        $type = $field['type'] ?? 'text';
+        $label = (string) ($field['label'] ?? '');
+        $options = array_map('strval', (array) ($field['options'] ?? array()));
+        /* translators: %s: etichetta del campo */
+        $invalid = sprintf(__('Il valore del campo "%s" non è valido.', 'db-event-manager'), $label);
+
+        if ($type === 'checkbox') {
+            $value = array_values(array_filter(array_map('sanitize_text_field', array_filter((array) $raw, 'is_scalar')), 'strlen'));
+            if ($options && array_diff($value, $options)) return array('value' => $value, 'error' => $invalid);
+        } else {
+            $value = is_scalar($raw)
+                ? ($type === 'textarea' ? sanitize_textarea_field((string) $raw) : sanitize_text_field((string) $raw))
+                : '';
+            if ($value !== '') {
+                $valid = true;
+                if (in_array($type, array('select', 'radio'), true) && $options) {
+                    $valid = in_array($value, $options, true);
+                } elseif ($type === 'email') {
+                    $valid = (bool) is_email($value);
+                } elseif ($type === 'number') {
+                    $valid = is_numeric($value);
+                } elseif ($type === 'date') {
+                    $valid = (bool) preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+                }
+                if (!$valid) return array('value' => $value, 'error' => $invalid);
+            }
+        }
+
+        // "0" è un valore valido; il messaggio va a .text(), niente esc_html
+        if (!empty($field['required']) && ($value === '' || $value === array())) {
+            /* translators: %s: etichetta del campo */
+            return array('value' => $value, 'error' => sprintf(__('Il campo "%s" è obbligatorio.', 'db-event-manager'), $label));
+        }
+        return array('value' => $value, 'error' => '');
     }
 
     /**

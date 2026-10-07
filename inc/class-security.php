@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) exit;
 class DBEM_Security {
 
     const PIN_OPTION      = 'dbem_checkin_pin';
+    const EVENT_PIN_META  = '_dbem_checkin_pin';
     const NONCE_ACTION    = 'dbem_public';
     const MAX_PIN_FAILS   = 10;
     const PIN_LOCK_WINDOW = 900; // 15 minuti
@@ -43,6 +44,67 @@ class DBEM_Security {
     }
 
     /**
+     * Formato accettato al salvataggio: da 4 a 10 cifre (la tastiera del telefono
+     * è numerica e il campo accetta al massimo 10 caratteri)
+     */
+    public static function is_valid_pin($pin) {
+        return is_string($pin) && preg_match('/^\d{4,10}$/', $pin) === 1;
+    }
+
+    /**
+     * PIN dell'evento: il suo se impostato, altrimenti quello di sistema
+     */
+    public static function get_event_pin($event_id) {
+        $pin = (string) get_post_meta($event_id, self::EVENT_PIN_META, true);
+        return $pin !== '' ? $pin : self::get_pin();
+    }
+
+    /**
+     * Eventi pubblicati che il PIN apre, dal più recente. Un evento con un PIN proprio
+     * si apre solo con quello; gli altri con il PIN di sistema.
+     *
+     * @return int[]
+     */
+    public static function events_for_pin($pin) {
+        $pin = (string) $pin;
+        if ($pin === '') return array();
+
+        $ids = get_posts(array(
+            'post_type'      => 'dbem_event',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'meta_key'       => '_dbem_date_start',
+            'orderby'        => 'meta_value',
+            'order'          => 'DESC',
+            'no_found_rows'  => true,
+        ));
+
+        $allowed = array();
+        foreach ($ids as $id) {
+            if (hash_equals(self::get_event_pin($id), $pin)) {
+                $allowed[] = (int) $id;
+            }
+        }
+        return $allowed;
+    }
+
+    /**
+     * Termina con 403 se l'evento non è tra quelli aperti dal PIN della richiesta
+     *
+     * @param int   $event_id
+     * @param int[] $allowed  Restituito da verify_public_request()
+     */
+    public static function require_event_access($event_id, $allowed) {
+        if (!$event_id || !in_array((int) $event_id, (array) $allowed, true)) {
+            wp_send_json_error(array(
+                'message' => __('Questo PIN non dà accesso a questo evento.', 'db-event-manager'),
+                'status'  => 'forbidden',
+            ), 403);
+        }
+    }
+
+    /**
      * IP del client (solo REMOTE_ADDR: gli header proxy sono falsificabili)
      */
     public static function client_ip() {
@@ -54,8 +116,11 @@ class DBEM_Security {
      * Verifica completa di una richiesta AJAX pubblica delle pagine staff
      * (check-in, partecipanti): nonce (loggati) o origine + rate limit
      * (anonimi), poi PIN con blocco dopo MAX_PIN_FAILS tentativi errati.
-     * Il PIN resta l'autorizzazione vera. Termina con un errore JSON se un
-     * controllo fallisce.
+     * Il PIN resta l'autorizzazione vera: è valido se è quello di sistema o quello
+     * di un evento, e apre solo gli eventi pubblicati che gli corrispondono.
+     * Termina con un errore JSON se un controllo fallisce.
+     *
+     * @return int[] Eventi a cui il PIN dà accesso (vedi require_event_access())
      */
     public static function verify_public_request() {
         self::verify_request(
@@ -78,7 +143,8 @@ class DBEM_Security {
 
         $pin_sent = (string) sanitize_text_field(wp_unslash($_POST['pin'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce (loggati) o origine + rate limit (anonimi) verificati in verify_request()
 
-        if (!hash_equals(self::get_pin(), $pin_sent)) {
+        $allowed = self::events_for_pin($pin_sent);
+        if (!$allowed && !hash_equals(self::get_pin(), $pin_sent)) {
             set_transient($fail_key, $fails + 1, self::PIN_LOCK_WINDOW);
             wp_send_json_error(array(
                 'message' => __('PIN non valido', 'db-event-manager'),
@@ -87,7 +153,7 @@ class DBEM_Security {
         }
 
         delete_transient($fail_key);
-        return true;
+        return $allowed;
     }
 
     /**
@@ -235,7 +301,21 @@ class DBEM_Security {
      * Endpoint dedicato alla sola validazione del PIN (schermata di accesso)
      */
     public static function handle_pin_check() {
-        self::verify_public_request();
-        wp_send_json_success(array('message' => __('Accesso consentito', 'db-event-manager')));
+        $allowed = self::verify_public_request();
+
+        $events = array();
+        foreach ($allowed as $event_id) {
+            $start = get_post_meta($event_id, '_dbem_date_start', true);
+            $events[] = array(
+                'id'    => $event_id,
+                'name'  => DBEM_CPT::get_event_name($event_id),
+                'date'  => $start ? date_i18n('d/m/Y', strtotime($start)) : '',
+            );
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Accesso consentito', 'db-event-manager'),
+            'events'  => $events,
+        ));
     }
 }

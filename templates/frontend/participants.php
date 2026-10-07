@@ -6,15 +6,7 @@ $pin_required = true;
 $public_nonce = DBEM_Security::public_nonce();
 $site_name = get_bloginfo('name');
 
-// Eventi pubblicati
-$events = get_posts(array(
-    'post_type'      => 'dbem_event',
-    'post_status'    => 'publish',
-    'posts_per_page' => -1,
-    'meta_key'       => '_dbem_date_start',
-    'orderby'        => 'meta_value',
-    'order'          => 'DESC',
-));
+// Gli eventi arrivano dopo il PIN: solo quelli che il PIN apre (DBEM_Security::events_for_pin)
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -131,16 +123,8 @@ $events = get_posts(array(
         <div class="pp-select">
             <select id="pp-event-select" aria-label="<?php esc_attr_e('Seleziona evento', 'db-event-manager'); ?>">
                 <option value=""><?php esc_html_e('— Seleziona un evento —', 'db-event-manager'); ?></option>
-                <?php foreach ($events as $ev):
-                    $ev_name = get_post_meta($ev->ID, '_dbem_event_name', true) ?: $ev->post_title;
-                    $ev_start = get_post_meta($ev->ID, '_dbem_date_start', true);
-                    $ev_date = $ev_start ? date('d/m/Y', strtotime($ev_start)) : '';
-                ?>
-                <option value="<?php echo esc_attr($ev->ID); ?>">
-                    <?php echo esc_html($ev_name . ($ev_date ? ' — ' . $ev_date : '')); ?>
-                </option>
-                <?php endforeach; ?>
             </select>
+            <p id="pp-no-events" role="status" style="display:none;margin-top:12px;text-align:center"><?php esc_html_e('Nessun evento pubblicato accessibile con questo PIN.', 'db-event-manager'); ?></p>
         </div>
 
         <!-- Contatore -->
@@ -277,6 +261,7 @@ $events = get_posts(array(
                     pinError.style.display = 'block';
                     pinInput.select();
                 } else {
+                    fillEvents((data.data && data.data.events) || []);
                     document.getElementById('pp-pin-screen').style.display = 'none';
                     document.getElementById('pp-main').style.display = 'block';
                 }
@@ -292,6 +277,22 @@ $events = get_posts(array(
     }
 
     /* === Evento === */
+    // Eventi aperti dal PIN; con uno solo si apre direttamente
+    function fillEvents(events) {
+        var select = document.getElementById('pp-event-select');
+        events.forEach(function(ev) {
+            var opt = document.createElement('option');
+            opt.value = ev.id;
+            opt.textContent = ev.name + (ev.date ? ' — ' + ev.date : '');
+            select.appendChild(opt);
+        });
+        document.getElementById('pp-no-events').style.display = events.length ? 'none' : 'block';
+        if (events.length === 1) {
+            select.value = String(events[0].id);
+            select.dispatchEvent(new Event('change'));
+        }
+    }
+
     document.getElementById('pp-event-select').addEventListener('change', function() {
         currentEvent = parseInt(this.value) || 0;
         if (currentEvent) {

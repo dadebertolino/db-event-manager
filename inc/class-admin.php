@@ -390,6 +390,13 @@ class DBEM_Admin {
                 </td>
             </tr>
             <tr>
+                <th><label for="dbem_checkin_pin"><?php esc_html_e('PIN check-in dell\'evento', 'db-event-manager'); ?></label></th>
+                <td>
+                    <input type="text" id="dbem_checkin_pin" name="_dbem_checkin_pin" value="<?php echo esc_attr(get_post_meta($post->ID, DBEM_Security::EVENT_PIN_META, true)); ?>" class="small-text" autocomplete="off" inputmode="numeric" pattern="[0-9]{4,10}" style="width:9em">
+                    <p class="description"><?php esc_html_e('Opzionale, da 4 a 10 cifre. Se impostato, le pagine pubbliche di check-in e partecipanti aprono questo evento solo con questo PIN (il PIN di sistema non basta più). Se vuoto vale il PIN di sistema delle Impostazioni.', 'db-event-manager'); ?></p>
+                </td>
+            </tr>
+            <tr>
                 <th><label for="dbem_allow_registration_update"><?php esc_html_e('Reiscrizione con stessa email', 'db-event-manager'); ?></label></th>
                 <td>
                     <label>
@@ -793,6 +800,16 @@ class DBEM_Admin {
             update_post_meta($post_id, '_dbem_approver_email', implode(', ', $emails));
         }
 
+        // PIN dell'evento: vuoto = PIN di sistema; un valore non valido lascia quello precedente
+        if (isset($_POST['_dbem_checkin_pin'])) {
+            $event_pin = trim(sanitize_text_field(wp_unslash($_POST['_dbem_checkin_pin'])));
+            if ($event_pin === '') {
+                delete_post_meta($post_id, DBEM_Security::EVENT_PIN_META);
+            } elseif (DBEM_Security::is_valid_pin($event_pin)) {
+                update_post_meta($post_id, DBEM_Security::EVENT_PIN_META, $event_pin);
+            }
+        }
+
         // Assegnazione orario
         update_post_meta($post_id, '_dbem_time_slot_enabled', isset($_POST['_dbem_time_slot_enabled']) ? '1' : '0');
         update_post_meta($post_id, '_dbem_allow_registration_update', isset($_POST['_dbem_allow_registration_update']) ? '1' : '0');
@@ -1125,12 +1142,17 @@ class DBEM_Admin {
         if (isset($_POST['dbem_settings_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['dbem_settings_nonce'])), 'dbem_save_settings')) {
             update_option('dbem_events_page_id', absint($_POST['dbem_events_page_id'] ?? 0));
             update_option('dbem_events_page_title', sanitize_text_field(wp_unslash($_POST['dbem_events_page_title'] ?? __('Eventi', 'db-event-manager'))));
-            // Il PIN non può essere vuoto: se svuotato, ne viene rigenerato uno
-            $new_pin = sanitize_text_field(wp_unslash($_POST['dbem_checkin_pin'] ?? ''));
+            // Il PIN non può essere vuoto: se svuotato, ne viene rigenerato uno.
+            // Un PIN non valido (es. "1", o più lungo di quanto il campo del telefono accetta) non si salva
+            $new_pin = trim(sanitize_text_field(wp_unslash($_POST['dbem_checkin_pin'] ?? '')));
             if (!empty($_POST['dbem_regenerate_pin']) || $new_pin === '') {
                 $new_pin = DBEM_Security::generate_pin();
             }
-            update_option('dbem_checkin_pin', $new_pin);
+            if (DBEM_Security::is_valid_pin($new_pin)) {
+                update_option('dbem_checkin_pin', $new_pin);
+            } else {
+                echo '<div class="notice notice-error"><p>' . esc_html__('PIN non salvato: deve essere di 4-10 cifre. Resta valido quello precedente.', 'db-event-manager') . '</p></div>';
+            }
             update_option('dbem_delete_data_on_uninstall', isset($_POST['dbem_delete_data_on_uninstall']) ? '1' : '0');
             update_option('dbem_from_name', str_replace(array('"', '<', '>'), '', sanitize_text_field(wp_unslash($_POST['dbem_from_name'] ?? ''))));
             $from_email = sanitize_email(wp_unslash($_POST['dbem_from_email'] ?? ''));
@@ -1186,10 +1208,11 @@ class DBEM_Admin {
                     <tr>
                         <th><label for="dbem_checkin_pin"><?php esc_html_e('PIN accesso check-in', 'db-event-manager'); ?></label></th>
                         <td>
-                            <input type="text" id="dbem_checkin_pin" name="dbem_checkin_pin" value="<?php echo esc_attr($checkin_pin); ?>" class="regular-text" autocomplete="off">
+                            <input type="text" id="dbem_checkin_pin" name="dbem_checkin_pin" value="<?php echo esc_attr($checkin_pin); ?>" class="regular-text" autocomplete="off" inputmode="numeric" pattern="[0-9]{4,10}">
                             <p class="description">
-                                <?php echo wp_kses_post(__('PIN richiesto per le pagine pubbliche di check-in e partecipanti. <strong>È obbligatorio</strong>: senza PIN quelle pagine esporrebbero i dati personali degli iscritti a chiunque conosca l\'indirizzo. Se lasci il campo vuoto ne viene generato uno nuovo automaticamente.', 'db-event-manager')); ?>
+                                <?php echo wp_kses_post(__('PIN richiesto per le pagine pubbliche di check-in e partecipanti: da 4 a 10 cifre. <strong>È obbligatorio</strong>: senza PIN quelle pagine esporrebbero i dati personali degli iscritti a chiunque conosca l\'indirizzo. Se lasci il campo vuoto ne viene generato uno nuovo automaticamente.', 'db-event-manager')); ?>
                             </p>
+                            <p class="description"><?php esc_html_e('Apre gli eventi pubblicati che non hanno un PIN proprio. Un evento può avere un PIN dedicato (scheda Iscrizioni dell\'evento), da dare per esempio a chi gestisce solo quell\'ingresso: quell\'evento si apre solo con il suo PIN.', 'db-event-manager'); ?></p>
                             <p>
                                 <label>
                                     <input type="checkbox" name="dbem_regenerate_pin" value="1">

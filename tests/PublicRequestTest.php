@@ -136,7 +136,7 @@ final class PublicRequestTest extends TestCase {
 
         $_POST['pin'] = '123456';
         try {
-            $this->assertTrue(DBEM_Security::verify_public_request());
+            $this->assertSame(array(), DBEM_Security::verify_public_request());
         } finally {
             unset($_POST['pin']);
         }

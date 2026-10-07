@@ -183,7 +183,7 @@ class DBEM_Checkin {
      * Check-in AJAX pubblico (protetto da PIN)
      */
     public static function handle_public_checkin() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         // Dallo scanner arriva il token del QR, dalla ricerca l'id dell'iscrizione:
         // la ricerca non restituisce i token, che valgono anche come QR e link al sondaggio
@@ -198,6 +198,15 @@ class DBEM_Checkin {
                 'status'  => 'invalid',
                 'message' => __('QR code non valido', 'db-event-manager'),
                 'icon'    => '❌',
+            ));
+        }
+
+        // Iscrizione di un evento che questo PIN non apre (altro PIN, bozza, cestino)
+        if (!in_array((int) $reg->event_id, $allowed, true)) {
+            wp_send_json_error(array(
+                'status'  => 'invalid',
+                'message' => __('Iscrizione di un evento non accessibile con questo PIN', 'db-event-manager'),
+                'icon'    => '⛔',
             ));
         }
 
@@ -255,7 +264,7 @@ class DBEM_Checkin {
      * Ricerca pubblica partecipanti (protetta da PIN)
      */
     public static function handle_public_search() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         $search = sanitize_text_field(wp_unslash($_POST['search'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (strlen($search) < 2) {
@@ -263,7 +272,7 @@ class DBEM_Checkin {
         }
 
         DBEM_DB::ensure_tables();
-        $results = DBEM_DB::search_registrations_global($search);
+        $results = $allowed ? DBEM_DB::search_registrations_global($search, 10, $allowed) : array();
 
         $items = array();
         foreach ($results as $r) {
@@ -294,10 +303,11 @@ class DBEM_Checkin {
      * AJAX: lista partecipanti pubblica (protetta da PIN)
      */
     public static function handle_public_participants() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (!$event_id) wp_send_json_error(array('message' => __('Evento mancante', 'db-event-manager')));
+        DBEM_Security::require_event_access($event_id, $allowed);
 
         DBEM_DB::ensure_tables();
         $regs = DBEM_DB::get_registrations($event_id, null, 'registered_at', 'ASC');
@@ -342,12 +352,13 @@ class DBEM_Checkin {
      * AJAX: azione su partecipante da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_participant_action() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         $action   = sanitize_key($_POST['participant_action'] ?? ''); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $reg_id   = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         if (!$action || !$reg_id || !$event_id) wp_send_json_error(array('message' => __('Parametri mancanti', 'db-event-manager')));
+        DBEM_Security::require_event_access($event_id, $allowed);
 
         DBEM_DB::ensure_tables();
         global $wpdb;
@@ -415,7 +426,7 @@ class DBEM_Checkin {
      * AJAX: iscrizione manuale da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_add_participant() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $name = sanitize_text_field(wp_unslash($_POST['name'] ?? '')); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
@@ -425,9 +436,7 @@ class DBEM_Checkin {
         if (!$event_id || !$name || !$email) {
             wp_send_json_error(array('message' => __('Nome, email e evento sono obbligatori', 'db-event-manager')));
         }
-        if (get_post_type($event_id) !== 'dbem_event') {
-            wp_send_json_error(array('message' => __('Evento non valido', 'db-event-manager')));
-        }
+        DBEM_Security::require_event_access($event_id, $allowed);
         if (!is_email($email)) {
             wp_send_json_error(array('message' => __('Email non valida', 'db-event-manager')));
         }
@@ -482,7 +491,7 @@ class DBEM_Checkin {
      * AJAX: modifica orario assegnato da pagina pubblica (protetta da PIN)
      */
     public static function handle_public_update_time() {
-        DBEM_Security::verify_public_request();
+        $allowed = DBEM_Security::verify_public_request();
 
         $reg_id = absint($_POST['registration_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
         $event_id = absint($_POST['event_id'] ?? 0); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verificato da DBEM_Security::verify_public_request()
@@ -491,6 +500,7 @@ class DBEM_Checkin {
         if (!$reg_id || !$event_id) {
             wp_send_json_error(array('message' => __('ID iscrizione mancante', 'db-event-manager')));
         }
+        DBEM_Security::require_event_access($event_id, $allowed);
 
         DBEM_DB::ensure_tables();
         global $wpdb;

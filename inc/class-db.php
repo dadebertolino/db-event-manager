@@ -228,13 +228,23 @@ class DBEM_DB {
     /**
      * Cerca iscrizioni per nome/email su TUTTI gli eventi attivi (per check-in pubblico)
      */
-    public static function search_registrations_global($search, $limit = 10) {
+    public static function search_registrations_global($search, $limit = 10, $event_ids = null) {
         global $wpdb;
         $table = $wpdb->prefix . 'dbem_registrations';
         $like = '%' . $wpdb->esc_like($search) . '%';
+        $where_events = '';
+        $args = array($like, $like);
+        // Solo gli eventi indicati (pagina pubblica: quelli aperti dal PIN)
+        if (is_array($event_ids)) {
+            $event_ids = array_values(array_filter(array_map('absint', $event_ids)));
+            if (!$event_ids) return array();
+            $where_events = ' AND event_id IN (' . implode(',', array_fill(0, count($event_ids), '%d')) . ')';
+            $args = array_merge($args, $event_ids);
+        }
+        $args[] = $limit;
         return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE (name LIKE %s OR email LIKE %s) AND status != 'cancelled' ORDER BY registered_at DESC LIMIT %d",
-            $like, $like, $limit
+            "SELECT * FROM $table WHERE (name LIKE %s OR email LIKE %s) AND status != 'cancelled'$where_events ORDER BY registered_at DESC LIMIT %d",
+            ...$args
         ));
     }
 

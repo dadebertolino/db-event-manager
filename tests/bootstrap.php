@@ -335,6 +335,22 @@ if (!function_exists('wp_verify_nonce')) {
     }
 }
 
+// Eventi del sito: id => post_status (per get_posts)
+$GLOBALS['__dbem_posts'] = array();
+
+if (!function_exists('get_posts')) {
+    function get_posts($args = array()) {
+        $status = $args['post_status'] ?? 'publish';
+        $ids = array();
+        foreach ($GLOBALS['__dbem_posts'] as $id => $post_status) {
+            if ($status === 'any' || in_array($post_status, (array) $status, true)) {
+                $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+}
+
 if (!function_exists('get_post_type')) {
     function get_post_type($post_id) {
         return 'dbem_event';

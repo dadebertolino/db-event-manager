@@ -64,6 +64,37 @@ async function submitRegistration( page, { name, email, privacy = false } ) {
 	return form.locator( '.dbem-message' );
 }
 
+/**
+ * Primo link di un'email catturata che contiene il testo indicato (es. 'dbem_action=approve'),
+ * con le entità HTML di esc_url() decodificate e relativo al sito
+ *
+ * @param {{message: string}} mail
+ * @param {string} contains
+ * @returns {string}
+ */
+function linkFromMail( mail, contains ) {
+	const hrefs = [ ...mail.message.matchAll( /href="([^"]+)"/g ) ].map( ( m ) => m[ 1 ].replace( /&#0?38;|&amp;/g, '&' ) );
+	const link = hrefs.find( ( h ) => h.includes( contains ) );
+	if ( ! link ) {
+		throw new Error( `Nessun link con "${ contains }" nell'email «${ mail.subject }»` );
+	}
+	const url = new URL( link );
+	return url.pathname + url.search;
+}
+
+/**
+ * Iscrizione anonima diretta all'endpoint, come dalla pagina dell'evento
+ *
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {object} form
+ */
+function registerViaAjax( request, form ) {
+	return request.post( '/wp-admin/admin-ajax.php', {
+		headers: { Origin: process.env.WP_BASE_URL || 'http://localhost:8888' },
+		form: { action: 'dbem_register', ...form },
+	} );
+}
+
 module.exports = {
 	ADMIN_STATE,
 	PIN,
@@ -71,4 +102,6 @@ module.exports = {
 	resetState,
 	getState,
 	submitRegistration,
+	linkFromMail,
+	registerViaAjax,
 };

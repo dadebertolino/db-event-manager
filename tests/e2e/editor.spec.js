@@ -18,10 +18,12 @@ async function openEditor( page, eventId ) {
 	} );
 	const guide = page.getByRole( 'dialog', { name: /Welcome|Benvenuto/ } );
 	if ( await guide.isVisible().catch( () => false ) ) await page.keyboard.press( 'Escape' );
-	// Nelle versioni recenti l'area dei metabox in fondo all'editor parte chiusa
+	// Nelle versioni recenti l'area dei metabox in fondo all'editor parte chiusa; la
+	// maniglia di ridimensionamento copre il pulsante, quindi niente clic del mouse
 	const metaBoxes = page.getByRole( 'button', { name: 'Meta Boxes' } );
 	if ( await metaBoxes.count() && ( await metaBoxes.getAttribute( 'aria-expanded' ) ) === 'false' ) {
-		await metaBoxes.click();
+		await metaBoxes.evaluate( ( button ) => button.click() );
+		await expect( metaBoxes ).toHaveAttribute( 'aria-expanded', 'true' );
 	}
 }
 

@@ -238,23 +238,15 @@ Bug coperti: #1, #2, #4, #6, #7, #8, #9, #10, #12, #13, #14, #16, #17, #20,
 
 Bug coperti: #11, #15, #22, #23, #26, #42, accessibilità #45–#48.
 
-- [ ] Iscrizione anonima da pagina in cache «vecchia» (regressione 1.8.0); 403 senza Origin
-- [ ] Form integrato: validazione, campi obbligatori, honeypot, 429 visibile
-      (fatti: radio e checkbox obbligatori, errori collegati, messaggio neutro, invii paralleli
-      sull'ultimo posto, endpoint DBFB su evento integrato, evento in bozza; mancano honeypot e 429)
-- [ ] DB Form Builder end-to-end
+- [x] Iscrizione anonima da pagina in cache: nessun nonce per gli anonimi; 403 senza Origin o da un altro sito
+- [x] Form integrato: validazione, campi obbligatori, honeypot, 429 visibile, invii paralleli
 - [x] Email catturate: conferma, attesa, approvazione dal link, rifiuto, link alterato, modifica (2026-10-08)
-- [ ] Check-in admin e pagina pubblica con PIN (blocco dopo 10 errori), telefono
-      (fatti: PIN di sistema e dedicato, raffica di PIN errati, ricerca per nome da telefono;
-      manca la pagina di check-in admin)
-- [ ] Partecipanti: azioni, aggiunta manuale, export CSV scaricato
+- [x] Check-in admin (ricerca, QR di un altro evento) e pagina pubblica con PIN (blocco dopo 10 errori), telefono
+- [x] Partecipanti: azioni, blocco per stato, aggiunta manuale, annullamento con avviso, export CSV
 - [x] Survey: link personale, invio, risultati, domanda rinominata (1.11.0)
-- [x] Admin: opzione rinominata con conferma, Duplica dall'editor, gestore delegato (2026-10-08;
-      Duplica dall'elenco eventi non coperto)
-- [ ] axe su form, pagina evento, archivio, check-in, partecipanti (anche con colori personalizzati)
-      (fatti: form nella pagina evento, check-in, partecipanti e finestra dell'orario; mancano
-      archivio e colori personalizzati)
-- [ ] Ecosistema con Privacy Hub: registro trattamenti, registro consensi, DSAR
+- [x] Admin: opzione rinominata con conferma, Duplica (elenco ed editor), gestore delegato
+- [x] axe su form, pagina evento, archivio, check-in, partecipanti, colori personalizzati
+- [x] Ecosistema con Privacy Hub: registro trattamenti, registro consensi, export (exporter unico)
 
 ---
 

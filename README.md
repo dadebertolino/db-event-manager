@@ -3,7 +3,7 @@
 Gestione eventi con iscrizione, QR code personale, check-in e survey post-evento.  
 Niente Eventbrite, niente SaaS, niente abbonamenti. Tutto nel tuo WordPress.
 
-**Versione:** 1.11.0
+**Versione:** 1.11.1
 **Autore:** [Davide Bertolino](https://www.davidebertolino.it)  
 **Licenza:** GPL v2 or later  
 **Richiede:** WordPress 6.0+, PHP 7.4+  
@@ -341,6 +341,25 @@ La CI esegue a ogni push sintassi e unit test su PHP 7.4–8.5, PHPCS, il contro
 ---
 
 ## Changelog
+
+### 1.11.1
+**Correzioni trovate dagli E2E della Fase 3**
+
+Patch: completati i test nel browser di `TESTING-PLAN.md` (45 E2E); hanno trovato questi difetti.
+
+- **DB Form Builder**: con DBFB 2.13 l'iscrizione all'evento non partiva mai. DBFB svuota il form subito
+  dopo aver mostrato il messaggio di successo, prima che il plugin leggesse nome ed email, che quindi
+  risultavano vuoti. Ora i dati si leggono al momento dell'invio
+- **Partecipanti da telefono**: su schermi stretti la tabella era più larga della pagina e tagliava la
+  colonna delle azioni, i cui pulsanti non si potevano toccare. Ora la tabella scorre in orizzontale
+- **Contrasti**: l'anno nel riquadro data delle card scendeva sotto 4,5:1; con uno sfondo personalizzato
+  scuro i messaggi d'errore del form restavano rossi e illeggibili, ora usano il colore del testo
+- **Check-in admin**: i risultati della ricerca sono pulsanti veri (ruolo, attivabili con Invio e Spazio)
+
+**Test:** link nelle email (approvazione, rifiuto, link alterato, modifica dell'iscrizione), protezioni
+del modulo (nonce assente per gli anonimi, 403 senza origine, honeypot, 429), DB Form Builder, pagine admin
+(check-in, partecipanti, azioni in blocco, CSV, Duplica dall'elenco e dall'editor, opzioni rinominate),
+gestore delegato, check-in e partecipanti da telefono, axe su archivio e colori personalizzati, Privacy Hub.
 
 ### 1.11.0
 **Survey per id delle domande, registro degli invii, formato delle date**

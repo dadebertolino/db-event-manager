@@ -80,6 +80,7 @@ function dbem_e2e_event_meta($title) {
  *                             la baseline; registrations: [{name, email, status, data}] iscrizioni già salvate,
  *                             data = campi compilati, etichetta => valore).
  *     @type bool  $manager    Crea (o ripristina) l'utente "gestore" con i soli permessi sugli eventi.
+ *     Un evento con dbfb: true usa un form DB Form Builder creato qui (campi nome, email, telefono).
  *     @type int   $rate_limit Limite iscrizioni/minuto per IP (assente = spento).
  * }
  * @return array{events: array, pin: string}
@@ -87,7 +88,7 @@ function dbem_e2e_event_meta($title) {
 function dbem_e2e_reset_state($opts = array()) {
     global $wpdb;
 
-    foreach (get_posts(array('post_type' => 'dbem_event', 'post_status' => 'any,trash', 'posts_per_page' => -1, 'fields' => 'ids')) as $id) {
+    foreach (get_posts(array('post_type' => array('dbem_event', 'dbfb_form'), 'post_status' => 'any,trash', 'posts_per_page' => -1, 'fields' => 'ids')) as $id) {
         wp_delete_post($id, true);
     }
     DBEM_DB::ensure_tables();
@@ -113,7 +114,16 @@ function dbem_e2e_reset_state($opts = array()) {
             'post_title'   => $title,
             'post_content' => 'Descrizione di ' . $title,
         ));
-        foreach (array_merge(dbem_e2e_event_meta($title), (array) ($event['meta'] ?? array())) as $meta_key => $value) {
+        $meta = array_merge(dbem_e2e_event_meta($title), (array) ($event['meta'] ?? array()));
+        if (!empty($event['dbfb']) && post_type_exists('dbfb_form')) {
+            $meta = array_merge($meta, array(
+                '_dbem_form_source'       => 'dbfb',
+                '_dbem_dbfb_form_id'      => dbem_e2e_dbfb_form($title),
+                '_dbem_dbfb_name_field'   => 'nome',
+                '_dbem_dbfb_email_field'  => 'email',
+            ));
+        }
+        foreach ($meta as $meta_key => $value) {
             update_post_meta($id, $meta_key, wp_slash($value));
         }
         $registrations = array();
@@ -149,6 +159,20 @@ function dbem_e2e_reset_state($opts = array()) {
     return array('events' => $events, 'pin' => DBEM_E2E_PIN);
 }
 
+/**
+ * Form DB Form Builder per un evento: nome ed email obbligatori, telefono facoltativo
+ */
+function dbem_e2e_dbfb_form($title) {
+    $form_id = wp_insert_post(array('post_type' => 'dbfb_form', 'post_status' => 'publish', 'post_title' => 'Form ' . $title));
+    update_post_meta($form_id, '_dbfb_fields', array(
+        array('id' => 'nome', 'type' => 'text', 'label' => 'Nome', 'placeholder' => '', 'required' => true, 'options' => array()),
+        array('id' => 'email', 'type' => 'email', 'label' => 'Email', 'placeholder' => '', 'required' => true, 'options' => array()),
+        array('id' => 'telefono', 'type' => 'text', 'label' => 'Telefono', 'placeholder' => '', 'required' => false, 'options' => array()),
+    ));
+    update_post_meta($form_id, '_dbfb_settings', array('success_message' => 'Modulo inviato'));
+    return $form_id;
+}
+
 add_action('rest_api_init', function () {
     register_rest_route('dbem-e2e/v1', '/reset', array(
         'methods'             => 'POST',
@@ -166,6 +190,26 @@ add_action('rest_api_init', function () {
             $params = (array) $request->get_json_params();
             update_post_meta((int) $params['event_id'], (string) $params['key'], wp_slash($params['value']));
             return array('ok' => true);
+        },
+    ));
+
+    // Exporter ed eraser privacy registrati (con o senza Privacy Hub) e export di un indirizzo
+    register_rest_route('dbem-e2e/v1', '/privacy', array(
+        'methods'             => 'GET',
+        'permission_callback' => '__return_true',
+        'callback'            => function (WP_REST_Request $request) {
+            $exporters = apply_filters('wp_privacy_personal_data_exporters', array());
+            $erasers = apply_filters('wp_privacy_personal_data_erasers', array());
+            $mine = array_filter(array_keys($exporters), function ($key) { return strpos($key, 'event-manager') !== false || strpos($key, 'dbem') !== false; });
+            $export = array();
+            foreach ($mine as $key) {
+                $export[$key] = call_user_func($exporters[$key]['callback'], (string) $request->get_param('email'), 1);
+            }
+            return array(
+                'exporters' => array_values($mine),
+                'erasers'   => array_values(array_filter(array_keys($erasers), function ($key) { return strpos($key, 'event-manager') !== false || strpos($key, 'dbem') !== false; })),
+                'export'    => $export,
+            );
         },
     ));
 

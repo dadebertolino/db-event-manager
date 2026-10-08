@@ -72,4 +72,22 @@ test.describe( 'Accessibilità', () => {
 		await page.keyboard.press( 'Escape' );
 		await expect( opener ).toBeFocused();
 	} );
+	test( 'archivio degli eventi', async ( { page, request } ) => {
+		await resetState( request, { events: [ { key: 'a', title: 'Evento uno' }, { key: 'b', title: 'Evento due', meta: { _dbem_max_participants: 20 } } ] } );
+		await page.goto( '/eventi/' );
+		await expect( page.getByText( 'Evento uno' ).first() ).toBeVisible();
+		expect( await violations( page, '.dbem-archive-wrap' ) ).toEqual( [] );
+	} );
+
+	test( 'pagina evento con colori personalizzati (contrasti calcolati dal plugin)', async ( { page, request } ) => {
+		const { events } = await resetState( request, {
+			events: [ { key: 'a', meta: { _dbem_appearance: { color_bg: '#1b1f3b', color_primary: '#ffcc00', color_text: '#ffffff' } } } ],
+		} );
+		await page.goto( events.a.url );
+		expect( await violations( page, '.dbem-single-event' ) ).toEqual( [] );
+
+		// Anche con gli errori del form a video
+		await page.locator( '.dbem-submit' ).click();
+		expect( await violations( page, '.dbem-single-event' ) ).toEqual( [] );
+	} );
 } );

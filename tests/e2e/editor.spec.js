@@ -18,6 +18,11 @@ async function openEditor( page, eventId ) {
 	} );
 	const guide = page.getByRole( 'dialog', { name: /Welcome|Benvenuto/ } );
 	if ( await guide.isVisible().catch( () => false ) ) await page.keyboard.press( 'Escape' );
+	// Nelle versioni recenti l'area dei metabox in fondo all'editor parte chiusa
+	const metaBoxes = page.getByRole( 'button', { name: 'Meta Boxes' } );
+	if ( await metaBoxes.count() && ( await metaBoxes.getAttribute( 'aria-expanded' ) ) === 'false' ) {
+		await metaBoxes.click();
+	}
 }
 
 async function saveEditor( page ) {
@@ -41,7 +46,8 @@ test.describe( 'Editor dell\'evento', () => {
 		await openEditor( page, events.a.id );
 		await page.getByRole( 'link', { name: 'Duplica evento' } ).click();
 		await page.waitForURL( /dbem_duplicated=1/ );
-		await expect( page.getByText( 'Evento duplicato in bozza' ) ).toBeVisible();
+		// Il testo compare due volte: l'avviso e la regione letta dai lettori di schermo
+		await expect( page.getByText( 'Evento duplicato in bozza' ).first() ).toBeVisible();
 
 		const state = await getState( request );
 		const copy = state.events.find( ( e ) => e.id !== events.a.id );

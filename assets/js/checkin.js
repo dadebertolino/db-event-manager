@@ -165,14 +165,16 @@
             var $results = $('#dbem-results-list').empty();
             if (resp.success && resp.data.length) {
                 resp.data.forEach(function(r) {
-                    var $item = $('<div class="dbem-result-item" tabindex="0"></div>')
-                        .append($('<span class="dbem-result-status"></span>').text(statusIcon(r.status)))
+                    var $item = $('<div class="dbem-result-item"></div>')
+                        .append($('<span class="dbem-result-status" aria-hidden="true"></span>').text(statusIcon(r.status)))
                         .append($('<div class="dbem-result-info"></div>')
                             .append($('<span class="dbem-result-name"></span>').text(r.name))
                             .append($('<span class="dbem-result-email"></span>').text(r.email)));
+                    // Solo i risultati con un'azione sono pulsanti (focus, Invio e Spazio)
                     if (r.status === 'confirmed') {
-                        $item.on('click keydown', function(e) {
-                            if (e.type === 'keydown' && e.key !== 'Enter') return;
+                        $item.attr({ role: 'button', tabindex: '0' }).on('click keydown', function(e) {
+                            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
                             processToken(r.token);
                         }).css('cursor', 'pointer');
                     }

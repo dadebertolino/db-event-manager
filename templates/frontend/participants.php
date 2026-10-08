@@ -47,7 +47,8 @@ $site_name = get_bloginfo('name');
         .pp-filter.active{background:#2271b1;color:#fff;border-color:#2271b1}
 
         /* Tabella */
-        .pp-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+        #pp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+        .pp-table{width:100%;border-collapse:collapse;background:#fff}
         .pp-table th{background:#f8f9fa;padding:10px 12px;text-align:left;font-size:13px;color:#666;font-weight:600;border-bottom:2px solid #e9ecef}
         .pp-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;vertical-align:middle}
         .pp-table tr:last-child td{border-bottom:none}

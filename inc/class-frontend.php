@@ -286,22 +286,10 @@ class DBEM_Frontend {
             var dbemMsg = wrap.querySelector('.dbem-dbfb-message');
             var registered = false;
 
-            // Osserva quando DBFB mostra il messaggio di successo
-            var observer = new MutationObserver(function() {
-                if (registered) return;
-                var msgRegion = form.querySelector('.dbfb-messages-region');
-                if (!msgRegion) return;
-                // Solo l'esito positivo di DBFB (.dbfb-message.success; .dbfb-message-success nelle
-                // versioni vecchie). Prima bastava un testo qualsiasi nella regione: anche un errore
-                // di validazione o del captcha iscriveva all'evento
-                var successMsg = msgRegion.querySelector('.dbfb-message.success, .dbfb-message-success');
-                if (!successMsg) return;
-
-                // Raccogli dati dal form (prima che venga resettato)
-                var inputs = form.querySelectorAll('input, select, textarea');
+            function collectForm() {
                 var data = {};
                 var privacyGiven = false;
-                inputs.forEach(function(el) {
+                form.querySelectorAll('input, select, textarea').forEach(function(el) {
                     if (!el.name) return;
                     // La checkbox privacy va letta anche se il nome è interno a DBFB
                     if (privacyField && (el.name === privacyField || el.id === privacyField)) {
@@ -314,6 +302,29 @@ class DBEM_Frontend {
                         data[el.name] = el.value;
                     }
                 });
+                return { data: data, privacyGiven: privacyGiven };
+            }
+
+            // Fotografia dei campi al momento dell'invio (fase di cattura: prima di DBFB)
+            var submitted = null;
+            form.addEventListener('submit', function() { submitted = collectForm(); }, true);
+
+            // Osserva quando DBFB mostra il messaggio di successo
+            var observer = new MutationObserver(function() {
+                if (registered) return;
+                var msgRegion = form.querySelector('.dbfb-messages-region');
+                if (!msgRegion) return;
+                // Solo l'esito positivo di DBFB (.dbfb-message.success; .dbfb-message-success nelle
+                // versioni vecchie). Prima bastava un testo qualsiasi nella regione: anche un errore
+                // di validazione o del captcha iscriveva all'evento
+                var successMsg = msgRegion.querySelector('.dbfb-message.success, .dbfb-message-success');
+                if (!successMsg) return;
+
+                // Dati letti all'invio: DBFB svuota il form (reset) subito dopo aver mostrato
+                // il successo, prima che questo osservatore giri
+                var collected = submitted || collectForm();
+                var data = collected.data;
+                var privacyGiven = collected.privacyGiven;
 
                 var name = data[nameField] || '';
                 var email = data[emailField] || '';

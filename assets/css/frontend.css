@@ -86,7 +86,10 @@ legend.dbem-label { margin-bottom: 6px; }
     min-height: 18px;
 }
 
-.dbem-error { color: #d63638; font-size: 13px; min-height: 0; display: block; margin-top: 2px; }
+.dbem-error { color: #b32d2e; font-size: 13px; font-weight: 600; min-height: 0; display: block; margin-top: 2px; }
+/* Sfondo personalizzato: il rosso fisso non è leggibile su ogni colore, si usa il colore
+   del testo (l'errore è indicato anche da aria-invalid e dal messaggio) */
+.dbem-has-bg .dbem-error { color: var(--dbem-text); }
 
 .dbem-submit {
     display: inline-block;
@@ -176,7 +179,8 @@ legend.dbem-label { margin-bottom: 6px; }
 }
 .dbem-card-day { font-size: 24px; font-weight: 700; }
 .dbem-card-month { font-size: 13px; text-transform: uppercase; }
-.dbem-card-year { font-size: 12px; opacity: 0.8; }
+/* Niente opacity: sul colore del riquadro scendeva sotto 4,5:1 */
+.dbem-card-year { font-size: 12px; }
 
 /* Eventi su più giorni: il riquadro mostra un intervallo, serve più spazio */
 .dbem-card-date-multi { min-width: 76px; }

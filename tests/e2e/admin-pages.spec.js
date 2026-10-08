@@ -19,7 +19,7 @@ test.describe( 'Pagine admin', () => {
 		await page.goto( `/wp-admin/edit.php?post_type=dbem_event&page=dbem-checkin&event_id=${ events.a.id }` );
 		await page.locator( '#dbem-search-input' ).fill( 'Verdi' );
 		await page.locator( '#dbem-search-btn' ).click();
-		await page.locator( '#dbem-results-list' ).getByRole( 'button', { name: 'Segna presente' } ).click();
+		await page.locator( '#dbem-results-list' ).getByRole( 'button', { name: /Carla Verdi/ } ).click();
 		await expect( page.locator( '#dbem-checkin-feedback' ) ).toContainText( 'Check-in effettuato' );
 		expect( ( await getState( request ) ).registrations.find( ( r ) => r.email === 'carla@example.com' ).status ).toBe( 'checked_in' );
 
